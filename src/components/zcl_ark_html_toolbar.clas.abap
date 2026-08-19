@@ -45,7 +45,7 @@ CLASS zcl_ark_html_toolbar DEFINITION
   PRIVATE SECTION.
     TYPES:
       BEGIN OF ty_toolbar_item,
-        type TYPE c LENGTH 1, " B=button, L=link, S=separator, T=text, H=html
+        type TYPE c LENGTH 1,
         label TYPE string,
         action TYPE string,
         url TYPE string,
@@ -158,11 +158,6 @@ CLASS zcl_ark_html_toolbar IMPLEMENTATION.
 
         WHEN 'S'.
           lo_toolbar->add( |<span class="separator"></span> | ).
-
-        WHEN 'T'.
-          lo_toolbar->add( |<span class="separator"></span> | ).
-          lo_toolbar->add( |<span class="separator"></span> | ).
-          lo_toolbar->add( |<span class="separator">| </span> | ).
 
         WHEN 'T'.
           lo_toolbar->add( |<span class="toolbar-text">{ ls_item-label }</span> | ).

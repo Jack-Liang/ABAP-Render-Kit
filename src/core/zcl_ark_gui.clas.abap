@@ -187,16 +187,16 @@ CLASS zcl_ark_gui IMPLEMENTATION.
               |<head>\n| &&
               |<meta charset="utf-8">\n| &&
               |<style type="text/css">\n| &&
-              |body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 10px; }\n| &&
-              |table { border-collapse: collapse; width: 100%; }\n| &&
-              |th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n| &&
-              |th { background-color: #f2f2f2; }\n| &&
-              |tr:nth-child(even) { background-color: #f9f9f9; }\n| &&
-              |a { color: #0066cc; text-decoration: none; }\n| &&
-              |a:hover { text-decoration: underline; }\n| &&
-              |.toolbar { margin-bottom: 10px; padding: 5px; background-color: #f0f0f0; }\n| &&
-              |.form-row { margin-bottom: 10px; }\n| &&
-              |.form-label { display: inline-block; width: 120px; font-weight: bold; }\n| &&
+              |body \{ font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 10px; \}\n| &&
+              |table \{ border-collapse: collapse; width: 100%; \}\n| &&
+              |th, td \{ border: 1px solid #ddd; padding: 8px; text-align: left; \}\n| &&
+              |th \{ background-color: #f2f2f2; \}\n| &&
+              |tr:nth-child(even) \{ background-color: #f9f9f9; \}\n| &&
+              |a \{ color: #0066cc; text-decoration: none; \}\n| &&
+              |a:hover \{ text-decoration: underline; \}\n| &&
+              |.toolbar \{ margin-bottom: 10px; padding: 5px; background-color: #f0f0f0; \}\n| &&
+              |.form-row \{ margin-bottom: 10px; \}\n| &&
+              |.form-label \{ display: inline-block; width: 120px; font-weight: bold; \}\n| &&
               |</style>\n| &&
               |</head>\n| &&
               |<body>\n| &&

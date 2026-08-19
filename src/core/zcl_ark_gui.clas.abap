@@ -68,7 +68,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     IF io_container IS NOT INITIAL.
       mo_container = io_container.
     ELSE.
-      mo_container = cl_gui_container=>default_screen.
+      mo_container = cl_gui_container=>screen0.
     ENDIF.
 
     mo_html_viewer = zcl_ark_html_viewer_gui=>create_viewer(

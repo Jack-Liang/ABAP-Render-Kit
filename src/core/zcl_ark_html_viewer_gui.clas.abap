@@ -69,7 +69,7 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
     ELSEIF iv_parent IS NOT INITIAL.
       ro_container = iv_parent.
     ELSE.
-      ro_container = cl_gui_container=>default_screen.
+      ro_container = cl_gui_container=>screen0.
     ENDIF.
   ENDMETHOD.
 

@@ -19,7 +19,7 @@ CLASS zcl_ark_html DEFINITION
     ALIASES wrap FOR zif_ark_html~wrap .
     ALIASES a FOR zif_ark_html~a .
 
-    CLASS-METHODS create RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
+    CLASS-METHODS create RETURNING VALUE(ri_html) TYPE REF TO zcl_ark_html .
 
     METHODS add_css IMPORTING !iv_css TYPE string RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html .
     METHODS add_js IMPORTING !iv_js TYPE string RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html .

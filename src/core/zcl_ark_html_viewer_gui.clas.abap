@@ -109,7 +109,6 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~load_data.
-    DATA lt_data_table TYPE STANDARD TABLE OF c.
     DATA lv_url TYPE c LENGTH 250.
     DATA lv_assigned TYPE c LENGTH 250.
 
@@ -146,21 +145,20 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~set_focus.
-    IF mo_html_viewer IS INITIAL.
-      zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
-    ENDIF.
-
-    mo_html_viewer->set_focus(
+    cl_gui_control=>set_focus(
+      EXPORTING
+        control           = mo_html_viewer
       EXCEPTIONS
-        OTHERS = 1 ).
-
+        cntl_error        = 1
+        cntl_system_error = 2
+        OTHERS            = 3 ).
     IF sy-subrc <> 0.
       zcx_ark_exception=>raise( 'Failed to set focus on HTML viewer' ).
     ENDIF.
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~set_registered_events.
-    IF mo_html_viewer IS NOT INITIAL.
+    IF mo_html_viewer IS INITIAL.
       zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
     ENDIF.
 

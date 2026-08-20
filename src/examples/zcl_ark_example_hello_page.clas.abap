@@ -48,7 +48,7 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
 
     lo_toolbar->add_link(
       iv_label = 'GitHub'
-      iv_url   = 'https://github.com' ).
+      iv_url   = 'https://github.com/Jack-Liang/ABAP-Render-Kit' ).
 
     ri_toolbar = lo_toolbar->zif_ark_gui_renderable~render( ).
   ENDMETHOD.

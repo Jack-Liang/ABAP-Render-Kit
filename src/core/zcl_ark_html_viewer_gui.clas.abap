@@ -53,6 +53,17 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
       zcx_ark_exception=>raise( 'Failed to create HTML viewer' ).
     ENDIF.
 
+    " 必须显式注册 SAPEVENT 为应用事件（appl_event = 'X'），
+    " 否则点击 sapevent: 链接不会立即触发后端往返，表现为按钮无响应
+    DATA lt_events TYPE cntl_simple_events.
+    DATA ls_event LIKE LINE OF lt_events.
+
+    ls_event-eventid    = zif_ark_html_viewer=>c_id_sapevent.
+    ls_event-appl_event = abap_true.
+    APPEND ls_event TO lt_events.
+
+    mo_html_viewer->set_registered_events( lt_events ).
+
     SET HANDLER on_sapevent FOR mo_html_viewer.
   ENDMETHOD.
 

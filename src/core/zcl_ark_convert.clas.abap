@@ -15,24 +15,28 @@ CLASS zcl_ark_convert IMPLEMENTATION.
   ENDMETHOD.
   METHOD string_to_tab.
     DATA lv_char200 TYPE c LENGTH 200.
+    DATA lv_offset TYPE i.
     ev_size = strlen( iv_str ).
-    DO.
-      IF sy-index > ev_size. EXIT. ENDIF.
-      lv_char200 = iv_str+sy-index(200).
+    lv_offset = 0.
+    WHILE lv_offset < ev_size.
+      lv_char200 = iv_str+lv_offset(200).
       APPEND lv_char200 TO et_tab.
-    ENDDO.
+      lv_offset = lv_offset + 200.
+    ENDWHILE.
   ENDMETHOD.
   METHOD string_to_xstring.
     rv_xstr = cl_abap_codepage=>convert_to( source = iv_str codepage = 'UTF-8' ).
   ENDMETHOD.
   METHOD xstring_to_bintab.
     DATA lv_hex200 TYPE x LENGTH 200.
+    DATA lv_offset TYPE i.
     ev_size = xstrlen( iv_xstr ).
-    DO.
-      IF sy-index > ev_size. EXIT. ENDIF.
-      lv_hex200 = iv_xstr+sy-index(200).
+    lv_offset = 0.
+    WHILE lv_offset < ev_size.
+      lv_hex200 = iv_xstr+lv_offset(200).
       APPEND lv_hex200 TO et_bintab.
-    ENDDO.
+      lv_offset = lv_offset + 200.
+    ENDWHILE.
   ENDMETHOD.
   METHOD xstring_to_string_utf8.
     rv_str = cl_abap_codepage=>convert_from( source = iv_xstr codepage = 'UTF-8' ).

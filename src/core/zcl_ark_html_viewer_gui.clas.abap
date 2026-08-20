@@ -111,29 +111,38 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
   METHOD zif_ark_html_viewer~load_data.
     DATA lt_data_table TYPE STANDARD TABLE OF c.
     DATA lv_url TYPE c LENGTH 250.
+    DATA lv_assigned TYPE c LENGTH 250.
 
     IF mo_html_viewer IS INITIAL.
       zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
     ENDIF.
 
+    IF iv_url IS SUPPLIED.
+      ASSERT strlen( iv_url ) <= 250.
+      lv_url = iv_url.
+    ENDIF.
+
     mo_html_viewer->load_data(
       EXPORTING
-        url       = iv_url
-        type      = iv_type
-        subtype   = iv_subtype
-        size      = iv_size
+        url                    = lv_url
+        type                   = iv_type
+        subtype                = iv_subtype
+        size                   = iv_size
       IMPORTING
-        assigned_url = lv_url
+        assigned_url           = lv_assigned
       CHANGING
-        data_table = ct_data_table
+        data_table             = ct_data_table
       EXCEPTIONS
-        OTHERS    = 1 ).
+        dp_invalid_parameter   = 1
+        dp_error_general       = 2
+        cntl_error             = 3
+        OTHERS                 = 5 ).
 
     IF sy-subrc <> 0.
       zcx_ark_exception=>raise( 'Failed to load data into HTML viewer' ).
     ENDIF.
 
-    ev_assigned_url = lv_url.
+    ev_assigned_url = lv_assigned.
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~set_focus.
@@ -151,7 +160,7 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~set_registered_events.
-    IF mo_html_viewer IS INITIAL.
+    IF mo_html_viewer IS NOT INITIAL.
       zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
     ENDIF.
 
@@ -179,17 +188,25 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~show_url.
+    DATA lv_url TYPE c LENGTH 250.
+
     IF mo_html_viewer IS INITIAL.
       zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
     ENDIF.
 
     mv_url = iv_url.
 
+    lv_url = iv_url.
+
     mo_html_viewer->show_url(
       EXPORTING
-        url = iv_url
+        url                    = lv_url
       EXCEPTIONS
-        OTHERS = 1 ).
+        cntl_error             = 1
+        cnht_error_not_allowed = 2
+        cnht_error_parameter   = 3
+        dp_error_general       = 4
+        OTHERS                 = 5 ).
 
     IF sy-subrc <> 0.
       zcx_ark_exception=>raise( 'Failed to show URL in HTML viewer' ).

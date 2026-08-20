@@ -134,7 +134,8 @@ CLASS zcl_ark_gui IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA lt_data TYPE STANDARD TABLE OF c LENGTH 200.
+    TYPES ty_c200 TYPE c LENGTH 200.
+    DATA lt_data TYPE STANDARD TABLE OF ty_c200.
     DATA lv_size TYPE i.
 
     zcl_ark_convert=>string_to_tab(
@@ -258,7 +259,8 @@ CLASS zcl_ark_gui IMPLEMENTATION.
       lv_url = |ark_asset_{ cl_abap_context_info=>get_system_time( ) }_{ sy-index }.txt|.
     ENDIF.
 
-    DATA lt_data TYPE STANDARD TABLE OF c LENGTH 200.
+    TYPES ty_c200 TYPE c LENGTH 200.
+    DATA lt_data TYPE STANDARD TABLE OF ty_c200.
     DATA lv_size TYPE i.
 
     IF iv_text IS NOT INITIAL.
@@ -283,7 +285,8 @@ CLASS zcl_ark_gui IMPLEMENTATION.
 
       rv_url = lv_assigned_url.
     ELSEIF iv_xdata IS NOT INITIAL.
-      DATA lt_bintab TYPE STANDARD TABLE OF x LENGTH 200.
+      TYPES ty_x200 TYPE x LENGTH 200.
+      DATA lt_bintab TYPE STANDARD TABLE OF ty_x200.
       zcl_ark_convert=>xstring_to_bintab(
         EXPORTING
           iv_xstr = iv_xdata

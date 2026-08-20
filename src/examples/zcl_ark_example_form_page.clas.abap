@@ -73,7 +73,7 @@ CLASS zcl_ark_example_form_page IMPLEMENTATION.
     lo_form->add_dropdown(
       iv_name     = 'country'
       iv_label    = 'Country'
-      it_options  = VALUE #( ( 'Germany' ) ( 'USA' ) ( 'China' ) ( 'Japan' ) )
+      it_options  = VALUE string_table( ( `Germany` ) ( `USA` ) ( `China` ) ( `Japan` ) )
       iv_selected = 'Germany' ).
 
     lo_form->add_textarea(

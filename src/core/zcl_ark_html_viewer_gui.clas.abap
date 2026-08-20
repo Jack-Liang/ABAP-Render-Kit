@@ -74,24 +74,15 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_sapevent.
-    DATA lt_postdata TYPE zif_ark_html_viewer=>ty_post_data.
-    DATA ls_postdata LIKE LINE OF lt_postdata.
-    DATA lv_postdata TYPE string.
-
-    IF postdata IS NOT INITIAL.
-      lv_postdata = cl_http_utility=>if_http_utility~string_to_fields( postdata ).
-      CLEAR lt_postdata.
-      ls_postdata = lv_postdata.
-      APPEND ls_postdata TO lt_postdata.
-    ENDIF.
 
     RAISE EVENT zif_ark_html_viewer~sapevent
       EXPORTING
         action      = action
         frame       = frame
         getdata     = getdata
-        postdata    = lt_postdata
+        postdata    = postdata
         query_table = query_table.
+
   ENDMETHOD.
 
   METHOD zif_ark_html_viewer~back.

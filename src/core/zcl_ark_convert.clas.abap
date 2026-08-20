@@ -16,10 +16,15 @@ CLASS zcl_ark_convert IMPLEMENTATION.
   METHOD string_to_tab.
     DATA lv_char200 TYPE c LENGTH 200.
     DATA lv_offset TYPE i.
+    DATA lv_len TYPE i.
     ev_size = strlen( iv_str ).
     lv_offset = 0.
     WHILE lv_offset < ev_size.
-      lv_char200 = iv_str+lv_offset(200).
+      lv_len = ev_size - lv_offset.
+      IF lv_len > 200.
+        lv_len = 200.
+      ENDIF.
+      lv_char200 = iv_str+lv_offset(lv_len).
       APPEND lv_char200 TO et_tab.
       lv_offset = lv_offset + 200.
     ENDWHILE.
@@ -30,10 +35,15 @@ CLASS zcl_ark_convert IMPLEMENTATION.
   METHOD xstring_to_bintab.
     DATA lv_hex200 TYPE x LENGTH 200.
     DATA lv_offset TYPE i.
+    DATA lv_len TYPE i.
     ev_size = xstrlen( iv_xstr ).
     lv_offset = 0.
     WHILE lv_offset < ev_size.
-      lv_hex200 = iv_xstr+lv_offset(200).
+      lv_len = ev_size - lv_offset.
+      IF lv_len > 200.
+        lv_len = 200.
+      ENDIF.
+      lv_hex200 = iv_xstr+lv_offset(lv_len).
       APPEND lv_hex200 TO et_bintab.
       lv_offset = lv_offset + 200.
     ENDWHILE.

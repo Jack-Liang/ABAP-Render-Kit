@@ -16,46 +16,67 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 ## Quick Start
 
 ```abap
-" 1. Create a page
-CLASS zcl_my_page DEFINITION INHERITING FROM zcl_ark_gui_page.
+" 1. Create a page — inherit from zcl_ark_gui_page and redefine build_html
+CLASS zcl_my_page DEFINITION
+  INHERITING FROM zcl_ark_gui_page
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    METHODS on_event REDEFINITION .
+
   PROTECTED SECTION.
-    METHODS render_content REDEFINITION.
+    METHODS build_html REDEFINITION .
 ENDCLASS.
 
 CLASS zcl_my_page IMPLEMENTATION.
-  METHOD render_content.
-    CREATE OBJECT ri_html TYPE zcl_ark_html.
-    ri_html->add( '<h1>Hello ARK!</h1>' ).
-    ri_html->add_a( iv_txt = 'Click me' iv_act = 'my_action' ).
+  METHOD build_html.
+    " mo_html is inherited from zcl_ark_gui_component
+    mo_html->add( '<h1>Hello ARK!</h1>' ).
+    mo_html->add_a( iv_txt = 'Click me' iv_act = 'my_action' ).
+    ri_html = mo_html.
   ENDMETHOD.
-ENDCLASS.
 
-" 2. Create app router
-CLASS zcl_my_app DEFINITION.
-  PUBLIC SECTION.
-    INTERFACES zif_ark_gui_event_handler.
-    CLASS-METHODS run.
-  PRIVATE SECTION.
-    DATA mo_gui TYPE REF TO zcl_ark_gui.
-ENDCLASS.
-
-CLASS zcl_my_app IMPLEMENTATION.
-  METHOD run.
-    DATA(lo_app) = NEW zcl_my_app( ).
-    CREATE OBJECT lo_app->mo_gui EXPORTING io_component = lo_app.
-    lo_app->mo_gui->go_home( 'home' ).
-  ENDMETHOD.
-  METHOD zif_ark_gui_event_handler~on_event.
+  METHOD on_event.
     CASE ii_event->mv_action.
-      WHEN 'home'.
-        rs_result-page  = NEW zcl_my_page( ).
-        rs_result-state = zcl_ark_gui=>c_event_state-new_page.
+      WHEN 'my_action'.
+        rs_result-state = 1.             " handled, stay on page
+      WHEN OTHERS.
+        rs_result = super->on_event( ii_event ).
     ENDCASE.
   ENDMETHOD.
 ENDCLASS.
+```
 
-" 3. Run
-zcl_my_app=>run( ).
+```abap
+" 2. Launcher report — the HTML viewer needs a host screen (like abapGit)
+REPORT zmy_app.
+
+SELECTION-SCREEN BEGIN OF SCREEN 1001.   " dummy host screen
+SELECTION-SCREEN END OF SCREEN 1001.
+
+START-OF-SELECTION.
+  TRY.
+      DATA(lo_gui) = zcl_ark_gui=>create( ).
+      lo_gui->set_page( NEW zcl_my_page( ) ).
+      CALL SELECTION-SCREEN 1001.
+    CATCH zcx_ark_exception INTO DATA(lx_error).
+      MESSAGE lx_error TYPE 'E'.
+  ENDTRY.
+
+AT SELECTION-SCREEN ON EXIT-COMMAND.
+  " Back / Escape: release the GUI and leave the program
+  IF sy-dynnr = 1001.
+    zcl_ark_gui=>get_instance( )->free( ).
+    LEAVE PROGRAM.
+  ENDIF.
+```
+
+To navigate to another page from `on_event`, return it in the result:
+
+```abap
+WHEN 'nav_detail'.
+  rs_result-page  = NEW zcl_my_detail_page( ).
+  rs_result-state = 1.
 ```
 
 ## Installation
@@ -63,7 +84,7 @@ zcl_my_app=>run( ).
 1. Install via [abapGit](https://github.com/abapGit/abapGit) — paste this repository URL
 2. Or manually copy all `src/**/*.abap` files into your SAP system
 3. Activate all classes and interfaces
-4. Run `zcl_ark_example_app=>run( )` to see the demo
+4. Run the demo program `ZARK_EXAMPLE` from SE38/SA38, or run class `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT
 
 ## Project Structure
 

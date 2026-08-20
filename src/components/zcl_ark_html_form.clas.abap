@@ -32,7 +32,7 @@ CLASS zcl_ark_html_form DEFINITION
     METHODS add_dropdown
       IMPORTING !iv_name TYPE string
                 !iv_label TYPE string
-                !it_options TYPE STANDARD TABLE
+                !it_options TYPE string_table
                 !iv_selected TYPE string OPTIONAL
       RETURNING VALUE(ri_self) TYPE REF TO zcl_ark_html_form .
 

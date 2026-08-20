@@ -227,6 +227,18 @@ CLASS zcl_ark_gui IMPLEMENTATION.
       ENDTRY.
     ENDLOOP.
 
+    IF lv_handled = abap_false AND mo_current_page IS NOT INITIAL.
+      TRY.
+          DATA(lo_page) = CAST zcl_ark_gui_page( mo_current_page ).
+          ls_result = lo_page->on_event( li_event ).
+          IF ls_result-state IS NOT INITIAL.
+            lv_handled = abap_true.
+          ENDIF.
+        CATCH cx_sy_move_cast_error zcx_ark_exception.
+          " 当前页面不是 zcl_ark_gui_page 或处理出错，按未处理对待
+      ENDTRY.
+    ENDIF.
+
     IF lv_handled = abap_true AND ls_result-page IS NOT INITIAL.
       set_page( ls_result-page ).
     ELSEIF action IS NOT INITIAL.

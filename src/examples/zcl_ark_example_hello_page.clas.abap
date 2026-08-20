@@ -7,6 +7,8 @@ CLASS zcl_ark_example_hello_page DEFINITION
   PUBLIC SECTION.
     METHODS constructor .
 
+    METHODS on_event REDEFINITION .
+
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
 
@@ -69,6 +71,19 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     lo_content->add( |<p>Use the toolbar buttons above to navigate to different examples.</p>| ).
 
     ri_content = lo_content.
+  ENDMETHOD.
+
+  METHOD on_event.
+    CASE ii_event->mv_action.
+      WHEN 'nav_form'.
+        rs_result-page = NEW zcl_ark_example_form_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_table'.
+        rs_result-page = NEW zcl_ark_example_table_page( ).
+        rs_result-state = 1.
+      WHEN OTHERS.
+        rs_result = super->on_event( ii_event ).
+    ENDCASE.
   ENDMETHOD.
 
 ENDCLASS.

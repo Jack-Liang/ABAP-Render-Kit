@@ -135,7 +135,7 @@ Notes:
 - To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
 - Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required.
 - If the library fails to load, the chart container shows a visible error banner instead of failing silently.
-- See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content) and report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme) for usage.
+- See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content), report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme), and report `ZARK_SFLIGHT_DEMO` (database-driven dashboard on the classic SFLIGHT/SCARR flight model) for usage.
 
 ## Templates
 

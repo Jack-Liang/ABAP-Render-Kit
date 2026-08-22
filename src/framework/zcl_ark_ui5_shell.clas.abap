@@ -249,6 +249,7 @@ CLASS zcl_ark_ui5_shell IMPLEMENTATION.
       APPEND `        var ch = document.createElement("div");` TO lt_js.
       APPEND `        ch.id = "ark5_ch_" + si;` TO lt_js.
       APPEND `        ch.className = "ark5-chart";` TO lt_js.
+      APPEND `        ch.textContent = "图表库加载中…";` TO lt_js.
       APPEND `        card.appendChild(ch);` TO lt_js.
       APPEND `      }` TO lt_js.
       APPEND `      else if (sec.KIND === "form") { buildForm(card, sec); }` TO lt_js.
@@ -351,7 +352,12 @@ CLASS zcl_ark_ui5_shell IMPLEMENTATION.
       APPEND `  function chartOf(id) {` TO lt_js.
       APPEND `    var el = document.getElementById(id);` TO lt_js.
       APPEND `    if (!el || !window.echarts) { return null; }` TO lt_js.
-      APPEND `    return echarts.getInstanceByDom(el) || echarts.init(el);` TO lt_js.
+      APPEND `    var inst = echarts.getInstanceByDom(el);` TO lt_js.
+      APPEND `    if (!inst) {` TO lt_js.
+      APPEND `      el.textContent = "";  // 清掉占位提示再挂 canvas` TO lt_js.
+      APPEND `      inst = echarts.init(el);` TO lt_js.
+      APPEND `    }` TO lt_js.
+      APPEND `    return inst;` TO lt_js.
       APPEND `  }` TO lt_js.
       APPEND `  function renderCharts() {` TO lt_js.
       APPEND `    if (!window.echarts) { return; }` TO lt_js.
@@ -385,6 +391,9 @@ CLASS zcl_ark_ui5_shell IMPLEMENTATION.
       APPEND `        var opt = {};` TO lt_js.
       APPEND `        try { opt = JSON.parse(sec.CHART_OPTION || "{}"); } catch (e) {` TO lt_js.
       APPEND `          errlog("chart_option JSON 解析失败: " + e.message);` TO lt_js.
+      APPEND `          var badEl = document.getElementById("ark5_ch_" + si);` TO lt_js.
+      APPEND `          if (badEl) { badEl.textContent = "chart_option JSON 解析失败: " + e.message; }` TO lt_js.
+      APPEND `          return;` TO lt_js.
       APPEND `        }` TO lt_js.
       APPEND `        ch2.setOption(opt, true);` TO lt_js.
       APPEND `        if (sec.CHART_CLICK_ACTION) {` TO lt_js.
@@ -557,15 +566,35 @@ CLASS zcl_ark_ui5_shell IMPLEMENTATION.
       APPEND `      }` TO lt_js.
       APPEND `    }, 200);` TO lt_js.
       APPEND `  }` TO lt_js.
+      APPEND `  function echartsSrc() {` TO lt_js.
+      APPEND `    var s = document.querySelector("script[src*='echarts']");` TO lt_js.
+      APPEND `    return s ? String(s.getAttribute("src") || "").substring(0, 90) : "(页面无 echarts 标签)";` TO lt_js.
+      APPEND `  }` TO lt_js.
+      APPEND `  function markChartDivs(msg) {` TO lt_js.
+      APPEND `    var divs = document.querySelectorAll("div[id^='ark5_ch_']");` TO lt_js.
+      APPEND `    var i;` TO lt_js.
+      APPEND `    for (i = 0; i < divs.length; i++) {` TO lt_js.
+      APPEND `      if (divs[i].textContent.indexOf("加载中") >= 0) { divs[i].textContent = msg; }` TO lt_js.
+      APPEND `    }` TO lt_js.
+      APPEND `  }` TO lt_js.
       APPEND `  function watchEcharts() {` TO lt_js.
-      APPEND `    if (window.echarts) { renderCharts(); return; }` TO lt_js.
+      APPEND `    if (window.echarts) {` TO lt_js.
+      APPEND `      errlog("ECharts 就绪 · script src = " + echartsSrc());` TO lt_js.
+      APPEND `      renderCharts();` TO lt_js.
+      APPEND `      return;` TO lt_js.
+      APPEND `    }` TO lt_js.
       APPEND `    var tries = 0;` TO lt_js.
       APPEND `    var t = setInterval(function () {` TO lt_js.
       APPEND `      tries += 1;` TO lt_js.
-      APPEND `      if (window.echarts) { clearInterval(t); renderCharts(); }` TO lt_js.
-      APPEND `      else if (tries >= 300) {` TO lt_js.
+      APPEND `      if (window.echarts) {` TO lt_js.
       APPEND `        clearInterval(t);` TO lt_js.
-      APPEND `        errlog("ECharts 60 秒未加载（CDN/MIME 不可达？）— 图表分区缺席");` TO lt_js.
+      APPEND `        errlog("ECharts 就绪（" + tries * 0.2 + "s）· script src = " + echartsSrc());` TO lt_js.
+      APPEND `        renderCharts();` TO lt_js.
+      APPEND `      } else if (tries >= 100) {` TO lt_js.
+      APPEND `        clearInterval(t);` TO lt_js.
+      APPEND `        var msg = "ECharts 20 秒未加载（CDN/MIME 均不可达）— 图表分区缺席";` TO lt_js.
+      APPEND `        errlog(msg + " · script src = " + echartsSrc());` TO lt_js.
+      APPEND `        markChartDivs(msg);` TO lt_js.
       APPEND `      }` TO lt_js.
       APPEND `    }, 200);` TO lt_js.
       APPEND `  }` TO lt_js.

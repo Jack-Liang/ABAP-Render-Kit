@@ -235,6 +235,7 @@ html, body { margin: 0; background: #f0f0f0;
         var ch = document.createElement("div");
         ch.id = "ark5_ch_" + si;
         ch.className = "ark5-chart";
+        ch.textContent = "图表库加载中…";
         card.appendChild(ch);
       }
       else if (sec.KIND === "form") { buildForm(card, sec); }
@@ -340,7 +341,12 @@ html, body { margin: 0; background: #f0f0f0;
   function chartOf(id) {
     var el = document.getElementById(id);
     if (!el || !window.echarts) { return null; }
-    return echarts.getInstanceByDom(el) || echarts.init(el);
+    var inst = echarts.getInstanceByDom(el);
+    if (!inst) {
+      el.textContent = "";  // 清掉占位提示再挂 canvas
+      inst = echarts.init(el);
+    }
+    return inst;
   }
   function renderCharts() {
     if (!window.echarts) { return; }
@@ -374,6 +380,9 @@ html, body { margin: 0; background: #f0f0f0;
         var opt = {};
         try { opt = JSON.parse(sec.CHART_OPTION || "{}"); } catch (e) {
           errlog("chart_option JSON 解析失败: " + e.message);
+          var badEl = document.getElementById("ark5_ch_" + si);
+          if (badEl) { badEl.textContent = "chart_option JSON 解析失败: " + e.message; }
+          return;
         }
         ch2.setOption(opt, true);
         if (sec.CHART_CLICK_ACTION) {
@@ -549,15 +558,35 @@ html, body { margin: 0; background: #f0f0f0;
       }
     }, 200);
   }
+  function echartsSrc() {
+    var s = document.querySelector("script[src*='echarts']");
+    return s ? String(s.getAttribute("src") || "").substring(0, 90) : "(页面无 echarts 标签)";
+  }
+  function markChartDivs(msg) {
+    var divs = document.querySelectorAll("div[id^='ark5_ch_']");
+    var i;
+    for (i = 0; i < divs.length; i++) {
+      if (divs[i].textContent.indexOf("加载中") >= 0) { divs[i].textContent = msg; }
+    }
+  }
   function watchEcharts() {
-    if (window.echarts) { renderCharts(); return; }
+    if (window.echarts) {
+      errlog("ECharts 就绪 · script src = " + echartsSrc());
+      renderCharts();
+      return;
+    }
     var tries = 0;
     var t = setInterval(function () {
       tries += 1;
-      if (window.echarts) { clearInterval(t); renderCharts(); }
-      else if (tries >= 300) {
+      if (window.echarts) {
         clearInterval(t);
-        errlog("ECharts 60 秒未加载（CDN/MIME 不可达？）— 图表分区缺席");
+        errlog("ECharts 就绪（" + tries * 0.2 + "s）· script src = " + echartsSrc());
+        renderCharts();
+      } else if (tries >= 100) {
+        clearInterval(t);
+        var msg = "ECharts 20 秒未加载（CDN/MIME 均不可达）— 图表分区缺席";
+        errlog(msg + " · script src = " + echartsSrc());
+        markChartDivs(msg);
       }
     }, 200);
   }

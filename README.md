@@ -26,37 +26,92 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 
 ## Quick Start
 
-Create **one** report (SE38/ADT, e.g. `ZMY_ARK_APP`), paste this, activate, run — that's the whole setup:
+Create **one** report (SE38/ADT, e.g. `ZMY_ARK_APP`), paste this, activate, run. Two pages, navigation, events, a table, and an ECharts chart — the full framework loop in a single file:
 
 ```abap
 REPORT zmy_ark_app.
 
-" --- Page: inherit zcl_ark_gui_page, redefine build_html + on_event ---
-CLASS lcl_hello_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
+" --- Definitions first: the pages reference each other later ---
+CLASS lcl_detail_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
   PUBLIC SECTION.
     METHODS on_event REDEFINITION .
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
-  PRIVATE SECTION.
-    DATA mv_clicks TYPE i .
 ENDCLASS.
 
-CLASS lcl_hello_page IMPLEMENTATION.
+CLASS lcl_home_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
+  PUBLIC SECTION.
+    METHODS on_event REDEFINITION .
+  PROTECTED SECTION.
+    METHODS build_html REDEFINITION .
+ENDCLASS.
+
+" --- Page 1: template header + ECharts chart + link to page 2 ---
+CLASS lcl_home_page IMPLEMENTATION.
   METHOD build_html.
-    " mo_html is inherited; render( ) rebuilds it from scratch on every pass
-    mo_html->add( |<h1>Hello ARK!</h1>| ).
-    mo_html->add_a( iv_txt = 'Click me' iv_act = 'my_action' ).
-    IF mv_clicks > 0.
-      mo_html->add( |<p>Clicked { mv_clicks }x — the sapevent round-trip works.</p>| ).
-    ENDIF.
+    mo_html->add(
+      zcl_ark_template=>create( `<h1>{{TITLE}}</h1><p>{{SUB}}</p>`
+        )->set( iv_name = 'TITLE' iv_value = 'Hello ARK!'
+        )->set( iv_name = 'SUB'
+                iv_value = 'Pages, events, tables, charts.'
+        )->render( ) ).
+
+    " Declarative chart, mixed into the page flow
+    DATA(lo_chart) = NEW zcl_ark_echarts(
+      iv_div_id = 'sales' iv_height = 320 ).
+    lo_chart->set_title( 'Weekly Sales' ).
+    lo_chart->set_xaxis_categories( VALUE string_table(
+      ( `Mon` ) ( `Tue` ) ( `Wed` ) ( `Thu` ) ( `Fri` ) ) ).
+    lo_chart->add_series(
+      iv_name = 'Revenue'
+      iv_type = 'bar'
+      it_data = VALUE zcl_ark_echarts=>ty_values(
+        ( 120 ) ( 200 ) ( 150 ) ( 80 ) ( 270 ) ) ).
+    mo_html->add( lo_chart->render( ) ).
+
+    mo_html->add_a( iv_txt = 'Show the data table'
+                    iv_act = 'nav_detail' ).
     ri_html = mo_html.
   ENDMETHOD.
 
   METHOD on_event.
     CASE ii_event->mv_action.
-      WHEN 'my_action'.
-        mv_clicks = mv_clicks + 1.
-        rs_result-state = 1.             " handled; the page re-renders
+      WHEN 'nav_detail'.
+        rs_result-page  = NEW lcl_detail_page( ).  " navigate to page 2
+        rs_result-state = 1.
+      WHEN OTHERS.
+        rs_result = super->on_event( ii_event ).
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
+
+" --- Page 2: toolbar + table + back to page 1 ---
+CLASS lcl_detail_page IMPLEMENTATION.
+  METHOD build_html.
+    DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
+    lo_toolbar->add_button( iv_label = 'Back'
+                            iv_action = 'nav_home' ).
+    mo_html->add( lo_toolbar->zif_ark_gui_renderable~render( ) ).
+
+    DATA(lo_table) = zcl_ark_html_table=>create( ).
+    lo_table->add_column( iv_header = 'Day' ).
+    lo_table->add_column( iv_header = 'Revenue' ).
+    lo_table->add_row( ).
+    lo_table->add_cell( iv_value = 'Mon' ).
+    lo_table->add_cell( iv_value = '120' ).
+    lo_table->add_row( ).
+    lo_table->add_cell( iv_value = 'Tue' ).
+    lo_table->add_cell( iv_value = '200' ).
+    mo_html->add( lo_table->zif_ark_gui_renderable~render( ) ).
+
+    ri_html = mo_html.
+  ENDMETHOD.
+
+  METHOD on_event.
+    CASE ii_event->mv_action.
+      WHEN 'nav_home'.
+        rs_result-page  = NEW lcl_home_page( ).
+        rs_result-state = 1.
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).
     ENDCASE.
@@ -69,7 +124,12 @@ SELECTION-SCREEN END OF SCREEN 1001.
 
 START-OF-SELECTION.
   TRY.
-      zcl_ark_gui=>create( )->set_page( NEW lcl_hello_page( ) ).
+      " Offline ECharts asset; falls back to CDN if absent
+      zcl_ark_echarts=>use_bundled_library( ).
+    CATCH zcx_ark_exception.
+  ENDTRY.
+  TRY.
+      zcl_ark_gui=>create( )->set_page( NEW lcl_home_page( ) ).
       CALL SELECTION-SCREEN 1001.
     CATCH zcx_ark_exception INTO DATA(lx_error).
       MESSAGE lx_error TYPE 'E'.
@@ -83,15 +143,7 @@ AT SELECTION-SCREEN ON EXIT-COMMAND.
   ENDIF.
 ```
 
-To navigate to another page from `on_event`, return it in the result:
-
-```abap
-WHEN 'nav_detail'.
-  rs_result-page  = NEW lcl_detail_page( ).
-  rs_result-state = 1.
-```
-
-**Beyond hello world** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, and chart examples, and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
+**Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, and chart examples, and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
 
 ## Charts (ECharts)
 

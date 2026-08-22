@@ -50,10 +50,10 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 1. **宿主验证（代码就绪，实测并入最后统一验证）**：入口 `ZARK_EXAMPLE` → 主页卡片 *UI5 Host Verification*（`zcl_ark_example_ui5_page`）。页面内自带验证报告面板（可一键复制回传），覆盖：① UI5/ECharts CDN 可达性与耗时；② sap.m/f 渲染（ShellBar/Toolbar）；③ sapevent 桥三条路径（隐藏 iframe GET / 主框架 GET / 表单 POST）+ 连发 10 次 + 全量 state 就地更新，均带往返毫秒数；④ 资源双取缓存探测 + 启动资源统计 + 启动耗时（跨次运行对比）。
    - 桥机制（本阶段落地）：主页面 JS 发 `SAPEVENT:` URL（前缀自动探测：`file:///` / `sap-cust://sap-place-holder/` / 裸）→ ABAP `on_event` 处理 → `push_to_frame` 把内嵌新 state JSON 的小文档 `show_url( in_frame = 'ark_bridge' )` 进隐藏桥帧 → 桥帧脚本 `postMessage` 回主页面 → UI5 常驻不重载。
    - 框架新增（向后兼容）：`ty_handling_result-keep_view`（处理了但禁止整页重渲染）、`zif_ark_gui_services~push_to_frame`、`zif_ark_html_viewer~show_url` 的 `iv_frame` 参数。任一验证项不过需调整方案（本地 self-contained 资源先行）。
-2. **UI5 启动壳**：固定 HTML（bootstrap + require + JSONModel + 事件桥），作为框架资产分发。
-3. **state→UI5 映射层**：`ty_page_state` → JSONModel 数据结构 + 声明式 UI5 视图描述；UI5 页面基类（对照 `zcl_ark_state_page` 的 API 形态：set_state/add_section/表格三件套）。
+2. **UI5 启动壳（已开发，浏览器验证通过）**：`zcl_ark_ui5_shell`（框架资产）——固定 HTML/JS：UI5 async bootstrap + ECharts 资产链（复用 `zcl_ark_echarts`）+ sapevent 事件桥（`ark.state` 桥事件 / `ark.nav` 主框架导航 / `ark.formGo` 桥表单 POST）。真源为 `demo/ui5-shell-preview.html`（浏览器可测），经 `tools/gen_ui5_shell.mjs` 逐字生成 ABAP 类，勿手改标记区。
+3. **state→UI5 映射层（已开发 v1）**：`zcl_ark_ui5_page` 基类（API 对齐 `zcl_ark_state_page`：set_state / add_section / add_button…）+ 壳 JS 映射器：kpi_grid（原生卡+sparkline）/ table（sap.m.Table + ObjectStatus/Link 语义色）/ chart（ECharts option + 点击回传）/ form（经桥 POST）。**桥协议**：前端事件带 `__ark=1` → `on_state_event` 钩子重建 state → `push_state` 回推 ark_bridge 帧（keep_view，UI5 常驻）。**v1 取舍**：表格排序/筛选/CSV 内置与 sap.m 表单映射留待后续；工具栏 link 走主框架导航（对齐 A 路线恒可点语义）。
 4. **离线分发**：Node + ui5-tooling 做 self-contained 构建（仅维护者机器，产物 W3MI 入 `src/assets/`，走现有 `cache_asset` 链路，与 ECharts 的 MIME 模式同构）。
-5. **示例迁移** + ECharts 分区混排正式化。
+5. **示例迁移** + ECharts 分区混排正式化：首个示例已迁移（`zcl_ark_example_ui5_state_page`，首页卡片 *UI5 State Page*）；其余示例与混排正式化待宿主实测通过后推进。
 
 ## 5. 现有资产清单
 
@@ -83,7 +83,10 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 - UI5 CDN 域名是 **`sdk.openui5.org`**（`.com` 不可达；`openui5.hana.ondemand.com` 301 到 .org）；
 - async bootstrap 下用 **`sap.ui.require`**，不要 `sap.ui.define`（后者在本环境报跨域 "Script error." 静默失败）；
 - `sap.m.Page` 的 content 是 0..n 聚合，用 `addContent` 不是 `setContent`；
-- ECharts CDN：`cdn.jsdelivr.net/npm/echarts@6.1.0` 可用。
+- ECharts CDN：`cdn.jsdelivr.net/npm/echarts@6.1.0` 可用；
+- **后台标签页 rAF 节流会挂起 UI5 RenderManager**：placeAt 的控件迟迟不渲染、Playwright 点击 actionability 检查超时（浏览器验证时假阳性）。验证脚本在读数前 `sap.ui.getCore().applyChanges()` 强制同步冲刷；SAP GUI 宿主内页面前台常驻，不受影响；
+- **UI5 `destroy()` 在渲染延迟下遗留改名死节点**（`sap-ui-destroyed-*`）：挂载点独占的控件（页面工具栏）重建前先清空挂载点 innerHTML；
+- 模块未 require 就直接访问会静默 undefined（如 `sap.m.BusyIndicator.show is not a function`）：用到哪个模块就 require 哪个，或访问前守卫。
 
 ### 6.3 工具链注意
 - **本 agent 的 python heredoc 传输会吃掉一层 `\\`**：`\\n` 进文件变真实换行（JS 断裂）、正则 `\\|` 变 `\|` 有歧义——写转义一律用 `chr(92)` 显式构造或用 Write 工具直写后 node --check 验证；

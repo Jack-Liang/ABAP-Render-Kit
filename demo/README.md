@@ -8,6 +8,7 @@
 |---|---|---|
 | [`fiori-style-demo.html`](fiori-style-demo.html) | **视觉基线**（无 UI5） | 纯 HTML+CSS+ECharts 手工实现 Fiori Quartz/Horizon 设计令牌，无 JS 运行时。是"走 UI5 之前能做到什么程度"的对照 |
 | [`ui5-spike.html`](ui5-spike.html) | **方案 B 核心验证** | UI5 JSONModel 数据绑定 + 模拟 sapevent 往返 + `setData` 局部更新无重 boot。**最重要的架构验证文件** |
+| [`ui5-shell-preview.html`](ui5-shell-preview.html) | **UI5 启动壳真源（阶段②③）** | `zcl_ark_ui5_shell` 的浏览器可测真源：state→UI5 映射层（sap.m 工具栏/表格 + ECharts 分区 + 桥）。内置 mock 桥与页内自检（加载约 8 秒后读 `#ark5_testlog` 四项判定）。改壳请改本页后跑 `tools/gen_ui5_shell.mjs` 重新生成 ABAP 类 |
 | [`ui5-showcase.html`](ui5-showcase.html) | **UI5 完整集成 demo** | `fiori-style-demo` 的 UI5 实现版：ShellBar/工具栏/表格用 `sap.m`+`sap.f`，KPI 卡与图表用原生 div + ECharts（因 `sap.ui.core.Html` 已从新版 UI5 移除） |
 | [`ui5-codediff.html`](ui5-codediff.html) | **代码分栏对比工具** | 项目真实案例（如 `build_html_document` 旧→新）的 diff 可视化，文档工具性质，非 runtime demo |
 | [`ui5-export.html`](ui5-export.html) | **Excel 导出扩展能力 demo** | `sap.m.Table` + `sap.ui.export.Spreadsheet` 客户端 xlsx 导出。**注意**：`sap.ui.export` 不在 OpenUI5（许可限制），必须 SAPUI5 (`ui5.sap.com`) |
@@ -35,6 +36,7 @@
 | `demo/` 文件 | 对应 `docs/ui5-integration-plan.md` 章节 |
 |---|---|
 | `ui5-spike.html` | §3 目标架构 + §6.2 前端硬代价（UI5 常驻 + setData 胜负手） |
+| `ui5-shell-preview.html` | §4.2 启动壳 + §4.3 state→UI5 映射层（含桥协议 v1） |
 | `ui5-showcase.html` | §3 关键设计结论（`sap.ui.core.Html` 移除 → ECharts 与 UI5 分区混排） |
 | `ui5-export.html` | §4.5 示例迁移 + 扩展能力 |
 | `probes/01-06` | §6.2 前端硬代价 + §6.3 工具链注意（probe 逐模块探测页模式） |

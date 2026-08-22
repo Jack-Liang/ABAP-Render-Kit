@@ -75,6 +75,8 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     mo_html->add(
       |<p style="color: #57606a;">Extracted from abapGit, rendered by CL_GUI_HTML_VIEWER.| &&
       |&nbsp;&nbsp;Source on { lv_github_link }</p>| ).
+
+    ri_html = mo_html.
   ENDMETHOD.
 
   METHOD add_card.

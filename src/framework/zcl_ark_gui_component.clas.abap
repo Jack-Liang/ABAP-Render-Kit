@@ -63,6 +63,12 @@ CLASS zcl_ark_gui_component IMPLEMENTATION.
     mo_html = zcl_ark_html=>create( ).
 
     ri_html = build_html( ).
+
+    " 安全网：build_html 忘写 ri_html = mo_html 时回落到已构建的内容，
+    " 否则渲染接口返回空引用，页面表现为无内容白屏
+    IF ri_html IS INITIAL.
+      ri_html = mo_html.
+    ENDIF.
   ENDMETHOD.
 
 ENDCLASS.

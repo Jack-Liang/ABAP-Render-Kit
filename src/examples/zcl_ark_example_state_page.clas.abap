@@ -16,9 +16,10 @@ CLASS zcl_ark_example_state_page DEFINITION
 
     METHODS build_state .
 
-    "! 追加一行到表格节（嵌套内表无法内联构造，逐行 APPEND）
+    "! 追加一行到表格节（嵌套内表无法内联构造，逐行 APPEND）。
+    "! 参数即行类型（单元格表），调用方 VALUE #( ( value = ... ) ... )
     METHODS add_row
-      IMPORTING !cells TYPE zif_ark_gui_state=>tt_table_cell .
+      IMPORTING !cells TYPE zif_ark_gui_state=>tt_table_row .
 ENDCLASS.
 
 CLASS zcl_ark_example_state_page IMPLEMENTATION.

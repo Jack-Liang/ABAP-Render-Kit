@@ -126,6 +126,10 @@ INTERFACE zif_ark_gui_state
       "! name / series / value / idx (see zcl_ark_echarts=>set_on_click)
       "! plus chart (= section index) to tell multiple chart sections apart
       chart_click_action TYPE string,
+      "! For chart sections: GeoJSON map name to register before rendering
+      "! (e.g. 'china'); the corresponding map asset script is injected
+      "! automatically (see zcl_ark_echarts=>use_bundled_map / set_map)
+      chart_map TYPE string,
     END OF ty_section,
     tt_section TYPE STANDARD TABLE OF ty_section WITH EMPTY KEY .
 

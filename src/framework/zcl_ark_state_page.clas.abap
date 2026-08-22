@@ -219,6 +219,22 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       ENDIF.
     ENDLOOP.
 
+    " 地图资产：chart 节声明 chart_map 时注入（同名地图整页只注入一次）；
+    " 资产缺失时 include_map_script 返回空串，渲染端 registerMap 守卫兜底
+    DATA lt_maps TYPE HASHED TABLE OF string WITH UNIQUE KEY table_line.
+    LOOP AT ms_state-sections INTO DATA(ls_map_check)
+         WHERE kind = zif_ark_gui_state=>c_section_kind-chart.
+      IF ls_map_check-chart_map IS NOT INITIAL.
+        INSERT ls_map_check-chart_map INTO TABLE lt_maps.
+      ENDIF.
+    ENDLOOP.
+    LOOP AT lt_maps INTO DATA(lv_map_name).
+      DATA(lv_map_html) = zcl_ark_echarts=>include_map_script( lv_map_name ).
+      IF lv_map_html IS NOT INITIAL.
+        mo_html->add( lv_map_html ).
+      ENDIF.
+    ENDLOOP.
+
     DATA lv_index TYPE i.
     LOOP AT ms_state-sections INTO DATA(ls_section).
       lv_index = sy-tabix.
@@ -692,6 +708,14 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     DATA(lv_option) = is_section-chart_option.
     lv_option = replace( val = lv_option sub = `</` with = `<\/` occ = 0 ).
 
+    " 地图注册：chart_map 对应资产已由 build_html 注入（守卫缺失时退化为空地图）
+    DATA lv_map_js TYPE string.
+    IF is_section-chart_map IS NOT INITIAL.
+      lv_map_js =
+        |var m = window.ARK_MAPS && window.ARK_MAPS['{ is_section-chart_map }'];| &&
+        |if (m) \{ echarts.registerMap('{ is_section-chart_map }', m); \}| .
+    ENDIF.
+
     " 图表元素点击 → sapevent，参数同 zcl_ark_echarts=>set_on_click，
     " 额外带 chart=节序号区分多个图表节。action 来自应用 state，
     " 信任级别与 toolbar action 一致
@@ -715,6 +739,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       |var el = document.getElementById('{ lv_id }');| &&
       |if (window.echarts && el) \{| &&
       |var c = echarts.init(el);| &&
+      lv_map_js &&
       |c.setOption({ lv_option });| &&
       lv_click_js &&
       |\}| &&

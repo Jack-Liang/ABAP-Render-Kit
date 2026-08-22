@@ -187,6 +187,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
               |<html>\n| &&
               |<head>\n| &&
               |<meta charset="utf-8">\n| &&
+              |<meta http-equiv="X-UA-Compatible" content="IE=edge">\n| &&
               |<style type="text/css">\n| &&
               |body \{ font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 10px; \}\n| &&
               |table \{ border-collapse: collapse; width: 100%; \}\n| &&

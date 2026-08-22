@@ -92,7 +92,9 @@ WHEN 'nav_detail'.
 
 ## Charts (ECharts)
 
-`zcl_ark_echarts` renders a chart as a plain HTML fragment, so it mixes freely with headings, tables, toolbars, or a second chart on the same page:
+`zcl_ark_echarts` renders a chart as a plain HTML fragment, so it mixes freely with headings, tables, toolbars, or a second chart on the same page. Three usage levels, from simplest to most powerful:
+
+**1. Declarative API** — type-safe, covers the common chart options:
 
 ```abap
 DATA(lo_chart) = NEW zcl_ark_echarts( iv_div_id = 'chart1' iv_height = 420 ).
@@ -109,13 +111,44 @@ mo_html->add( |<h1>Dashboard</h1>| ).
 mo_html->add( lo_chart->render( ) ).   " just one chunk in the page flow
 ```
 
+**2. Override hatch** — raw JSON shallow-merged (top-level keys) onto the generated option, for anything the declarative API does not cover yet (dataZoom, markLine, visualMap, ...):
+
+```abap
+lo_chart->set_option_override(
+  `{ "dataZoom": [{ "type": "slider" }, { "type": "inside" }] }` ).
+```
+
+**3. Full option structure** — pass any ABAP structure as the complete ECharts option; serialized via `/ui2/cl_json` in camelCase mode (underscore field names become camelCase keys). Soft dependency: called dynamically, falls back to `zcl_ark_json` when `/ui2/cl_json` is not installed:
+
+```abap
+TYPES: BEGIN OF ty_pie_option,
+         title  TYPE ty_title,        " text / left
+         series TYPE tt_pie_series,   " name / type / radius / data
+       END OF ty_pie_option.
+
+lo_chart->set_option( ls_pie_option ).
+```
+
 Notes:
 
-- ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `set_library_xdata( )` serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
+- ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `zcl_ark_echarts=>use_bundled_library( )` loads it once per session and serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
 - To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
 - Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required.
-- Beyond the declarative API: `set_option( ig_option )` accepts any ABAP structure as a complete ECharts option (serialized via `/ui2/cl_json` in camelCase mode — soft dependency, dynamic call with fallback), and `set_option_override( iv_json )` shallow-merges raw JSON on top of the generated option for anything the API does not cover yet (dataZoom, markLine, visualMap, ...).
+- If the library fails to load, the chart container shows a visible error banner instead of failing silently.
 - See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content) and report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme) for usage.
+
+## Templates
+
+`zcl_ark_template` keeps HTML/JS skeletons out of your ABAP code. Placeholders use `{{NAME}}` syntax; unfilled placeholders are kept as-is so omissions are easy to spot:
+
+```abap
+mo_html->add(
+  zcl_ark_template=>create( `<h1>{{TITLE}}</h1>`  " or =>from_mime( 'ZARK_MY_TEMPLATE' )
+    )->set( iv_name = 'TITLE' iv_value = 'Hello'
+    )->render( ) ).
+```
+
+Templates can be stored as text files in the MIME repository (SMW0) and loaded with `zcl_ark_template=>from_mime( )`.
 
 ## Installation
 

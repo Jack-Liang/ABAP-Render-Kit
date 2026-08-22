@@ -12,8 +12,13 @@ CLASS zcl_ark_example_state_page DEFINITION
   PRIVATE SECTION.
     DATA mv_factor TYPE i VALUE 1 .
     DATA mv_message TYPE string .
+    DATA ms_table TYPE zif_ark_gui_state=>ty_section .
 
     METHODS build_state .
+
+    "! 追加一行到表格节（嵌套内表无法内联构造，逐行 APPEND）
+    METHODS add_row
+      IMPORTING !cells TYPE zif_ark_gui_state=>tt_table_cell .
 ENDCLASS.
 
 CLASS zcl_ark_example_state_page IMPLEMENTATION.
@@ -63,50 +68,48 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
             sparkline = VALUE #( ( `90` ) ( `91` ) ( `92` ) ( `92.8` ) ( `93.5` ) ( `94` ) ( `94.6` ) ) ) ) ) ).
 
     " ---- 表格（语义色状态 + 行内链接动作；表头点击排序/过滤栏/CSV 下载为内置能力）----
-    ls_state-sections = VALUE #( BASE ls_state-sections
-      ( kind = zif_ark_gui_state=>c_section_kind-table
-        title = '销售凭证'
-        columns = VALUE #(
-          ( label = '凭证' ) ( label = '客户' ) ( label = '净价值' align_right = abap_true )
-          ( label = '数量' align_right = abap_true )
-          ( label = '状态' ) )
-        rows = VALUE #(
-          ( VALUE zif_ark_gui_state=>tt_table_row(
-              ( value = '0080012345' action = 'cell_detail' )
-              ( value = '华信科技' )
-              ( value = '1,286,000' )
-              ( value = '120' )
-              ( value = '已完成' semantic = zif_ark_gui_state=>c_semantic-positive ) ) )
-          ( VALUE zif_ark_gui_state=>tt_table_row(
-              ( value = '0080012346' action = 'cell_detail' )
-              ( value = '南方物流集团' )
-              ( value = '862,400' )
-              ( value = '58' )
-              ( value = '待审批' semantic = zif_ark_gui_state=>c_semantic-critical ) ) )
-          ( VALUE zif_ark_gui_state=>tt_table_row(
-              ( value = '0080012347' action = 'cell_detail' )
-              ( value = '北方重工' )
-              ( value = '2,045,900' )
-              ( value = '12' )
-              ( value = '已发货' semantic = zif_ark_gui_state=>c_semantic-positive ) ) )
-          ( VALUE zif_ark_gui_state=>tt_table_row(
-              ( value = '0080012348' action = 'cell_detail' )
-              ( value = '东海商贸' )
-              ( value = '95,700' )
-              ( value = '640' )
-              ( value = '被拒绝' semantic = zif_ark_gui_state=>c_semantic-negative ) ) )
-          ( VALUE zif_ark_gui_state=>tt_table_row(
-              ( value = '0080012349' action = 'cell_detail' )
-              ( value = '西部能源' )
-              ( value = '530,200' )
-              ( value = '35' )
-              ( value = '处理中' semantic = zif_ark_gui_state=>c_semantic-neutral ) ) )
-          ( VALUE zif_ark_gui_state=>tt_table_row(
-              ( value = '0080012350' action = 'cell_detail' )
-              ( value = '华信科技' )
-              ( value = '742,300' )
-              ( value = '210' )
-              ( value = '已完成' semantic = zif_ark_gui_state=>c_semantic-positive ) ) ) ) ) ).
+    " 嵌套内表（表行的行类型本身是内表）在 7.57 上无法内联构造，
+    " 用 ADD_ROW 逐行追加（见私有方法），兼容且可读
+    ms_table = VALUE zif_ark_gui_state=>ty_section(
+      kind  = zif_ark_gui_state=>c_section_kind-table
+      title = '销售凭证'
+      columns = VALUE #(
+        ( label = '凭证' ) ( label = '客户' ) ( label = '净价值' align_right = abap_true )
+        ( label = '数量' align_right = abap_true )
+        ( label = '状态' ) ) ).
+
+    add_row( cells = VALUE #( ( value = '0080012345' action = 'cell_detail' )
+                              ( value = '华信科技' )
+                              ( value = '1,286,000' )
+                              ( value = '120' )
+                              ( value = '已完成' semantic = zif_ark_gui_state=>c_semantic-positive ) ) ).
+    add_row( cells = VALUE #( ( value = '0080012346' action = 'cell_detail' )
+                              ( value = '南方物流集团' )
+                              ( value = '862,400' )
+                              ( value = '58' )
+                              ( value = '待审批' semantic = zif_ark_gui_state=>c_semantic-critical ) ) ).
+    add_row( cells = VALUE #( ( value = '0080012347' action = 'cell_detail' )
+                              ( value = '北方重工' )
+                              ( value = '2,045,900' )
+                              ( value = '12' )
+                              ( value = '已发货' semantic = zif_ark_gui_state=>c_semantic-positive ) ) ).
+    add_row( cells = VALUE #( ( value = '0080012348' action = 'cell_detail' )
+                              ( value = '东海商贸' )
+                              ( value = '95,700' )
+                              ( value = '640' )
+                              ( value = '被拒绝' semantic = zif_ark_gui_state=>c_semantic-negative ) ) ).
+    add_row( cells = VALUE #( ( value = '0080012349' action = 'cell_detail' )
+                              ( value = '西部能源' )
+                              ( value = '530,200' )
+                              ( value = '35' )
+                              ( value = '处理中' semantic = zif_ark_gui_state=>c_semantic-neutral ) ) ).
+    add_row( cells = VALUE #( ( value = '0080012350' action = 'cell_detail' )
+                              ( value = '华信科技' )
+                              ( value = '742,300' )
+                              ( value = '210' )
+                              ( value = '已完成' semantic = zif_ark_gui_state=>c_semantic-positive ) ) ).
+
+    APPEND ms_table TO ls_state-sections.
 
     " ---- 图表（ECharts option JSON 直入）----
     ls_state-sections = VALUE #( BASE ls_state-sections
@@ -135,6 +138,10 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
     ENDIF.
 
     set_state( ls_state ).
+  ENDMETHOD.
+
+  METHOD add_row.
+    APPEND cells TO ms_table-rows.
   ENDMETHOD.
 
   METHOD on_event.

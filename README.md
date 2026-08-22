@@ -21,7 +21,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content
 - **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository
 - **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
-- **Theme Support** — CSS theming system
+- **Theme Support** — Fiori Quartz design tokens via `zcl_ark_theme`; override any token with `set_token( )`
 - **Zero External Dependencies** — Runs entirely within SAP GUI using standard `CL_GUI_HTML_VIEWER`
 
 ## Quick Start
@@ -187,6 +187,18 @@ mo_html->add(
 
 Templates can be stored as text files in the MIME repository (SMW0) and loaded with `zcl_ark_template=>from_mime( )`.
 
+## Development Environment
+
+The reference development base is the official SAP ABAP Platform 2023 developer trial, running as a local Docker container. On the client side, ARK targets the **Edge (Chromium/WebView2) rendering engine** of `CL_GUI_HTML_VIEWER` — SAP GUI 7.70+ with the Edge kernel enabled (see the browser-info example in `ZARK_EXAMPLE` to probe your actual engine). Legacy IE-engine clients are not supported.
+
+| Item | Value |
+| --- | --- |
+| System | Local Docker container `a4h`, official image `sapse/abap-cloud-developer-trial:2023` |
+| Platform | ABAP Platform 2023 (SAP_BASIS 7.57, 2023 trial, image tag `VA_ABAP_PL_2023HDB`) |
+| Kernel | 7.93 (793_REL, built 2024-08, SLES 15 x86_64) |
+| Database | SAP HANA (built into the container, port 30213) |
+
+
 ## Installation
 
 1. Install via [abapGit](https://github.com/abapGit/abapGit) — paste this repository URL
@@ -205,10 +217,12 @@ src/
 │   ├── zcl_ark_gui_event         # Event object
 │   ├── zcl_ark_convert           # Conversion utilities
 │   ├── zcl_ark_json              # JSON serializer (sXML based)
+│   ├── zcl_ark_theme             # Fiori design tokens + default CSS
 │   └── interfaces...
 ├── framework/         # Tier 2: Page Framework
 │   ├── zcl_ark_gui_page          # Page base class
-│   └── zcl_ark_gui_component     # Component base class
+│   ├── zcl_ark_gui_component     # Component base class
+│   └── zif_ark_gui_state         # Declarative page state schema (draft)
 ├── components/        # Tier 3: UI Components
 │   ├── zcl_ark_html_form         # Form builder
 │   ├── zcl_ark_html_table        # Table builder

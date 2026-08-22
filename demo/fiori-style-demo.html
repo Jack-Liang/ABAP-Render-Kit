@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARK × Fiori 视觉语言 Demo（层次一）</title>
+<!-- ECharts 从 CDN 加载；离线环境可换成本地 echarts.min.js -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+<style>
+  /* ============================================================
+     Fiori Quartz / Horizon 设计令牌（手工实现，无 JS 运行时）
+     对应 SAP Quartz Light 主题的色板与度量
+     ============================================================ */
+  :root {
+    /* 品牌与语义色 */
+    --sapBrandColor:        #0070f2;   /* Fiori 品牌蓝 */
+    --sapHighlightColor:    #0070f2;
+    --sapPositiveColor:     #107e3e;   /* 成功绿 */
+    --sapNegativeColor:     #bb0000;   /* 错误红 */
+    --sapCriticalColor:     #e9730c;   /* 警告橙 */
+    --sapInformativeColor:  #0a6ed1;
+
+    /* 中性色阶（Quartz 灰阶） */
+    --sapBaseColor:         #ffffff;
+    --sapShellColor:        #354a5f;   /* 顶部 Shell Bar 深蓝灰 */
+    --sapShellTextColor:    #ffffff;
+    --sapTextColor:         #1d2d3e;
+    --sapTile_TextColor:    #1d2d3e;
+    --sapNeutralColor:      #6a6d70;
+    --sapList_Background:   #ffffff;
+    --sapList_Hover_Background: #f5f5f5;
+    --sapList_SelectionBackgroundColor: #e5f0fa;
+    --sapList_BorderColor:  #e5e5e5;
+    --sapGroup_TitleBorderColor: #d9d9d9;
+
+    /* 度量：卡片圆角用 Horizon 的 0.75rem，间距 1rem 网格 */
+    --sapElement_BorderCornerRadius: 12px;
+    --sapButton_BorderCornerRadius:  8px;
+    --sapFontFamily: "72", "72full", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    --sapFontSize: 14px;
+    --sapFontHeaderSize: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sapFontFamily);
+    font-size: var(--sapFontSize);
+    color: var(--sapTextColor);
+    background: #f5f5f5;          /* Fiori 页面画布灰 */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ 顶部 Shell Bar（Fiori Global Bar） ============ */
+  .fd-shellbar {
+    height: 44px;                       /* compact shell 高度 */
+    background: var(--sapShellColor);
+    color: var(--sapShellTextColor);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.2);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .fd-shellbar__logo {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: linear-gradient(135deg, #0070f2, #4fb0ff);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 13px;
+  }
+  .fd-shellbar__title { font-size: 15px; font-weight: 500; }
+  .fd-shellbar__spacer { flex: 1; }
+  .fd-shellbar__action {
+    background: transparent; color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: var(--sapButton_BorderCornerRadius);
+    padding: 4px 12px; cursor: pointer; font-size: 13px;
+    transition: background .15s;
+  }
+  .fd-shellbar__action:hover { background: rgba(255,255,255,.15); }
+
+  /* ============ 页面标题区 ============ */
+  .page-header { padding: 24px 32px 8px; }
+  .page-header h1 { font-size: 22px; font-weight: 400; }  /* Fiori 页面标题惯用 regular */
+  .page-header h1 b { color: var(--sapBrandColor); font-weight: 600; }
+  .page-header p  { color: var(--sapNeutralColor); margin-top: 4px; font-size: 13px; }
+
+  /* ============ 工具栏 ============ */
+  .fd-toolbar {
+    display: flex; gap: 8px; align-items: center;
+    padding: 8px 32px 16px; flex-wrap: wrap;
+  }
+
+  /* Fiori 按钮三态：默认 / 选中(emphasized) / 透明 */
+  .fd-button {
+    font-family: inherit; font-size: 13px;
+    height: 32px; padding: 0 12px;
+    border: 1px solid var(--sapList_BorderColor);
+    border-radius: var(--sapButton_BorderCornerRadius);
+    background: var(--sapBaseColor); color: var(--sapTextColor);
+    cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .fd-button:hover { background: var(--sapList_Hover_Background); border-color: #c9c9c9; }
+  .fd-button:active { background: #eaeaea; }
+  .fd-button--emphasized {
+    background: var(--sapBrandColor); border-color: var(--sapBrandColor); color: #fff;
+  }
+  .fd-button--emphasized:hover { background: #005dc2; }
+  .fd-button--transparent { border-color: transparent; background: transparent; }
+  .fd-button--transparent:hover { background: var(--sapList_Hover_Background); }
+
+  .fd-toolbar__separator {
+    width: 1px; height: 20px; background: var(--sapGroup_TitleBorderColor); margin: 0 4px;
+  }
+  .fd-toolbar__spacer { flex: 1; }
+  .fd-input {
+    height: 32px; border: 1px solid var(--sapList_BorderColor);
+    border-radius: var(--sapButton_BorderCornerRadius);
+    padding: 0 10px; font-family: inherit; font-size: 13px; outline: none; width: 200px;
+  }
+  .fd-input:focus { border-color: var(--sapBrandColor); box-shadow: 0 0 0 1px var(--sapBrandColor); }
+
+  /* ============ 卡片网格（Fiori Object / Analytical Card） ============ */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px; padding: 8px 32px 16px;
+  }
+
+  /* KPI 数字卡片 */
+  .fd-card {
+    background: var(--sapBaseColor);
+    border-radius: var(--sapElement_BorderCornerRadius);
+    border: 1px solid var(--sapList_BorderColor);
+    padding: 16px 20px;
+    transition: box-shadow .2s, transform .2s;
+    cursor: pointer;
+  }
+  .fd-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    transform: translateY(-2px);
+  }
+  .fd-card__title { font-size: 13px; color: var(--sapNeutralColor); }
+  .fd-card__value { font-size: 30px; font-weight: 400; margin: 6px 0 2px; }
+  .fd-card__delta { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .fd-card__delta--up   { color: var(--sapPositiveColor); }
+  .fd-card__delta--down { color: var(--sapNegativeColor); }
+  .fd-card__spark { width: 100%; height: 36px; margin-top: 10px; }
+
+  /* 图表卡片（跨整行） */
+  .fd-card--wide { grid-column: 1 / -1; }
+  .fd-card__header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .fd-card__header h2 { font-size: var(--sapFontHeaderSize); font-weight: 500; }
+  .fd-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: var(--sapList_SelectionBackgroundColor); color: var(--sapInformativeColor);
+  }
+
+  .chart-flex { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 0 32px 24px; }
+  @media (max-width: 900px) { .chart-flex { grid-template-columns: 1fr; } }
+  .chart-box { height: 300px; }
+
+  /* ============ Fiori 列表表格（List Report 风格） ============ */
+  .section { padding: 0 32px 32px; }
+  .fd-table-card {
+    background: var(--sapBaseColor);
+    border-radius: var(--sapElement_BorderCornerRadius);
+    border: 1px solid var(--sapList_BorderColor);
+    overflow: hidden;
+  }
+  table.fd-table { width: 100%; border-collapse: collapse; }
+  .fd-table th {
+    text-align: left; font-size: 12px; font-weight: 500;
+    color: var(--sapNeutralColor);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--sapGroup_TitleBorderColor);
+    background: #fafafa;
+  }
+  .fd-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--sapList_BorderColor);
+    font-size: 13px;
+  }
+  .fd-table tbody tr:hover { background: var(--sapList_Hover_Background); }
+  .fd-table tbody tr:last-child td { border-bottom: none; }
+  .fd-table td.num { font-variant-numeric: tabular-nums; }
+
+  /* Fiori Object Status（语义色状态点） */
+  .fd-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .fd-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+  .fd-status--positive::before { background: var(--sapPositiveColor); }
+  .fd-status--negative::before { background: var(--sapNegativeColor); }
+  .fd-status--critical::before  { background: var(--sapCriticalColor); }
+  .fd-status--neutral::before   { background: var(--sapNeutralColor); }
+
+  .fd-link {
+    color: var(--sapBrandColor); text-decoration: none; cursor: pointer;
+  }
+  .fd-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+  <!-- Shell Bar -->
+  <header class="fd-shellbar">
+    <div class="fd-shellbar__logo">A</div>
+    <span class="fd-shellbar__title">ARK Render Kit — Fiori 风格演示</span>
+    <div class="fd-shellbar__spacer"></div>
+    <button class="fd-shellbar__action">通知 (3)</button>
+    <button class="fd-shellbar__action">Avatar</button>
+  </header>
+
+  <!-- 页面标题 -->
+  <div class="page-header">
+    <h1>销售概览 <b>· 2026 Q3</b></h1>
+    <p>层次一示例：纯 CSS 实现 Fiori Quartz / Horizon 视觉语言，图表由 ECharts 渲染，无任何 SAP JS 运行时依赖。</p>
+  </div>
+
+  <!-- 工具栏 -->
+  <div class="fd-toolbar">
+    <button class="fd-button fd-button--emphasized">＋ 新建</button>
+    <button class="fd-button">导出</button>
+    <div class="fd-toolbar__separator"></div>
+    <button class="fd-button fd-button--transparent">筛选</button>
+    <button class="fd-button fd-button--transparent">排序</button>
+    <div class="fd-toolbar__spacer"></div>
+    <input class="fd-input" type="text" placeholder="搜索…">
+  </div>
+
+  <!-- KPI 卡片 -->
+  <div class="card-grid">
+    <div class="fd-card">
+      <div class="fd-card__title">总销售额</div>
+      <div class="fd-card__value">¥ 4,286 万</div>
+      <span class="fd-card__delta fd-card__delta--up">▲ 12.4% 环比</span>
+      <div class="fd-card__spark" id="spark1"></div>
+    </div>
+    <div class="fd-card">
+      <div class="fd-card__title">订单数</div>
+      <div class="fd-card__value">18,532</div>
+      <span class="fd-card__delta fd-card__delta--up">▲ 6.8% 环比</span>
+      <div class="fd-card__spark" id="spark2"></div>
+    </div>
+    <div class="fd-card">
+      <div class="fd-card__title">退货率</div>
+      <div class="fd-card__value">2.1%</div>
+      <span class="fd-card__delta fd-card__delta--down">▼ 0.4pp 环比</span>
+      <div class="fd-card__spark" id="spark3"></div>
+    </div>
+    <div class="fd-card">
+      <div class="fd-card__title">客户满意度</div>
+      <div class="fd-card__value">94.6</div>
+      <span class="fd-card__delta fd-card__delta--up">▲ 1.2 环比</span>
+      <div class="fd-card__spark" id="spark4"></div>
+    </div>
+  </div>
+
+  <!-- 图表卡片 -->
+  <div class="chart-flex">
+    <div class="fd-card">
+      <div class="fd-card__header">
+        <h2>月度销售额与目标达成</h2>
+        <span class="fd-badge">ECharts 柱线混合</span>
+      </div>
+      <div class="chart-box" id="chartBar"></div>
+    </div>
+    <div class="fd-card">
+      <div class="fd-card__header">
+        <h2>渠道占比</h2>
+        <span class="fd-badge">环形图</span>
+      </div>
+      <div class="chart-box" id="chartPie"></div>
+    </div>
+  </div>
+
+  <!-- Fiori 列表表格 -->
+  <div class="section">
+    <div class="fd-table-card">
+      <table class="fd-table">
+        <thead>
+          <tr>
+            <th>销售凭证</th><th>客户</th><th>渠道</th>
+            <th style="text-align:right">净价值</th><th style="text-align:right">数量</th>
+            <th>状态</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="num">0080012345</td><td>华信科技</td><td>直销</td>
+            <td class="num" style="text-align:right">¥ 1,286,000</td><td class="num" style="text-align:right">120</td>
+            <td><span class="fd-status fd-status--positive">已完成</span></td>
+            <td><a class="fd-link">详情</a></td>
+          </tr>
+          <tr>
+            <td class="num">0080012346</td><td>南方物流集团</td><td>分销</td>
+            <td class="num" style="text-align:right">¥ 862,400</td><td class="num" style="text-align:right">58</td>
+            <td><span class="fd-status fd-status--critical">待审批</span></td>
+            <td><a class="fd-link">详情</a></td>
+          </tr>
+          <tr>
+            <td class="num">0080012347</td><td>北方重工</td><td>直销</td>
+            <td class="num" style="text-align:right">¥ 2,045,900</td><td class="num" style="text-align:right">12</td>
+            <td><span class="fd-status fd-status--positive">已发货</span></td>
+            <td><a class="fd-link">详情</a></td>
+          </tr>
+          <tr>
+            <td class="num">0080012348</td><td>东海商贸</td><td>电商</td>
+            <td class="num" style="text-align:right">¥ 95,700</td><td class="num" style="text-align:right">640</td>
+            <td><span class="fd-status fd-status--negative">被拒绝</span></td>
+            <td><a class="fd-link">详情</a></td>
+          </tr>
+          <tr>
+            <td class="num">0080012349</td><td>西部能源</td><td>分销</td>
+            <td class="num" style="text-align:right">¥ 530,200</td><td class="num" style="text-align:right">35</td>
+            <td><span class="fd-status fd-status--neutral">处理中</span></td>
+            <td><a class="fd-link">详情</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   ECharts 图表：配色对齐 Fiori Quartz 色板
+   ============================================================ */
+var QUARTZ = {
+  brand:     '#0070f2',
+  teal:      '#04aca7',
+  purple:    '#9255d7',
+  orange:    '#e9730c',
+  green:     '#107e3e',
+  neutral:   '#6a6d70',
+  gridLine:  '#e5e5e5',
+  textColor: '#1d2d3e'
+};
+
+/* KPI 迷你趋势线（Sparkline） */
+function spark(id, data, color, fillTop) {
+  var el = document.getElementById(id);
+  if (!el || !window.echarts) return;
+  echarts.init(el, null, { renderer: 'svg' }).setOption({
+    grid: { left: 0, right: 0, top: 2, bottom: 2 },
+    xAxis: { type: 'category', show: false, data: data.map(function(_, i){ return i; }) },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      type: 'line', data: data, symbol: 'none', smooth: true,
+      lineStyle: { width: 2, color: color },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: fillTop },
+            { offset: 1, color: 'rgba(255,255,255,0)' }
+          ]
+        }
+      }
+    }]
+  });
+}
+spark('spark1', [32,38,35,42,48,45,52,58,55,62], QUARTZ.brand,   'rgba(0,112,242,.25)');
+spark('spark2', [12,14,13,15,16,15,17,18,17,19], QUARTZ.teal,    'rgba(4,172,167,.25)');
+spark('spark3', [3.4,3.2,3.1,2.9,3.0,2.7,2.6,2.4,2.3,2.1], QUARTZ.orange, 'rgba(233,115,12,.22)');
+spark('spark4', [90,91,90.5,92,92.8,93,93.5,94,94.2,94.6], QUARTZ.green, 'rgba(16,126,62,.22)');
+
+/* 柱线混合：月度销售额（柱）+ 目标达成率（线，右轴） */
+if (window.echarts) {
+  echarts.init(document.getElementById('chartBar')).setOption({
+    grid: { left: 56, right: 48, top: 32, bottom: 32 },
+    tooltip: { trigger: 'axis' },
+    legend: { top: 0, textStyle: { color: QUARTZ.textColor } },
+    xAxis: {
+      type: 'category',
+      data: ['1月','2月','3月','4月','5月','6月','7月','8月'],
+      axisLine: { lineStyle: { color: QUARTZ.gridLine } },
+      axisLabel: { color: QUARTZ.neutral }
+    },
+    yAxis: [
+      { type: 'value', name: '销售额（万元）',
+        nameTextStyle: { color: QUARTZ.neutral },
+        splitLine: { lineStyle: { color: QUARTZ.gridLine } },
+        axisLabel: { color: QUARTZ.neutral } },
+      { type: 'value', name: '达成率', min: 60, max: 130,
+        nameTextStyle: { color: QUARTZ.neutral },
+        splitLine: { show: false },
+        axisLabel: { formatter: '{value}%', color: QUARTZ.neutral } }
+    ],
+    series: [
+      { name: '销售额', type: 'bar', barWidth: 22,
+        data: [420, 455, 490, 530, 510, 580, 620, 681],
+        itemStyle: { color: QUARTZ.brand, borderRadius: [4, 4, 0, 0] } },
+      { name: '目标达成率', type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 7,
+        data: [88, 92, 95, 101, 97, 106, 110, 115],
+        lineStyle: { color: QUARTZ.teal, width: 2.5 },
+        itemStyle: { color: QUARTZ.teal } }
+    ]
+  });
+
+  /* 环形图：渠道占比（Quartz 语义色） */
+  echarts.init(document.getElementById('chartPie')).setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}（{d}%）' },
+    legend: { bottom: 0, textStyle: { color: QUARTZ.textColor } },
+    series: [{
+      type: 'pie', radius: ['52%', '74%'], center: ['50%', '44%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 6 },
+      label: { show: false },
+      emphasis: { label: { show: true, fontSize: 14, fontWeight: 500,
+                           color: QUARTZ.textColor, formatter: '{b}\n{d}%' } },
+      data: [
+        { value: 46, name: '直销',   itemStyle: { color: QUARTZ.brand } },
+        { value: 28, name: '分销',   itemStyle: { color: QUARTZ.teal } },
+        { value: 18, name: '电商',   itemStyle: { color: QUARTZ.purple } },
+        { value: 8,  name: '其他',   itemStyle: { color: QUARTZ.orange } }
+      ]
+    }]
+  });
+}
+</script>
+</body>
+</html>

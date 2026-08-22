@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ARK × UI5 Showcase — fiori-style-demo 的 UI5 实现</title>
+<!-- OpenUI5：注意 .org 域名；SAP GUI 验证时换本地 self-contained 包。
+     sap.ui.core.Html 在新版 UI5 已移除，无法内嵌原生 div —— 图表/KPI 卡
+     用原生 div + ECharts 渲染，UI5 负责 ShellBar/工具栏/表格 -->
+<script id="sap-ui-bootstrap"
+        src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m,sap.f"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+<style>
+  html, body { height: 100%; margin: 0; background: #f0f0f0;
+    font-family: "72", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .note { padding: 4px 16px; font-size: 12px; color: #666; background: #f5f5f5; }
+  .page-title { font-size: 22px; font-weight: 400; margin: 20px 32px 2px; color: #1d2d3e; }
+  .page-sub { font-size: 13px; color: #6a6d70; margin: 0 32px 16px; }
+  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px;
+          padding: 14px 18px; transition: box-shadow .2s, transform .2s; }
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.14); transform: translateY(-2px); }
+  .kpi-grid { display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px; padding: 0 32px 16px; }
+  .kpi-title { font-size: 13px; color: #6a6d70; }
+  .kpi-value { font-size: 28px; color: #1d2d3e; margin: 4px 0 2px; }
+  .kpi-delta { font-size: 13px; }
+  .kpi-delta.up { color: #107e3e; } .kpi-delta.down { color: #bb0000; }
+  .spark { width: 100%; height: 34px; margin-top: 6px; }
+  .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 0 32px 16px; }
+  @media (max-width: 900px) { .chart-row { grid-template-columns: 1fr; } }
+  .chart-box { width: 100%; height: 300px; }
+  .table-card { margin: 0 32px 24px; }
+  .table-card table { width: 100%; border-collapse: collapse; }
+  .table-card th { text-align: left; font-size: 12px; font-weight: 500; color: #6a6d70;
+    padding: 10px 16px; border-bottom: 1px solid #d9d9d9; background: #fafafa; }
+  .table-card td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #e5e5e5; }
+  .table-card tr:last-child td { border-bottom: none; }
+  .table-card tbody tr:hover { background: #f5f5f5; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+  .status.positive::before { background: #107e3e; }
+  .status.critical::before { background: #e9730c; }
+  .status.negative::before { background: #bb0000; }
+  .status.neutral::before { background: #6a6d70; }
+  a.plain { color: #0070f2; text-decoration: none; cursor: pointer; }
+</style>
+</head>
+<body class="sapUiBody">
+<div id="ui5-shellbar"></div>
+<div class="note">UI5 Showcase：ShellBar / 工具栏 / 表格为 sap.m + sap.f 控件；KPI 卡与图表为原生 div + ECharts（sap.ui.core.Html 已从新版 UI5 移除）</div>
+<div id="ui5-toolbar" style="padding: 8px 32px;"></div>
+<h1 class="page-title" id="pg-title"></h1>
+<p class="page-sub" id="pg-sub"></p>
+
+<div class="kpi-grid" id="kpi-grid"></div>
+
+<div class="chart-row">
+  <div class="card"><div class="kpi-title">月度销售额与目标达成</div>
+    <div id="chart-bar" class="chart-box"></div></div>
+  <div class="card"><div class="kpi-title">渠道占比</div>
+    <div id="chart-pie" class="chart-box"></div></div>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead><tr>
+      <th>销售凭证</th><th>客户</th>
+      <th style="text-align:right">净价值</th>
+      <th style="text-align:right">数量</th><th>状态</th><th></th>
+    </tr></thead>
+    <tbody id="doc-rows"></tbody>
+  </table>
+</div>
+
+<div id="errlog" style="font:12px monospace;color:#b00;padding:8px;white-space:pre-wrap"></div>
+
+<script>
+  window.onerror = function (m, src, l) {
+    var d = document.createElement("div");
+    d.textContent = "JS ERROR: " + m + " @" + (src || "") + ":" + l;
+    document.getElementById("errlog").appendChild(d);
+    return false;
+  };
+</script>
+<script>
+var QUARTZ = {
+  brand: "#0070f2", teal: "#04aca7", purple: "#9255d7", orange: "#e9730c",
+  good: "#107e3e", bad: "#bb0000", neutral: "#6a6d70"
+};
+
+// ===== ABAP 侧将来产出的 state JSON（ty_page_state 的映射）=====
+function buildState(factor) {
+  return {
+    title: "销售概览 · 2026 Q3",
+    subtitle: "刷新/搜索走模拟 sapevent 往返，表格与图表 setData 局部更新",
+    refreshLabel: "刷新数据 (x" + factor + ")",
+    factor: factor,
+    kpi: [
+      { title: "总销售额", value: "¥ " + (4286 * factor) + " 万",
+        delta: "+12.4% 环比", dir: "up", sema: QUARTZ.brand,
+        spark: [32,38,35,42,48,45,52,58] },
+      { title: "订单数", value: String(18532 * factor),
+        delta: "+6.8% 环比", dir: "up", sema: QUARTZ.teal,
+        spark: [12,14,13,15,16,15,17,19] },
+      { title: "退货率", value: "2.1%",
+        delta: "-0.4pp 环比", dir: "down", sema: QUARTZ.orange,
+        spark: [3.4,3.2,2.9,2.7,2.4,2.3,2.1] },
+      { title: "客户满意度", value: "94.6",
+        delta: "+1.2 环比", dir: "up", sema: QUARTZ.good,
+        spark: [90,91,92,92.8,93.5,94,94.6] }
+    ],
+    barData: [420,455,490,530,510,580,620,681].map(function (v) { return v * factor; }),
+    lineData: [88,92,95,101,97,106,110,115],
+    rows: [
+      { doc: "0080012345", customer: "华信科技", amount: 1286000, qty: 120, status: "已完成", sema: "positive" },
+      { doc: "0080012346", customer: "南方物流集团", amount: 862400, qty: 58, status: "待审批", sema: "critical" },
+      { doc: "0080012347", customer: "北方重工", amount: 2045900, qty: 12, status: "已发货", sema: "positive" },
+      { doc: "0080012348", customer: "东海商贸", amount: 95700, qty: 640, status: "被拒绝", sema: "negative" },
+      { doc: "0080012349", customer: "西部能源", amount: 530200, qty: 35, status: "处理中", sema: "neutral" }
+    ]
+  };
+}
+
+var state = buildState(1);
+
+// ===== 原生渲染：KPI 卡 / 图表 / 表格 =====
+function renderNative() {
+  document.getElementById("pg-title").textContent = state.title;
+  document.getElementById("pg-sub").textContent = state.subtitle;
+
+  var grid = document.getElementById("kpi-grid");
+  grid.innerHTML = "";
+  state.kpi.forEach(function (k, i) {
+    var card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML =
+      '<div class="kpi-title">' + k.title + '</div>' +
+      '<div class="kpi-value">' + k.value + '</div>' +
+      '<span class="kpi-delta ' + k.dir + '">' + k.delta + '</span>' +
+      '<div id="sp_' + i + '" class="spark"></div>';
+    grid.appendChild(card);
+    if (window.echarts) {
+      echarts.init(document.getElementById("sp_" + i)).setOption({
+        grid: { left: 0, right: 0, top: 2, bottom: 2 },
+        xAxis: { type: "category", show: false },
+        yAxis: { type: "value", show: false },
+        series: [{ type: "line", data: k.spark, symbol: "none", smooth: true,
+          lineStyle: { width: 2, color: k.sema },
+          areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: k.sema + "40" },
+              { offset: 1, color: k.sema + "00" } ] } } }]
+      });
+    }
+  });
+
+  if (window.echarts) {
+    echarts.init(document.getElementById("chart-bar")).setOption({
+      tooltip: { trigger: "axis" }, legend: { top: 0 },
+      grid: { left: 56, right: 48, top: 32, bottom: 32 },
+      xAxis: { type: "category", data: ["1月","2月","3月","4月","5月","6月","7月","8月"] },
+      yAxis: [
+        { type: "value", name: "万元" },
+        { type: "value", name: "达成率", min: 60, max: 130,
+          axisLabel: { formatter: "{value}%" } }
+      ],
+      series: [
+        { name: "销售额", type: "bar", barWidth: 22, data: state.barData,
+          itemStyle: { color: QUARTZ.brand, borderRadius: [4,4,0,0] } },
+        { name: "达成率", type: "line", yAxisIndex: 1, smooth: true, data: state.lineData,
+          lineStyle: { color: QUARTZ.teal, width: 2.5 },
+          itemStyle: { color: QUARTZ.teal } }
+      ]
+    });
+    echarts.init(document.getElementById("chart-pie")).setOption({
+      tooltip: { trigger: "item", formatter: "{b}: {c}（{d}%）" },
+      legend: { bottom: 0 },
+      series: [{ type: "pie", radius: ["48%", "70%"], center: ["50%", "42%"],
+        label: { show: false },
+        itemStyle: { borderColor: "#fff", borderWidth: 2 },
+        data: [
+          { value: 46, name: "直销", itemStyle: { color: QUARTZ.brand } },
+          { value: 28, name: "分销", itemStyle: { color: QUARTZ.teal } },
+          { value: 18, name: "电商", itemStyle: { color: QUARTZ.purple } },
+          { value: 8, name: "其他", itemStyle: { color: QUARTZ.orange } } ] }]
+    });
+  }
+
+  var tb = document.getElementById("doc-rows");
+  tb.innerHTML = "";
+  state.rows.forEach(function (r) {
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td><a class="plain" href="#" onclick="rowClick(\'' + r.doc + '\');return false;">' + r.doc + '</a></td>' +
+      '<td>' + r.customer + '</td>' +
+      '<td class="num">¥ ' + r.amount.toLocaleString() + '</td>' +
+      '<td class="num">' + r.qty + '</td>' +
+      '<td><span class="status ' + r.sema + '">' + r.status + '</span></td>' +
+      '<td><a class="plain" href="#" onclick="rowClick(\'' + r.doc + '\');return false;">详情</a></td>';
+    tb.appendChild(tr);
+  });
+}
+function rowClick(doc) {
+  // 真实实现：隐藏 iframe 提交 sapevent:cell_detail?doc=...
+  var d = document.createElement("div");
+  d.textContent = "sapevent:cell_detail?doc=" + doc;
+  document.getElementById("errlog").appendChild(d);
+}
+renderNative();
+
+// ===== UI5 控件：ShellBar + 工具栏（独立 placeAt，不套 App/Page）=====
+sap.ui.require([
+  "sap/f/ShellBar", "sap/m/Toolbar", "sap/m/ToolbarSpacer", "sap/m/Button",
+  "sap/m/SearchField", "sap/m/MessageToast", "sap/m/Text",
+  "sap/ui/core/BusyIndicator"
+], function (ShellBar, Toolbar, ToolbarSpacer, Button, SearchField,
+             MessageToast, Text, BusyIndicator) {
+  "use strict";
+  try {
+
+  new ShellBar({ title: "ARK Render Kit — Fiori (UI5) 演示" })
+    .placeAt("ui5-shellbar");
+
+  var oRefreshBtn = new Button({
+    text: state.refreshLabel, type: "Emphasized",
+    press: function () {
+      roundtrip(function () {
+        var f = (state.factor % 5) + 1;
+        state = buildState(f);
+        oRefreshBtn.setText(state.refreshLabel);
+        renderNative();   // 局部更新，UI5 控件常驻不重建
+      });
+    } });
+
+  new Toolbar({
+    design: "Solid",
+    content: [
+      oRefreshBtn,
+      new Button({ text: "新建", press: function () { MessageToast.show("sapevent:create"); } }),
+      new ToolbarSpacer(),
+      new Text({ text: "sapevent 事件桥演示：点击按钮/搜索/行链接" })
+        .addStyleClass("kpi-title"),
+      new ToolbarSpacer(),
+      new SearchField({ placeholder: "任意列包含…", width: "220px",
+        search: function (oEvt) {
+          roundtrip(function () {
+            var q = oEvt.getParameter("query").toLowerCase();
+            var all = buildState(state.factor).rows;
+            state.rows = all.filter(function (r) {
+              return JSON.stringify(r).toLowerCase().indexOf(q) >= 0; });
+            renderNative();
+          });
+        } })
+    ]
+  }).placeAt("ui5-toolbar");
+
+  // 模拟 ABAP 往返（真实实现：隐藏 iframe 提交 sapevent，响应带新 state JSON）
+  function roundtrip(callback) {
+    BusyIndicator.show(0);
+    setTimeout(function () { BusyIndicator.hide(); callback(); }, 300);
+  }
+
+  } catch (ex) {
+    var d = document.createElement("div");
+    d.textContent = "CAUGHT: " + ex.message;
+    document.getElementById("errlog").appendChild(d);
+  }
+});
+</script>
+</body>
+</html>

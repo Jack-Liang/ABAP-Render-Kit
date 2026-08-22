@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ARK × UI5 — 表格 + 原生 Excel 导出</title>
+<!-- sap.ui.export 不在 OpenUI5（xlsx 库许可限制），必须 SAPUI5：ui5.sap.com。
+     生产/离线分发需用 SAPUI5 self-contained 包并确认许可条款 -->
+<script id="sap-ui-bootstrap"
+        src="https://ui5.sap.com/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<style>
+  html, body, #content { height: 100%; margin: 0; }
+  .note { padding: 4px 16px; font-size: 12px; color: #666; background: #f5f5f5; }
+</style>
+</head>
+<body class="sapUiBody">
+<div class="note">
+  sap.m.Table + sap.ui.export.Spreadsheet（UI5 原生客户端 xlsx 导出，无需 OData/服务端）。
+  导出内容 = 当前筛选后的可见行；金额列在 Excel 中为真实数值类型。
+</div>
+<div id="content"></div>
+<div id="errlog" style="font:12px monospace;color:#b00;padding:8px;white-space:pre-wrap"></div>
+<script>
+  window.onerror = function (m, src, l) {
+    var d = document.createElement("div");
+    d.textContent = "JS ERROR: " + m + " @" + (src || "") + ":" + l;
+    document.getElementById("errlog").appendChild(d);
+    return false;
+  };
+</script>
+<script>
+sap.ui.require([
+  "sap/m/App", "sap/m/Page", "sap/m/Toolbar", "sap/m/ToolbarSpacer",
+  "sap/m/Button", "sap/m/SearchField", "sap/m/Table", "sap/m/Column",
+  "sap/m/Label", "sap/m/ColumnListItem", "sap/m/Text", "sap/m/ObjectNumber",
+  "sap/m/ObjectStatus", "sap/m/MessageToast",
+  "sap/ui/model/json/JSONModel", "sap/ui/export/Spreadsheet"
+], function (App, Page, Toolbar, ToolbarSpacer, Button, SearchField, Table,
+             Column, Label, ColumnListItem, Text, ObjectNumber, ObjectStatus,
+             MessageToast, JSONModel, Spreadsheet) {
+  "use strict";
+  try {
+
+  // ===== ABAP 侧将来产出的 state JSON =====
+  var state = {
+    rows: [
+      { doc: "0080012345", customer: "华信科技",   amount: 1286000, qty: 120, status: "已完成", sema: "Success" },
+      { doc: "0080012346", customer: "南方物流集团", amount: 862400,  qty: 58,  status: "待审批", sema: "Warning" },
+      { doc: "0080012347", customer: "北方重工",    amount: 2045900, qty: 12,  status: "已发货", sema: "Success" },
+      { doc: "0080012348", customer: "东海商贸",    amount: 95700,   qty: 640, status: "被拒绝", sema: "Error" },
+      { doc: "0080012349", customer: "西部能源",    amount: 530200,  qty: 35,  status: "处理中", sema: "None" },
+      { doc: "0080012350", customer: "华信科技",    amount: 742300,  qty: 210, status: "已完成", sema: "Success" },
+      { doc: "0080012351", customer: "中部智造",    amount: 1567800, qty: 88,  status: "已发货", sema: "Success" }
+    ]
+  };
+
+  var oModel = new JSONModel(state);
+  sap.ui.getCore().setModel(oModel);
+
+  // ===== UI5 原生 Excel 导出（sap.ui.export.Spreadsheet）=====
+  function exportExcel() {
+    var rows = oModel.getProperty("/rows");   // 当前筛选后的可见行
+    var oSheet = new Spreadsheet({
+      workbook: {
+        columns: [
+          { label: "销售凭证", property: "doc", width: 16 },
+          { label: "客户",     property: "customer", width: 20 },
+          // type: Number 让 Excel 里是真实数值而非文本，可直接求和
+          { label: "净价值",   property: "amount", type: "Number", width: 14 },
+          { label: "数量",     property: "qty", type: "Number", width: 10 },
+          { label: "状态",     property: "status", width: 10 }
+        ],
+        context: { sheetName: "销售凭证", title: "ARK 导出演示" }
+      },
+      dataSource: rows,
+      fileName: "ark_export.xlsx"
+    });
+    oSheet.build()
+      .then(function () { MessageToast.show("已导出 " + rows.length + " 行"); })
+      .catch(function (e) {
+        var d = document.createElement("div");
+        d.textContent = "EXPORT ERROR: " + (e && e.message || e);
+        document.getElementById("errlog").appendChild(d);
+      });
+  }
+
+  // ===== 页面 =====
+  var oPage = new Page({
+    title: "销售凭证 · 导出演示",
+    showNavButton: false,
+    subHeader: new Toolbar({
+      content: [
+        new Button({ text: "导出 Excel", type: "Emphasized", icon: "sap-icon://download",
+          press: exportExcel }),
+        new ToolbarSpacer(),
+        new SearchField({ placeholder: "任意列包含…（导出跟随筛选）", width: "260px",
+          search: function (oEvt) {
+            var q = oEvt.getParameter("query").toLowerCase();
+            var all = state.rows;
+            oModel.setProperty("/rows", all.filter(function (r) {
+              return JSON.stringify(r).toLowerCase().indexOf(q) >= 0; }));
+          } })
+      ]
+    })
+  });
+
+  var oTable = new Table({
+    growing: true, growingThreshold: 50,
+    columns: [
+      new Column({ header: new Label({ text: "销售凭证" }) }),
+      new Column({ header: new Label({ text: "客户" }) }),
+      new Column({ hAlign: "End", header: new Label({ text: "净价值" }) }),
+      new Column({ hAlign: "End", header: new Label({ text: "数量" }) }),
+      new Column({ header: new Label({ text: "状态" }) })
+    ],
+    items: {
+      path: "/rows",
+      template: new ColumnListItem({
+        type: "Active",
+        press: function (oEvt) {
+          MessageToast.show("sapevent:cell_detail?doc=" +
+            oEvt.getSource().getBindingContext().getProperty("doc"));
+        },
+        cells: [
+          new Text({ text: "{doc}" }),
+          new Text({ text: "{customer}" }),
+          new ObjectNumber({ number: { path: "amount",
+            formatter: function (v) { return "¥ " + v.toLocaleString(); } } }),
+          new Text({ text: "{qty}" }),
+          new ObjectStatus({ text: "{status}", state: "{sema}" })
+        ]
+      })
+    }
+  });
+  oPage.addContent(oTable);
+  new App({ pages: [oPage] }).placeAt("content");
+
+  } catch (ex) {
+    var d = document.createElement("div");
+    d.textContent = "CAUGHT: " + ex.message;
+    document.getElementById("errlog").appendChild(d);
+  }
+});
+</script>
+</body>
+</html>

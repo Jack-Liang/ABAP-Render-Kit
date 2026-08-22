@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Spreadsheet 模块探测</title>
+</head>
+<body>
+<div id="log" style="font: 13px monospace; padding: 12px; white-space: pre-wrap;"></div>
+<script>
+  var log = document.getElementById("log");
+  function w(msg) { var d = document.createElement("div"); d.textContent = msg; log.appendChild(d); }
+</script>
+<script src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<script>
+  var mods = ["sap/m/Table", "sap/ui/export/Spreadsheet",
+    "sap/ui/export/EdmType", "sap/ui/thirdparty/css"];
+  var state = {};
+  var n = 0;
+  var iv = setInterval(function () {
+    n += 1;
+    if (typeof sap !== "undefined" && sap.ui) {
+      clearInterval(iv);
+      w("core ready, probing");
+      mods.forEach(function (m) {
+        state[m] = "pending";
+        sap.ui.require([m],
+          function () { state[m] = "OK"; w("OK: " + m); },
+          function (e) { state[m] = "ERR"; w("ERR: " + m + " " + (e && e.message || e)); });
+      });
+      setTimeout(function () {
+        mods.forEach(function (m) { if (state[m] === "pending") w("PENDING: " + m); });
+        w("== done ==");
+      }, 20000);
+    } else if (n > 20) { clearInterval(iv); w("core not ready"); }
+  }, 500);
+</script>
+</body>
+</html>

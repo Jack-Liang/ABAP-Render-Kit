@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UI5 逐模块加载诊断</title>
+</head>
+<body>
+<div id="log" style="font: 13px monospace; padding: 12px; white-space: pre-wrap;"></div>
+<script>
+  var log = document.getElementById("log");
+  function w(msg) { log.textContent += msg + "\n"; }
+  window.onerror = function (m) { w("JS ERROR: " + m); return false; };
+</script>
+<script src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-async="true"></script>
+<script>
+  var mods = ["sap/m/App","sap/m/Page","sap/m/Toolbar","sap/m/Button",
+    "sap/m/ToolbarSpacer","sap/m/SearchField","sap/m/Table","sap/m/Column",
+    "sap/m/Label","sap/m/ColumnListItem","sap/m/Text","sap/m/ObjectNumber",
+    "sap/m/ObjectStatus","sap/m/MessageToast","sap/ui/core/BusyIndicator",
+    "sap/ui/model/json/JSONModel"];
+  var state = {};
+  var n = 0;
+  var iv = setInterval(function () {
+    n += 1;
+    if (typeof sap !== "undefined" && sap.ui) {
+      clearInterval(iv);
+      w("core ready, probing " + mods.length + " modules");
+      mods.forEach(function (m) {
+        state[m] = "pending";
+        sap.ui.require([m],
+          function () { state[m] = "OK"; w("OK: " + m); },
+          function (e) { state[m] = "ERR"; w("ERR: " + m + " " + (e && e.message || e)); });
+      });
+      setTimeout(function () {
+        mods.forEach(function (m) { if (state[m] === "pending") w("STILL PENDING: " + m); });
+        w("== done ==");
+      }, 15000);
+    } else if (n > 20) { clearInterval(iv); w("core not ready"); }
+  }, 500);
+</script>
+</body>
+</html>

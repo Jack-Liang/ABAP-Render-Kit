@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UI5 模块加载诊断2</title>
+</head>
+<body>
+<div id="log" style="font: 13px monospace; padding: 12px; white-space: pre-wrap;"></div>
+<script>
+  var log = document.getElementById("log");
+  function w(msg) { log.textContent += msg + "\n"; }
+  w("probe2 start");
+  // 直接用 script 标签测试各模块 URL 的可达性
+  ["sap-ui-core.js", "sap/m/App.js", "sap/m/Button.js", "sap/ui/model/json/JSONModel.js"].forEach(function (f) {
+    var s = document.createElement("script");
+    s.src = "https://sdk.openui5.org/resources/" + f;
+    s.onload = function () { w("LOAD OK: " + f); };
+    s.onerror = function () { w("LOAD FAIL: " + f); };
+    document.head.appendChild(s);
+  });
+</script>
+<script src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-async="true"></script>
+<script>
+  var n = 0;
+  var iv = setInterval(function () {
+    n += 1;
+    if (typeof sap !== "undefined" && sap.ui) {
+      w("tick " + n + ": core ready, testing sap.ui.require...");
+      clearInterval(iv);
+      sap.ui.require(["sap/m/Button", "sap/ui/model/json/JSONModel"],
+        function (Button, JSONModel) {
+          w("sap.ui.require OK: Button=" + typeof Button + " JSONModel=" + typeof JSONModel);
+        },
+        function (err) { w("sap.ui.require ERROR: " + (err && err.message || err)); }
+      );
+    } else if (n > 20) {
+      clearInterval(iv);
+      w("core never became ready");
+    }
+  }, 500);
+</script>
+</body>
+</html>

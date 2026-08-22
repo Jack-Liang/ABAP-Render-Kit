@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UI5 加载诊断</title>
+</head>
+<body>
+<div id="log" style="font: 13px monospace; padding: 12px; white-space: pre-wrap;"></div>
+<script>
+  var log = document.getElementById("log");
+  function w(msg) { log.textContent += msg + "\n"; }
+  w("probe start");
+</script>
+<script src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        onload="w('core.js onload OK')"
+        onerror="w('core.js onerror FAILED')"></script>
+<script>
+  w("after tag: typeof sap = " + typeof window.sap);
+  var iv = setInterval(function () {
+    if (typeof window.sap !== "undefined" && sap.ui && sap.ui.getCore) {
+      clearInterval(iv);
+      w("sap.ui available");
+      sap.ui.getCore().attachInit(function () {
+        w("attachInit fired");
+        try {
+          var oModel = new sap.ui.model.json.JSONModel({ t: "hello" });
+          w("JSONModel created: " + oModel.getProperty("/t"));
+          var oBtn = new sap.m.Button({ text: "UI5 按钮渲染测试" });
+          oBtn.placeAt(document.body.appendChild(document.createElement("div")));
+          setTimeout(function () { w("button placed, dom=" + document.querySelectorAll(".sapMBtn").length); }, 1500);
+        } catch (e) {
+          w("ERROR: " + e.message);
+        }
+      });
+    }
+  }, 300);
+  setTimeout(function () { w("10s checkpoint reached"); }, 10000);
+</script>
+</body>
+</html>

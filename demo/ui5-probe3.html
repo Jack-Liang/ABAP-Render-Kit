@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UI5 bootstrap 属性对照</title>
+</head>
+<body>
+<div id="log" style="font: 13px monospace; padding: 12px; white-space: pre-wrap;"></div>
+<script>
+  var log = document.getElementById("log");
+  function w(msg) { log.textContent += msg + "\n"; }
+  window.onerror = function (m) { w("JS ERROR: " + m); return false; };
+  w("probe3 start (spike 同款 bootstrap 属性)");
+</script>
+<script id="sap-ui-bootstrap"
+        src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<script>
+  w("inline script after bootstrap tag runs");
+  var n = 0;
+  var iv = setInterval(function () {
+    n += 1;
+    if (typeof sap !== "undefined" && sap.ui) {
+      clearInterval(iv);
+      w("core ready at tick " + n);
+      sap.ui.require(["sap/m/Button", "sap/ui/model/json/JSONModel"],
+        function (Button, JSONModel) { w("require OK"); testDefine(); },
+        function (e) { w("require ERR: " + (e && e.message || e)); testDefine(); });
+    } else if (n > 20) { clearInterval(iv); w("core not ready"); }
+  }, 500);
+  function testDefine() {
+    sap.ui.define(["sap/m/Button"], function (Button) {
+      w("define OK: " + typeof Button);
+      try {
+        var b = new Button({ text: "probe3 按钮" });
+        b.placeAt(document.body.appendChild(document.createElement("div")));
+        setTimeout(function () { w("placed, .sapMBtn count=" + document.querySelectorAll(".sapMBtn").length); }, 2000);
+      } catch (e) { w("place ERR: " + e.message); }
+    });
+    setTimeout(function () { w("define+2s checkpoint"); }, 2000);
+  }
+</script>
+</body>
+</html>

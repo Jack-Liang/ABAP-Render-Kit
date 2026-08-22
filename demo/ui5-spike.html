@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ARK × UI5 Spike — 方案B交互模型验证（浏览器版）</title>
+<!-- OpenUI5 CDN：注意用 .org 域名（.com 在当前网络不可达）；
+     SAP GUI 内验证时换成同 URL 或本地 self-contained 包 -->
+<script id="sap-ui-bootstrap"
+        src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<style>
+  html, body, #content { height: 100%; margin: 0; }
+  .spike-note { padding: 4px 16px; font-size: 12px; color: #666; background: #f5f5f5; }
+</style>
+</head>
+<body class="sapUiBody">
+<div class="spike-note">
+  方案B spike：验证「UI5 JSONModel 数据绑定 + 模拟 sapevent 往返后 setData 局部更新（无重 boot）」。
+  点击工具栏按钮或搜索，观察表格刷新而页面不重载、无白屏闪烁。
+</div>
+<div id="content"></div>
+<div id="errlog" style="font:12px monospace;color:#b00;padding:8px;white-space:pre-wrap"></div>
+<script>
+window.onerror = function (m, src, l, c) {
+  document.getElementById("errlog").textContent += "JS ERROR: " + m + " @ " + (src||"") + ":" + l + "\n";
+  return false;
+};
+</script>
+
+<script>
+// async bootstrap 下必须用 sap.ui.define 声明依赖：模块就绪后才执行，
+// 否则 sap.m 未加载完就 new sap.m.Page 会抛错导致整页空白
+sap.ui.require([
+  "sap/m/App", "sap/m/Page", "sap/m/Toolbar", "sap/m/Button",
+  "sap/m/ToolbarSpacer", "sap/m/SearchField", "sap/m/Table", "sap/m/Column",
+  "sap/m/Label", "sap/m/ColumnListItem", "sap/m/Text", "sap/m/ObjectNumber",
+  "sap/m/ObjectStatus", "sap/m/MessageToast", "sap/ui/core/BusyIndicator",
+  "sap/ui/model/json/JSONModel"
+], function (App, Page, Toolbar, Button, ToolbarSpacer, SearchField,
+             Table, Column, Label, ColumnListItem, Text, ObjectNumber,
+             ObjectStatus, MessageToast, BusyIndicator, JSONModel) {
+  "use strict";
+  try {
+
+  // ===== 模拟 ABAP 侧下发的 state JSON =====
+  // 真实链路：zif_ark_gui_state 的 ty_page_state → zcl_ark_json → 内嵌 <script> 或隐藏 iframe 响应
+  function buildStateFromAbap(sortKey, factor) {
+    var rows = [
+      { doc: "0080012345", customer: "华信科技",   amount: 1286000 * factor, qty: 120, status: "已完成", sema: "Good" },
+      { doc: "0080012346", customer: "南方物流集团", amount: 862400 * factor,  qty: 58,  status: "待审批", sema: "Critical" },
+      { doc: "0080012347", customer: "北方重工",    amount: 2045900 * factor, qty: 12,  status: "已发货", sema: "Good" },
+      { doc: "0080012348", customer: "东海商贸",    amount: 95700 * factor,   qty: 640, status: "被拒绝", sema: "Error" },
+      { doc: "0080012349", customer: "西部能源",    amount: 530200 * factor,  qty: 35,  status: "处理中", sema: "Neutral" }
+    ];
+    if (sortKey) {
+      rows.sort(function (a, b) { return a[sortKey] < b[sortKey] ? -1 : a[sortKey] > b[sortKey] ? 1 : 0; });
+    }
+    return {
+      title: "销售概览 · 2026 Q3",
+      factor: factor,
+      toolbar: { refreshLabel: "刷新数据 (x" + factor + ")" },
+      rows: rows
+    };
+  }
+
+  var oModel = new JSONModel(buildStateFromAbap(null, 1));
+  sap.ui.getCore().setModel(oModel);
+
+  var oPage = new Page({ title: "{/title}", showNavButton: false });
+
+  // 工具栏：按钮点击 = 事件桥触发 sapevent（本页以 setTimeout 模拟 ABAP 往返）
+  oPage.setSubHeader(new Toolbar({
+    content: [
+      new Button({
+        text: "{/toolbar/refreshLabel}",
+        type: "Emphasized",
+        press: function () {
+          // 真实实现：向隐藏 iframe 提交 sapevent:refresh，
+          // ABAP 处理后在响应中嵌入新 state JSON，回调里 setData
+          simulateRoundtrip(function () {
+            var f = (oModel.getProperty("/factor") % 5) + 1;
+            oModel.setData(buildStateFromAbap(null, f));  // 局部更新，UI5 常驻
+          });
+        }
+      }),
+      new ToolbarSpacer(),
+      new SearchField({
+        placeholder: "任意列包含…", width: "240px",
+        search: function (oEvt) {
+          simulateRoundtrip(function () {
+            var q = oEvt.getParameter("query").toLowerCase();
+            var all = buildStateFromAbap(null, oModel.getProperty("/factor")).rows;
+            oModel.setProperty("/rows",
+              all.filter(function (r) { return JSON.stringify(r).toLowerCase().indexOf(q) >= 0; }));
+          });
+        }
+      })
+    ]
+  }));
+
+  // Fiori 表格：列定义即 ty_table_column 的映射，ObjectNumber/ObjectStatus 即语义色
+  var oTable = new Table({
+    growing: true, growingThreshold: 20,
+    columns: [
+      new Column({ header: new Label({ text: "凭证" }) }),
+      new Column({ header: new Label({ text: "客户" }), demandPopin: true, minScreenWidth: "Tablet" }),
+      new Column({ hAlign: "End", header: new Label({ text: "净价值" }) }),
+      new Column({ hAlign: "End", header: new Label({ text: "数量" }) }),
+      new Column({ header: new Label({ text: "状态" }) })
+    ],
+    items: {
+      path: "/rows",
+      template: new ColumnListItem({
+        type: "Active",
+        press: function (oEvt) {
+          MessageToast.show("sapevent:cell_detail?doc=" +
+            oEvt.getSource().getBindingContext().getProperty("doc"));
+        },
+        cells: [
+          new Text({ text: "{doc}" }),
+          new Text({ text: "{customer}" }),
+          new ObjectNumber({ number: { path: "amount",
+            formatter: function (v) { return "¥ " + v.toLocaleString(); } } }),
+          new Text({ text: "{qty}" }),
+          new ObjectStatus({ text: "{status}", state: "{sema}" })
+        ]
+      })
+    }
+  });
+  oPage.addContent(oTable);
+
+  new App({ pages: [oPage] }).placeAt("content");
+  // 模拟 ABAP 往返耗时（内网 sapevent 实际约 100-400ms）
+  function simulateRoundtrip(callback) {
+    BusyIndicator.show(0);
+    setTimeout(function () { BusyIndicator.hide(); callback(); }, 300);
+  }
+
+  } catch (ex) { document.getElementById("errlog").textContent += "CAUGHT: " + ex.message + "\n"; }
+}, function (e) {
+  document.getElementById("errlog").textContent += "require ERRBACK: " + (e && e.message || e) + "\n";
+});
+</script>
+</body>
+</html>

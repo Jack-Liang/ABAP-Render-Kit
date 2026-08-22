@@ -7,6 +7,8 @@ CLASS zcl_ark_convert DEFINITION PUBLIC FINAL CREATE PRIVATE .
     CLASS-METHODS base64_to_xstring IMPORTING !iv_base64 TYPE string RETURNING VALUE(rv_xstr) TYPE xstring .
     CLASS-METHODS mime_to_xstring IMPORTING !iv_name TYPE wwwdatatab-objid RETURNING VALUE(rv_xdata) TYPE xstring
                                   RAISING zcx_ark_exception .
+    CLASS-METHODS url_decode IMPORTING !iv_encoded TYPE string
+                             RETURNING VALUE(rv_decoded) TYPE string .
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
@@ -95,6 +97,43 @@ CLASS zcl_ark_convert IMPLEMENTATION.
   ENDMETHOD.
   METHOD string_to_xstring.
     rv_xstr = cl_abap_codepage=>convert_to( source = iv_str codepage = 'UTF-8' ).
+  ENDMETHOD.
+  METHOD url_decode.
+    " sapevent GET/POST 参数值的简易 URL 解码（+ -> 空格、%XX -> UTF-8 字符）。
+    " 非法 % 序列按普通字符处理，整体解码失败保留原样
+    rv_decoded = iv_encoded.
+    rv_decoded = replace( val = rv_decoded sub = `+` with = ` ` occ = 0 ).
+
+    DATA lv_x TYPE xstring.
+    DATA lv_pos TYPE i VALUE 0.
+    DATA lv_len TYPE i.
+    lv_len = strlen( rv_decoded ).
+
+    WHILE lv_pos < lv_len.
+      IF substring( val = rv_decoded off = lv_pos len = 1 ) = '%'
+         AND lv_pos + 2 < lv_len.
+        TRY.
+            DATA(lv_hex) = CONV xstring(
+              |X{ to_upper( substring( val = rv_decoded off = lv_pos + 1 len = 2 ) ) }| ).
+            CONCATENATE lv_x lv_hex IN BYTE MODE INTO lv_x.
+            lv_pos = lv_pos + 3.
+            CONTINUE.
+          CATCH cx_root.
+            " 非法 % 序列按普通字符处理
+          ENDTRY.
+        ENDIF.
+      CONCATENATE lv_x cl_abap_codepage=>convert_to( substring( val = rv_decoded off = lv_pos len = 1 ) )
+        IN BYTE MODE INTO lv_x.
+      lv_pos = lv_pos + 1.
+    ENDWHILE.
+
+    IF lv_x IS NOT INITIAL.
+      TRY.
+          rv_decoded = cl_abap_codepage=>convert_from( lv_x ).
+        CATCH cx_root.
+          " 解码失败保留原样
+      ENDTRY.
+    ENDIF.
   ENDMETHOD.
   METHOD xstring_to_bintab.
     DATA lv_hex200 TYPE x LENGTH 200.

@@ -82,13 +82,6 @@ CLASS zcl_ark_state_page DEFINITION
         !it_postdata    TYPE zif_ark_html_viewer=>ty_post_data
       RETURNING VALUE(rv_value) TYPE string .
 
-    "! sapevent POST 体的简易 URL 解码（+ -> 空格、%XX -> UTF-8 字符），
-    "! 中文筛选输入依赖此转换
-    METHODS url_decode
-      IMPORTING
-        !iv_encoded     TYPE string
-      RETURNING VALUE(rv_decoded) TYPE string .
-
     METHODS render_toolbar
       IMPORTING
         !it_items TYPE zif_ark_gui_state=>tt_toolbar_item
@@ -607,46 +600,10 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       FIND REGEX |(^\|&)({ iv_name })=(.*)$| IN lv_line
         SUBMATCHES DATA(lv_val).
       IF sy-subrc = 0.
-        rv_value = url_decode( lv_val ).
+        rv_value = zcl_ark_convert=>url_decode( lv_val ).
         RETURN.
       ENDIF.
     ENDLOOP.
-  ENDMETHOD.
-
-  METHOD url_decode.
-    rv_decoded = iv_encoded.
-    rv_decoded = replace( val = rv_decoded sub = `+` with = ` ` occ = 0 ).
-
-    DATA lv_x TYPE xstring.
-    DATA lv_pos TYPE i VALUE 0.
-    DATA lv_len TYPE i.
-    lv_len = strlen( rv_decoded ).
-
-    WHILE lv_pos < lv_len.
-      IF substring( val = rv_decoded off = lv_pos len = 1 ) = '%'
-         AND lv_pos + 2 < lv_len.
-        TRY.
-            DATA(lv_hex) = CONV xstring(
-              |X{ to_upper( substring( val = rv_decoded off = lv_pos + 1 len = 2 ) ) }| ).
-            CONCATENATE lv_x lv_hex IN BYTE MODE INTO lv_x.
-            lv_pos = lv_pos + 3.
-            CONTINUE.
-          CATCH cx_root.
-            " 非法 % 序列按普通字符处理
-        ENDTRY.
-      ENDIF.
-      CONCATENATE lv_x cl_abap_codepage=>convert_to( substring( val = rv_decoded off = lv_pos len = 1 ) )
-        IN BYTE MODE INTO lv_x.
-      lv_pos = lv_pos + 1.
-    ENDWHILE.
-
-    IF lv_x IS NOT INITIAL.
-      TRY.
-          rv_decoded = cl_abap_codepage=>convert_from( lv_x ).
-        CATCH cx_root.
-          " 解码失败保留原样
-      ENDTRY.
-    ENDIF.
   ENDMETHOD.
 
   METHOD render_cell.

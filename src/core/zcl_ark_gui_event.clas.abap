@@ -24,7 +24,10 @@ CLASS zcl_ark_gui_event IMPLEMENTATION.
         DATA lv_name TYPE c LENGTH 30.
         DATA lv_value TYPE c LENGTH 250.
         SPLIT lv_part AT '=' INTO lv_name lv_value.
-        APPEND VALUE #( name = lv_name value = lv_value ) TO mt_query.
+        " 值统一 URL 解码：query 值可能来自前端 encodeURIComponent
+        " （图表点击回传的中文类目名等）；对纯 ASCII 是恒等变换。
+        " 截断发生在解码前的 250 字符（percent 编码的中文约 9 字符/字）
+        APPEND VALUE #( name = lv_name value = zcl_ark_convert=>url_decode( lv_value ) ) TO mt_query.
       ENDLOOP.
     ENDIF.
   ENDMETHOD.

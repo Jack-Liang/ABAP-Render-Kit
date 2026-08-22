@@ -534,7 +534,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
       CLEAR rt_rows.
       LOOP AT lt_sort INTO ls_s.
-        APPEND ls_s-cells TO rt_rows.
+        APPEND VALUE #( cells = ls_s-cells ) TO rt_rows.
       ENDLOOP.
     ENDIF.
   ENDMETHOD.

@@ -24,8 +24,10 @@ CLASS zcl_ark_json IMPLEMENTATION.
 
     rv_json = zcl_ark_convert=>xstring_to_string_utf8( lo_writer->get_output( ) ).
 
-    " id 转换会把根节点包成 {"ROOT":...} 外层对象，剥掉后得到纯值（数组/标量/结构）
-    FIND FIRST OCCURRENCE OF REGEX `^\{"[A-Za-z_]+":(.*)\}$`
+    " id 转换会把根节点包成 {"ROOT":...} 外层对象，剥掉后得到纯值（数组/标量/结构）。
+    " 组件名可含数字（如 address1），字符类须覆盖完整 ABAP 命名规则，
+    " 否则剥离失败，option 顶层多一层 ROOT 导致图表静默渲染空白
+    FIND FIRST OCCURRENCE OF REGEX `^\{"[A-Za-z_][A-Za-z0-9_]*":(.*)\}$`
       IN rv_json SUBMATCHES DATA(lv_inner).
     IF sy-subrc = 0.
       rv_json = lv_inner.

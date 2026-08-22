@@ -42,6 +42,17 @@ CLASS zcl_ark_gui DEFINITION
     DATA mt_event_handlers TYPE STANDARD TABLE OF REF TO zif_ark_gui_event_handler .
     DATA mo_container TYPE REF TO cl_gui_container .
 
+    " 具名资产 -> load_data 分配的 URL。实例级缓存：
+    " URL 绑定在当前 HTML 控件上，控件随实例销毁重建后缓存一并失效，
+    " 不会残留指向旧控件的 URL
+    TYPES:
+      BEGIN OF ty_asset_cache,
+        url          TYPE string,
+        assigned_url TYPE string,
+      END OF ty_asset_cache,
+      tt_asset_cache TYPE HASHED TABLE OF ty_asset_cache WITH UNIQUE KEY url .
+    DATA mt_asset_cache TYPE tt_asset_cache .
+
     METHODS render_page
       RETURNING VALUE(rv_html) TYPE string
       RAISING zcx_ark_exception .
@@ -52,11 +63,6 @@ CLASS zcl_ark_gui DEFINITION
 
     METHODS call_page_render
       RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html
-      RAISING zcx_ark_exception .
-
-    METHODS get_asset_mime
-      IMPORTING !iv_mime_name TYPE wwwdatatab-objid
-      RETURNING VALUE(rv_xdata) TYPE xstring
       RAISING zcx_ark_exception .
 ENDCLASS.
 
@@ -268,6 +274,12 @@ CLASS zcl_ark_gui IMPLEMENTATION.
 
     IF iv_url IS NOT INITIAL.
       lv_url = iv_url.
+
+      READ TABLE mt_asset_cache INTO DATA(ls_cached) WITH KEY url = lv_url.
+      IF sy-subrc = 0.
+        rv_url = ls_cached-assigned_url.
+        RETURN.
+      ENDIF.
     ELSE.
       lv_url = |ark_asset_{ cl_abap_context_info=>get_system_time( ) }_{ sy-index }.txt|.
     ENDIF.
@@ -320,6 +332,12 @@ CLASS zcl_ark_gui IMPLEMENTATION.
 
       rv_url = lv_assigned_url.
     ENDIF.
+
+    " 具名资产登记进实例缓存，后续请求直接复用，不再重复上传
+    IF iv_url IS NOT INITIAL AND rv_url IS NOT INITIAL.
+      INSERT VALUE ty_asset_cache( url = lv_url assigned_url = rv_url )
+        INTO TABLE mt_asset_cache.
+    ENDIF.
   ENDMETHOD.
 
   METHOD zif_ark_gui_services~get_current_page_name.
@@ -340,29 +358,6 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     IF sy-subrc <> 0.
       APPEND ii_event_handler TO mt_event_handlers.
     ENDIF.
-  ENDMETHOD.
-
-  METHOD get_asset_mime.
-    DATA lt_mime TYPE STANDARD TABLE OF w3mime.
-    DATA ls_mime TYPE w3mime.
-
-    CALL FUNCTION 'WWWDATA_IMPORT'
-      EXPORTING
-        key               = VALUE wwwdatatab( relid = 'MI' objid = iv_mime_name )
-      TABLES
-        mime              = lt_mime
-      EXCEPTIONS
-        wrong_objecttype  = 1
-        import_error      = 2
-        OTHERS            = 3.
-
-    IF sy-subrc <> 0.
-      zcx_ark_exception=>raise( |MIME object { iv_mime_name } not found| ).
-    ENDIF.
-
-    LOOP AT lt_mime INTO ls_mime.
-      rv_xdata = rv_xdata && ls_mime-line.
-    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.

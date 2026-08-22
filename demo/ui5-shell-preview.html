@@ -57,15 +57,6 @@ html, body { margin: 0; background: #f0f0f0;
 <div id="ark5_testlog" style="font:12px monospace;color:#333;padding:0 32px 24px;white-space:pre-wrap"></div>
 <!-- ===== ARK5:SHELL_BODY END ===== -->
 
-<!-- UI5 bootstrap（async：sap.ui 同步就绪，库文件异步）+ ECharts 同步标签 -->
-<script id="sap-ui-bootstrap"
-        src="https://sdk.openui5.org/resources/sap-ui-core.js"
-        data-sap-ui-theme="sap_horizon"
-        data-sap-ui-libs="sap.m,sap.f"
-        data-sap-ui-compatVersion="edge"
-        data-sap-ui-async="true"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
-
 <script>
 /* ===== ARK5:SHELL_JS START ===== */
 (function () {
@@ -81,7 +72,7 @@ html, body { margin: 0; background: #f0f0f0;
     if (el) { el.textContent += msg + "\n"; }
   }
 
-  var ARK5 = { state: null, charts: [], ui5Ready: false, mods: null, ctl: {} };
+  var ARK5 = { state: null, charts: [], ui5Ready: false, ui5Tried: false, mods: null, ctl: {} };
 
   // zcl_ark_json 键名大写、abap_bool 序列化为 "X"/""（flag 兼容 true/1）
   function flag(v) { return v === true || v === "X" || v === 1 || v === "true"; }
@@ -499,31 +490,63 @@ html, body { margin: 0; background: #f0f0f0;
     buildUi5();
   }
 
-  // ---- 启动 ----
+  // ---- 启动：原生分区立即渲染；UI5/ECharts 标签在文档末尾，
+  // 就绪靠轮询 —— CDN 不可达只降级（表格/工具栏/图表缺席 + errlog），
+  // 不阻塞解析、不白屏 ----
+  function startUi5() {
+    if (ARK5.ui5Tried) { return; }
+    ARK5.ui5Tried = true;
+    sap.ui.require([
+      "sap/f/ShellBar", "sap/m/Toolbar", "sap/m/ToolbarSpacer", "sap/m/Button",
+      "sap/m/Text", "sap/m/Table", "sap/m/Column", "sap/m/Label",
+      "sap/m/ColumnListItem", "sap/m/ObjectStatus", "sap/m/Link",
+      "sap/m/MessageToast"
+    ], function (ShellBar, Toolbar, ToolbarSpacer, Button, Text, Table,
+                 Column, Label, ColumnListItem, ObjectStatus, Link, MessageToast) {
+      ARK5.mods = { ShellBar: ShellBar, Toolbar: Toolbar, ToolbarSpacer: ToolbarSpacer,
+        Button: Button, Text: Text, Table: Table, Column: Column, Label: Label,
+        ColumnListItem: ColumnListItem, ObjectStatus: ObjectStatus, Link: Link,
+        MessageToast: MessageToast };
+      ARK5.ui5Ready = true;
+      buildUi5();
+    }, function (e) {
+      errlog("sap.ui.require 失败: " + (e && e.message || e));
+    });
+  }
+  function pollUi5() {
+    if (window.sap && sap.ui && sap.ui.require) { startUi5(); return; }
+    var tries = 0;
+    var t = setInterval(function () {
+      tries += 1;
+      if (window.sap && sap.ui && sap.ui.require) {
+        clearInterval(t);
+        startUi5();
+      } else if (tries >= 300) {
+        clearInterval(t);
+        errlog("UI5 运行时 60 秒未就绪（CDN 不可达？）— 仅原生分区渲染，表格/工具栏缺席");
+      }
+    }, 200);
+  }
+  function watchEcharts() {
+    if (window.echarts) { renderCharts(); return; }
+    var tries = 0;
+    var t = setInterval(function () {
+      tries += 1;
+      if (window.echarts) { clearInterval(t); renderCharts(); }
+      else if (tries >= 300) {
+        clearInterval(t);
+        errlog("ECharts 60 秒未加载（CDN/MIME 不可达？）— 图表分区缺席");
+      }
+    }, 200);
+  }
+
   window.__arkShellBoot = function (initialState) {
     ARK5.state = initialState || {};
     renderAll();
-    if (window.sap && sap.ui && sap.ui.require) {
-      sap.ui.require([
-        "sap/f/ShellBar", "sap/m/Toolbar", "sap/m/ToolbarSpacer", "sap/m/Button",
-        "sap/m/Text", "sap/m/Table", "sap/m/Column", "sap/m/Label",
-        "sap/m/ColumnListItem", "sap/m/ObjectStatus", "sap/m/Link",
-        "sap/m/MessageToast"
-      ], function (ShellBar, Toolbar, ToolbarSpacer, Button, Text, Table,
-                   Column, Label, ColumnListItem, ObjectStatus, Link, MessageToast) {
-        ARK5.mods = { ShellBar: ShellBar, Toolbar: Toolbar, ToolbarSpacer: ToolbarSpacer,
-          Button: Button, Text: Text, Table: Table, Column: Column, Label: Label,
-          ColumnListItem: ColumnListItem, ObjectStatus: ObjectStatus, Link: Link,
-          MessageToast: MessageToast };
-        ARK5.ui5Ready = true;
-        buildUi5();
-      }, function (e) {
-        errlog("sap.ui.require 失败: " + (e && e.message || e));
-      });
-    } else {
-      errlog("UI5 bootstrap 不可用：仅原生分区渲染（表格/工具栏缺席）");
-    }
+    watchEcharts();
+    pollUi5();
   };
+  window.ark.isUi5Ready = function () { return !!ARK5.ui5Ready; };
 })();
 /* ===== ARK5:SHELL_JS END ===== */
 </script>
@@ -587,6 +610,16 @@ window.__arkShellBoot({
   ]
 });
 </script>
+
+<!-- CDN 标签置于文档末尾：解析不被阻塞（CDN 不可达时原生分区已在屏，
+     UI5/ECharts 缺席经轮询超时降级 + errlog 提示，不再白屏） -->
+<script id="sap-ui-bootstrap"
+        src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m,sap.f"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
 
 <script>
 /* ===== 预览 mock：拦截 ark.* 模拟 ABAP 桥往返（不进 ABAP 类）===== */
@@ -684,7 +717,19 @@ window.__arkShellBoot({
     } catch (e) { }
   }
 
-  setTimeout(function () {
+  // CDN 标签在文档末尾：自检先等 UI5 就绪（最多 15 秒），再按原链路执行
+  var ui5Waits = 0;
+  function start() {
+    if (window.ark.isUi5Ready && window.ark.isUi5Ready()) { setTimeout(run, 400); return; }
+    ui5Waits += 1;
+    if (ui5Waits > 75) {
+      tput("WARN | 自检前置 | UI5 15 秒未就绪（CDN 不可达？），按现状继续");
+      setTimeout(run, 0);
+      return;
+    }
+    setTimeout(start, 200);
+  }
+  function run() {
     // ① postMessage 桥路径：模拟 ABAP 响应文档回投（与真实宿主同通道）
     var p1 = window.ark.snapshot();
     p1.SUBTITLE = "SELFTEST-POSTMESSAGE-OK";
@@ -740,7 +785,8 @@ window.__arkShellBoot({
         }
       }, 900);
     }, 300);
-  }, 3500);
+  }
+  start();
 })();
 </script>
 </body>

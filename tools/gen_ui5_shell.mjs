@@ -47,8 +47,25 @@ function toAbapLiteral(block, indent) {
   }).join("\n");
 }
 
+// JS 块必须逐行 APPEND + 真实换行拼接：ABAP 的 && 连接不产生换行，
+// 单行化会让 JS 行注释 // 吞掉其后全部代码（白屏事故已踩）
+function toAbapLines(block) {
+  const lines = block
+    .split("\n")
+    .map((l) => l.replace(/\r$/, ""))
+    .filter((l) => l.trim().length > 0);
+  for (const l of lines) {
+    if (l.indexOf("`") >= 0) {
+      throw new Error(`backtick in shell block (ABAP literal delimiter): ${l}`);
+    }
+  }
+  return ["<script>", ...lines, "</script>"]
+    .map((l) => `      APPEND \`${l}\` TO lt_js.`)
+    .join("\n");
+}
+
 const cssLit = toAbapLiteral(css, "      ");
-const jsLit = toAbapLiteral(js, "      ");
+const jsLit = toAbapLines(js);
 const bodyLit = toAbapLiteral(body, "      ");
 
 const clas = `CLASS zcl_ark_ui5_shell DEFINITION
@@ -81,7 +98,8 @@ ENDCLASS.
 CLASS zcl_ark_ui5_shell IMPLEMENTATION.
 
   METHOD render.
-    " 文档骨架：CSS → 挂载点 → UI5/ECharts 标签 → 壳 JS → 初始 state 启动。
+    " 文档骨架：CSS → 挂载点 → 壳 JS + 初始 state → CDN 标签（末尾，
+    " 解析不被阻塞：CDN 不可达时原生分区已在屏，UI5/ECharts 轮询降级）。
     " 键名大写/abap_bool 为 "X"/""（zcl_ark_json 的 CALL TRANSFORMATION id
     " 序列化形态），壳 JS 的 flag() 兼容处理
     DATA ro_html TYPE REF TO zcl_ark_html.
@@ -95,7 +113,23 @@ ${cssLit}
 ${bodyLit}
       ).
 
-    " ===== UI5 bootstrap（async：core 同步就绪，库文件异步加载）=====
+    " ===== 壳 JS（桥 + 渲染器，与 demo 预览逐字一致）=====
+    " 逐行 APPEND 后以真实换行拼接：&& 连接不产生换行，单行化会让
+    " JS 行注释 // 吞掉其后全部代码（宿主白屏事故已踩）
+    DATA lt_js TYPE string_table.
+    DATA lv_js TYPE string.
+${jsLit}
+    CONCATENATE LINES OF lt_js INTO lv_js
+      SEPARATED BY cl_abap_char_utilities=>newline.
+    ro_html->add( lv_js ).
+
+    " ===== 初始 state 启动（值含 </ 会截断脚本块，按 JSON 转义规则替换）=====
+    DATA(lv_json) = zcl_ark_json=>to_json( is_state ).
+    lv_json = replace( val = lv_json sub = \`</\` with = \`<\\/\` occ = 0 ).
+    ro_html->add(
+      \`<script>window.__arkShellBoot( \` && lv_json && \` );</script>\` ).
+
+    " ===== UI5 bootstrap（文档末尾；async=true，库文件异步加载）=====
     ro_html->add(
       \`<script id="sap-ui-bootstrap"\` &&
       \`        src="\` && c_ui5_cdn && \`"\` &&
@@ -142,19 +176,6 @@ ${bodyLit}
         ro_html->add( lv_map_html ).
       ENDIF.
     ENDLOOP.
-
-    " ===== 壳 JS（桥 + 渲染器，与 demo 预览逐字一致）=====
-    ro_html->add(
-      \`<script>\` &&
-${jsLit} &&
-      \`</script>\`
-      ).
-
-    " ===== 初始 state 启动（值含 </ 会截断脚本块，按 JSON 转义规则替换）=====
-    DATA(lv_json) = zcl_ark_json=>to_json( is_state ).
-    lv_json = replace( val = lv_json sub = \`</\` with = \`<\\/\` occ = 0 ).
-    ro_html->add(
-      \`<script>window.__arkShellBoot( \` && lv_json && \` );</script>\` ).
 
     ri_html = ro_html.
   ENDMETHOD.

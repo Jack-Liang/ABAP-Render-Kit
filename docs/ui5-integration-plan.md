@@ -90,6 +90,8 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 - 模块未 require 就直接访问会静默 undefined（如 `sap.m.BusyIndicator.show is not a function`）：用到哪个模块就 require 哪个，或访问前守卫。
 
 ### 6.3 工具链注意
+- **ABAP `&&` 拼接不产生换行**（宿主白屏事故）：多行 JS 字面量 `&&` 连接后是单行，JS 行注释 `//` 会吞掉其后全部代码（`__arkShellBoot` 未定义 → 空挂载点白屏）。JS 块必须逐行 `APPEND` 到 `string_table` 再 `CONCATENATE LINES OF ... SEPARATED BY cl_abap_char_utilities=>newline`（`tools/gen_ui5_shell.mjs` 已内置）；模拟产物组装时也必须 `join('\n')`，逐行文本 diff 察觉不到换行丢失；
+- **同步 `<script src=CDN>` 标签阻塞解析**：CDN 不可达时连静态 HTML 都不显示（整页白到网络超时）。壳的 CDN 标签放文档末尾 + 就绪轮询（UI5 60s / ECharts 60s，超时降级 + errlog），原生分区立即渲染；
 - **本 agent 的 python heredoc 传输会吃掉一层 `\\`**：`\\n` 进文件变真实换行（JS 断裂）、正则 `\\|` 变 `\|` 有歧义——写转义一律用 `chr(92)` 显式构造或用 Write 工具直写后 node --check 验证；
 - JS 修改后必做 `node --check`（提取 `<script>` 块检查）；
 - 调试手法：页面内 DOM 日志（`window.onerror` → `#errlog` div）+ probe 逐模块探测页（demo/ui5-probe*.html 模式），浏览器控制台在自动化里看不到。

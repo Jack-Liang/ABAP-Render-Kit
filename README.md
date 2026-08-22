@@ -26,95 +26,37 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 
 ## Quick Start
 
-Create **one** report (SE38/ADT, e.g. `ZMY_ARK_APP`), paste this, activate, run. Two pages, navigation, events, a table, and an ECharts chart — the full framework loop in a single file:
+Create **one** report (SE38/ADT, e.g. `ZMY_ARK_APP`), paste this, activate, run:
 
 ```abap
 REPORT zmy_ark_app.
 
-" --- Definitions first: the pages reference each other later ---
-CLASS lcl_detail_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
-  PUBLIC SECTION.
-    METHODS on_event REDEFINITION .
+CLASS lcl_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
 ENDCLASS.
 
-CLASS lcl_home_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
-  PUBLIC SECTION.
-    METHODS on_event REDEFINITION .
-  PROTECTED SECTION.
-    METHODS build_html REDEFINITION .
-ENDCLASS.
-
-" --- Page 1: template header + ECharts chart + link to page 2 ---
-CLASS lcl_home_page IMPLEMENTATION.
+CLASS lcl_page IMPLEMENTATION.
   METHOD build_html.
-    mo_html->add(
-      zcl_ark_template=>create( `<h1>{{TITLE}}</h1><p>{{SUB}}</p>`
-        )->set( iv_name = 'TITLE' iv_value = 'Hello ARK!'
-        )->set( iv_name = 'SUB'
-                iv_value = 'Pages, events, tables, charts.'
-        )->render( ) ).
+    mo_html->add( |<h1>Hello ARK!</h1>| ).
 
-    " Declarative chart, mixed into the page flow
+    " Sized, colorful chart — a plain chunk in the page flow
     DATA(lo_chart) = NEW zcl_ark_echarts(
-      iv_div_id = 'sales' iv_height = 320 ).
+      iv_div_id = 'sales'
+      iv_width  = '640px'
+      iv_height = 320 ).
     lo_chart->set_title( 'Weekly Sales' ).
     lo_chart->set_xaxis_categories( VALUE string_table(
       ( `Mon` ) ( `Tue` ) ( `Wed` ) ( `Thu` ) ( `Fri` ) ) ).
     lo_chart->add_series(
-      iv_name = 'Revenue'
-      iv_type = 'bar'
-      it_data = VALUE zcl_ark_echarts=>ty_values(
+      iv_name          = 'Revenue'
+      iv_type          = 'bar'
+      iv_color_by_data = abap_true
+      it_data          = VALUE zcl_ark_echarts=>ty_values(
         ( 120 ) ( 200 ) ( 150 ) ( 80 ) ( 270 ) ) ).
     mo_html->add( lo_chart->render( ) ).
 
-    mo_html->add_a( iv_txt = 'Show the data table'
-                    iv_act = 'nav_detail' ).
     ri_html = mo_html.
-  ENDMETHOD.
-
-  METHOD on_event.
-    CASE ii_event->mv_action.
-      WHEN 'nav_detail'.
-        rs_result-page  = NEW lcl_detail_page( ).  " navigate to page 2
-        rs_result-state = 1.
-      WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
-    ENDCASE.
-  ENDMETHOD.
-ENDCLASS.
-
-" --- Page 2: toolbar + table + back to page 1 ---
-CLASS lcl_detail_page IMPLEMENTATION.
-  METHOD build_html.
-    DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
-    lo_toolbar->add_button( iv_label = 'Back'
-                            iv_action = 'nav_home' ).
-    mo_html->add( lo_toolbar->zif_ark_gui_renderable~render( ) ).
-
-    DATA(lo_table) = zcl_ark_html_table=>create( ).
-    lo_table->add_column( iv_header = 'Day' ).
-    lo_table->add_column( iv_header = 'Revenue' ).
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = 'Mon' ).
-    lo_table->add_cell( iv_value = '120' ).
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = 'Tue' ).
-    lo_table->add_cell( iv_value = '200' ).
-    mo_html->add( lo_table->zif_ark_gui_renderable~render( ) ).
-
-    ri_html = mo_html.
-  ENDMETHOD.
-
-  METHOD on_event.
-    CASE ii_event->mv_action.
-      WHEN 'nav_home'.
-        rs_result-page  = NEW lcl_home_page( ).
-        rs_result-state = 1.
-      WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
-    ENDCASE.
   ENDMETHOD.
 ENDCLASS.
 
@@ -129,7 +71,7 @@ START-OF-SELECTION.
     CATCH zcx_ark_exception.
   ENDTRY.
   TRY.
-      zcl_ark_gui=>create( )->set_page( NEW lcl_home_page( ) ).
+      zcl_ark_gui=>create( )->set_page( NEW lcl_page( ) ).
       CALL SELECTION-SCREEN 1001.
     CATCH zcx_ark_exception INTO DATA(lx_error).
       MESSAGE lx_error TYPE 'E'.
@@ -142,6 +84,8 @@ AT SELECTION-SCREEN ON EXIT-COMMAND.
     LEAVE PROGRAM.
   ENDIF.
 ```
+
+For interactivity, redefine `on_event` (sapevent round-trip) and return a new page in the result to navigate — every demo program below shows both patterns.
 
 **Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, and chart examples, and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
 
@@ -188,7 +132,8 @@ Notes:
 
 - ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `zcl_ark_echarts=>use_bundled_library( )` loads it once per session and serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
 - To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
-- Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required. `add_series` accepts any internal table with a numeric row type — `zcl_ark_echarts=>ty_values` is the integer convenience type, declare your own `p`/`f` table for decimal values such as amounts.
+- Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required. `add_series` accepts any internal table with a numeric row type — `zcl_ark_echarts=>ty_values` is the integer convenience type, declare your own `p`/`f` table for decimal values such as amounts. `iv_color_by_data = abap_true` colors each datum from the palette (one color per bar/pie slice).
+- The constructor takes `iv_height` (px) and optional `iv_width` (e.g. `'640px'`, `'50%'`; default full width, centered when narrower).
 - If the library fails to load, the chart container shows a visible error banner instead of failing silently.
 - See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content), report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme), and report `ZARK_SFLIGHT_DEMO` (database-driven dashboard on the classic SFLIGHT/SCARR flight model) for usage.
 

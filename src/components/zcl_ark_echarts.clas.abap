@@ -24,6 +24,7 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING
         !iv_div_id      TYPE string OPTIONAL           " 容器 div id，缺省自动生成
         !iv_height      TYPE i DEFAULT 400             " 图表高度（px）
+        !iv_width       TYPE string OPTIONAL           " 图表宽度（如 '640px'/'50%'，缺省 100%）
         !iv_theme       TYPE string OPTIONAL           " ECharts 主题，如 'dark'
         !iv_include_lib TYPE abap_bool DEFAULT abap_true .  " 同页第 2 个起传 abap_false
 
@@ -44,6 +45,7 @@ CLASS zcl_ark_echarts DEFINITION
         !iv_area                TYPE abap_bool DEFAULT abap_false
         !iv_smooth              TYPE abap_bool DEFAULT abap_false
         !iv_label               TYPE abap_bool DEFAULT abap_false
+        !iv_color_by_data       TYPE abap_bool DEFAULT abap_false
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
 
     METHODS set_toolbox
@@ -82,13 +84,14 @@ CLASS zcl_ark_echarts DEFINITION
   PRIVATE SECTION.
     TYPES:
       BEGIN OF ty_series,
-        name      TYPE string,
-        type      TYPE string,
-        stack     TYPE string,
-        area      TYPE abap_bool,
-        smooth    TYPE abap_bool,
-        label     TYPE abap_bool,
-        data_json TYPE string,
+        name          TYPE string,
+        type          TYPE string,
+        stack         TYPE string,
+        area          TYPE abap_bool,
+        smooth        TYPE abap_bool,
+        label         TYPE abap_bool,
+        color_by_data TYPE abap_bool,
+        data_json     TYPE string,
       END OF ty_series .
 
     CLASS-DATA gv_instance_counter TYPE i .
@@ -97,6 +100,7 @@ CLASS zcl_ark_echarts DEFINITION
 
     DATA mv_div_id TYPE string .
     DATA mv_height TYPE i .
+    DATA mv_width TYPE string .
     DATA mv_theme TYPE string .
     DATA mv_include_lib TYPE abap_bool .
     DATA mv_title TYPE string .
@@ -141,6 +145,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ENDIF.
 
     mv_height      = iv_height.
+    mv_width       = iv_width.
     mv_theme       = iv_theme.
     mv_include_lib = iv_include_lib.
   ENDMETHOD.
@@ -158,13 +163,14 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   METHOD add_series.
     DATA ls_series TYPE ty_series.
 
-    ls_series-name      = iv_name.
-    ls_series-type      = iv_type.
-    ls_series-stack     = iv_stack.
-    ls_series-area      = iv_area.
-    ls_series-smooth    = iv_smooth.
-    ls_series-label     = iv_label.
-    ls_series-data_json = zcl_ark_json=>to_json( it_data ).
+    ls_series-name          = iv_name.
+    ls_series-type          = iv_type.
+    ls_series-stack         = iv_stack.
+    ls_series-area          = iv_area.
+    ls_series-smooth        = iv_smooth.
+    ls_series-label         = iv_label.
+    ls_series-color_by_data = iv_color_by_data.
+    ls_series-data_json     = zcl_ark_json=>to_json( it_data ).
 
     APPEND ls_series TO mt_series.
     ro_self = me.
@@ -263,10 +269,15 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       lo_html->add( |<script src="{ lv_lib_url }"></script>| ).
     ENDIF.
 
-    " 图表容器
+    " 图表容器。指定宽度时水平居中，缺省铺满可用宽度
+    DATA(lv_width) = mv_width.
+    IF lv_width IS INITIAL.
+      lv_width = '100%'.
+    ENDIF.
+
     lo_html->div(
       iv_id    = mv_div_id
-      iv_style = |width: 100%; height: { mv_height }px;| ).
+      iv_style = |width: { lv_width }; height: { mv_height }px; margin: 0 auto;| ).
 
     " 初始化脚本（IIFE 包裹，不污染全局作用域）
     lo_html->add_js( build_init_js( ) ).
@@ -359,6 +370,10 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       ENDIF.
       IF <ls_series>-label = abap_true.
         lv_options = lv_options && |, label: \{ show: true, position: 'top' \}|.
+      ENDIF.
+      IF <ls_series>-color_by_data = abap_true.
+        " 逐数据点从调色盘取色（bar/pie 每根柱/每块不同颜色）
+        lv_options = lv_options && `, colorBy: 'data'`.
       ENDIF.
 
       IF lv_series_json IS NOT INITIAL.

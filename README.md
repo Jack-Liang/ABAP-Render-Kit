@@ -133,7 +133,7 @@ Notes:
 
 - ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `zcl_ark_echarts=>use_bundled_library( )` loads it once per session and serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
 - To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
-- Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required.
+- Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required. `add_series` accepts any internal table with a numeric row type — `zcl_ark_echarts=>ty_values` is the integer convenience type, declare your own `p`/`f` table for decimal values such as amounts.
 - If the library fails to load, the chart container shows a visible error banner instead of failing silently.
 - See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content), report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme), and report `ZARK_SFLIGHT_DEMO` (database-driven dashboard on the classic SFLIGHT/SCARR flight model) for usage.
 

@@ -4,10 +4,11 @@ CLASS zcl_ark_echarts DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    " 单条系列的数据点类型。p(16,6)：兼容金额等小数，整数字面量可直接使用
-    " （f 行类型不接受整数字面量，VALUE 构造器会报类型不兼容）
-    TYPES ty_value TYPE p LENGTH 16 DECIMALS 6 .
-    TYPES ty_values TYPE STANDARD TABLE OF ty_value WITH DEFAULT KEY .
+    " 单条系列的数据点便捷类型（整型，支持 ( 120 ) 字面量写法）。
+    " 带小数的数据（金额等）请将 add_series 的 it_data 传自定义数值内表
+    " （p/f/decfloat 行类型均可）；ABAP 构造器表达式的字面量转换规则
+    " 只允许整数字面量赋给 i 行类型，故本类型保持 i
+    TYPES ty_values TYPE STANDARD TABLE OF i WITH DEFAULT KEY .
 
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
     CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .
@@ -37,7 +38,7 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS add_series
       IMPORTING
         !iv_name                TYPE string
-        !it_data                TYPE ty_values
+        !it_data                TYPE ANY TABLE   " 任意数值行类型内表（i/p/f/decfloat），小数直接支持
         !iv_type                TYPE string DEFAULT 'line'
         !iv_stack               TYPE string OPTIONAL
         !iv_area                TYPE abap_bool DEFAULT abap_false

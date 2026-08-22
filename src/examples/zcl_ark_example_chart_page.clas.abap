@@ -30,8 +30,14 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
     " 图表组件与其他 HTML 内容自由混排：工具栏、标题、图表、表格、第二个图表
     mo_html->add( build_toolbar( ) ).
 
-    mo_html->add( |<h1>ECharts Component Example</h1>| ).
-    mo_html->add( |<p>zcl_ark_echarts 只是页面内容流中的一段，与文字、表格等任意混排。</p>| ).
+    " 页面头部用模板 + 占位符渲染（生产环境可改用 zcl_ark_template=>from_mime
+    " 从 SMW0 加载模板文件，ABAP 代码里只留数据）
+    mo_html->add(
+      zcl_ark_template=>create(
+        `<h1>{{TITLE}}</h1><p>{{DESC}}</p>`
+      )->set( iv_name = 'TITLE' iv_value = 'ECharts Component Example'
+       )->set( iv_name = 'DESC'  iv_value = 'zcl_ark_echarts 只是页面内容流中的一段，与文字、表格等任意混排。'
+       )->render( ) ).
 
     " 图表 1：堆叠面积图（第一个组件负责加载 ECharts 库）
     mo_html->add( build_area_chart( ) ).

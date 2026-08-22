@@ -248,7 +248,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     DATA lv_sep TYPE string.
 
     LOOP AT it_data INTO DATA(lv_val).
-      rv_json = rv_json && lv_sep && lv_val.
+      rv_json = rv_json && lv_sep && |{ lv_val }|.
       lv_sep = `, `.
     ENDLOOP.
 

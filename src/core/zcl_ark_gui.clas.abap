@@ -23,6 +23,8 @@ CLASS zcl_ark_gui DEFINITION
     METHODS set_page
       IMPORTING !io_page TYPE REF TO zif_ark_gui_renderable
       RAISING zcx_ark_exception .
+    METHODS set_home_page
+      IMPORTING !io_page TYPE REF TO zif_ark_gui_renderable .
     METHODS render .
     METHODS set_focus RAISING zcx_ark_exception .
     METHODS free .
@@ -38,6 +40,7 @@ CLASS zcl_ark_gui DEFINITION
     DATA mo_html_viewer TYPE REF TO zif_ark_html_viewer .
     DATA mo_current_page TYPE REF TO zif_ark_gui_renderable .
     DATA mv_current_page_name TYPE string .
+    DATA mo_home_page TYPE REF TO zif_ark_gui_renderable .
     DATA mo_parts TYPE REF TO zcl_ark_html_parts .
     DATA mt_event_handlers TYPE STANDARD TABLE OF REF TO zif_ark_gui_event_handler .
     DATA mo_container TYPE REF TO cl_gui_container .
@@ -102,6 +105,13 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD go_home.
+    " 有注册主页则回到主页对象；无注册时保持旧语义（清空页面）。
+    " 旧实现无条件 CLEAR 后渲染，历史上从子页面"返回"会渲染出空骨架白屏
+    IF mo_home_page IS NOT INITIAL.
+      set_page( mo_home_page ).
+      RETURN.
+    ENDIF.
+
     CLEAR mo_current_page.
     CLEAR mv_current_page_name.
     render( ).
@@ -125,6 +135,12 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     ENDIF.
 
     render( ).
+  ENDMETHOD.
+
+  METHOD set_home_page.
+    " 注册主页：go_home / 退出键"返回主页"时重新渲染该对象。
+    " 不触发渲染，通常与 set_page 一起在启动时调用
+    mo_home_page = io_page.
   ENDMETHOD.
 
   METHOD render.
@@ -169,11 +185,20 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   METHOD render_page.
     DATA lv_content TYPE string.
 
+    " 防线：页面缺失时优先回退到注册的主页，仍无页面则渲染可见提示，
+    " 避免无声的空白页（历史上 go_home 清空页面即渲染空骨架）
+    IF mo_current_page IS INITIAL AND mo_home_page IS NOT INITIAL.
+      mo_current_page = mo_home_page.
+    ENDIF.
+
     IF mo_current_page IS NOT INITIAL.
       DATA(li_html) = call_page_render( ).
       IF li_html IS NOT INITIAL.
         lv_content = li_html->render( ).
       ENDIF.
+    ELSE.
+      lv_content = |<p style="color: #b91c1c;">ARK: no page set | &&
+                   |(render before set_page / page was cleared)</p>|.
     ENDIF.
 
     rv_html = build_html_document( lv_content ).

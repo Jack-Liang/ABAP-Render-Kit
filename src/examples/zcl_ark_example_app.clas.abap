@@ -26,6 +26,8 @@ CLASS zcl_ark_example_app IMPLEMENTATION.
 
     DATA(lo_hello_page) = NEW zcl_ark_example_hello_page( ).
     lo_gui->set_page( lo_hello_page ).
+    " 注册主页：子页面按 Esc/返回时 go_home 能重新渲染主页而非空白
+    lo_gui->set_home_page( lo_hello_page ).
   ENDMETHOD.
 
 ENDCLASS.

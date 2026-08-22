@@ -15,6 +15,9 @@ CLASS zcl_ark_example_hello_page DEFINITION
   PRIVATE SECTION.
     METHODS build_toolbar RETURNING VALUE(ri_toolbar) TYPE REF TO zif_ark_html .
     METHODS build_content RETURNING VALUE(ri_content) TYPE REF TO zif_ark_html .
+    METHODS run_demo_report
+      IMPORTING !iv_prog TYPE sy-repid
+      RAISING   zcx_ark_exception .
 ENDCLASS.
 
 CLASS zcl_ark_example_hello_page IMPLEMENTATION.
@@ -49,6 +52,17 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     lo_toolbar->add_button(
       iv_label  = 'Chart Example'
       iv_action = 'nav_chart' ).
+
+    lo_toolbar->add_separator( ).
+
+    " 独立 demo 报表：SUBMIT 跳转执行，退出后返回本页
+    lo_toolbar->add_button(
+      iv_label  = 'ECharts Demo'
+      iv_action = 'run_echarts_demo' ).
+
+    lo_toolbar->add_button(
+      iv_label  = 'SFlight Demo'
+      iv_action = 'run_sflight_demo' ).
 
     lo_toolbar->add_separator( ).
 
@@ -88,9 +102,32 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
       WHEN 'nav_chart'.
         rs_result-page = NEW zcl_ark_example_chart_page( ).
         rs_result-state = 1.
+      WHEN 'run_echarts_demo'.
+        run_demo_report( 'ZARK_ECHARTS_DEMO' ).
+      WHEN 'run_sflight_demo'.
+        run_demo_report( 'ZARK_SFLIGHT_DEMO' ).
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).
     ENDCASE.
+  ENDMETHOD.
+
+  METHOD run_demo_report.
+    " demo 报表有自己的宿主屏幕与独立的 GUI 实例（SUBMIT 会加载新的程序组，
+    " 类静态变量互不影响）。执行期间全屏接管，退出（LEAVE PROGRAM）后返回此处
+    SUBMIT (iv_prog) AND RETURN.
+
+    TRY.
+        " 控件通常随屏幕恢复而存活：直接刷新当前页面即可
+        zcl_ark_gui=>get_instance( )->render( ).
+      CATCH zcx_ark_exception.
+        " demo 的全屏切换可能已销毁原 HTML 控件：释放旧实例并整体重建，回到主页
+        TRY.
+            zcl_ark_gui=>get_instance( )->free( ).
+          CATCH cx_root ##NO_TEXT.
+            " 已销毁的控件释放失败可容忍
+        ENDTRY.
+        zcl_ark_example_app=>main( ).
+    ENDTRY.
   ENDMETHOD.
 
 ENDCLASS.

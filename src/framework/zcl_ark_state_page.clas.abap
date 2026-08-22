@@ -98,6 +98,7 @@ CLASS zcl_ark_state_page DEFINITION
     METHODS render_section
       IMPORTING
         !is_section TYPE zif_ark_gui_state=>ty_section
+        !iv_index   TYPE i
       CHANGING
         !co_html    TYPE REF TO zcl_ark_html .
 

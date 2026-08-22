@@ -13,9 +13,6 @@ CLASS zcl_ark_example_ui5_page DEFINITION
 
   PRIVATE SECTION.
     TYPES ty_num TYPE STANDARD TABLE OF i WITH EMPTY KEY .
-    " LENGTH/DECIMALS 加法不适用于表类型：先声明基本类型再套表
-    TYPES ty_price TYPE p LENGTH 5 DECIMALS 2 .
-    TYPES ty_dec TYPE STANDARD TABLE OF ty_price WITH EMPTY KEY .
 
     TYPES:
       BEGIN OF ty_kpi,
@@ -24,7 +21,9 @@ CLASS zcl_ark_example_ui5_page DEFINITION
         delta TYPE string,
         dir   TYPE string,
         sema  TYPE string,
-        spark TYPE ty_dec,
+        "! 数值以字符串传输（string_table 规避 VALUE 构造器对基本类型行的
+        "! 跨类型字面量限制），前端 SPARK.map(Number) 还原
+        spark TYPE string_table,
       END OF ty_kpi,
       tt_kpi TYPE STANDARD TABLE OF ty_kpi WITH EMPTY KEY .
 
@@ -139,19 +138,19 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       ( title = '总销售额'
         value = |¥ { lv_sales } 万|
         delta = '+12.4% 环比' dir = 'up' sema = '#0070f2'
-        spark = VALUE ty_dec( ( 32 ) ( 38 ) ( 35 ) ( 42 ) ( 48 ) ( 45 ) ( 52 ) ( 58 ) ) )
+        spark = VALUE string_table( ( `32` ) ( `38` ) ( `35` ) ( `42` ) ( `48` ) ( `45` ) ( `52` ) ( `58` ) ) )
       ( title = '订单数'
         value = |{ lv_orders }|
         delta = '+6.8% 环比' dir = 'up' sema = '#04aca7'
-        spark = VALUE ty_dec( ( 12 ) ( 14 ) ( 13 ) ( 15 ) ( 16 ) ( 15 ) ( 17 ) ( 19 ) ) )
+        spark = VALUE string_table( ( `12` ) ( `14` ) ( `13` ) ( `15` ) ( `16` ) ( `15` ) ( `17` ) ( `19` ) ) )
       ( title = '退货率'
         value = '2.1%'
         delta = '-0.4pp 环比' dir = 'down' sema = '#e9730c'
-        spark = VALUE ty_dec( ( '3.4' ) ( '3.2' ) ( '2.9' ) ( '2.7' ) ( '2.4' ) ( '2.3' ) ( '2.1' ) ) )
+        spark = VALUE string_table( ( `3.4` ) ( `3.2` ) ( `2.9` ) ( `2.7` ) ( `2.4` ) ( `2.3` ) ( `2.1` ) ) )
       ( title = '客户满意度'
         value = '94.6'
         delta = '+1.2 环比' dir = 'up' sema = '#107e3e'
-        spark = VALUE ty_dec( ( 90 ) ( 91 ) ( 92 ) ( '92.8' ) ( '93.5' ) ( 94 ) ( '94.6' ) ) ) ).
+        spark = VALUE string_table( ( `90` ) ( `91` ) ( `92` ) ( `92.8` ) ( `93.5` ) ( `94` ) ( `94.6` ) ) ) ).
 
     rs_state-bar = VALUE ty_num(
       ( 420 * mv_factor ) ( 455 * mv_factor ) ( 490 * mv_factor ) ( 530 * mv_factor )
@@ -534,7 +533,7 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `      grid: { left: 0, right: 0, top: 2, bottom: 2 },` &&
       `      xAxis: { type: "category", show: false },` &&
       `      yAxis: { type: "value", show: false },` &&
-      `      series: [{ type: "line", data: k.SPARK, symbol: "none", smooth: true,` &&
+      `      series: [{ type: "line", data: (k.SPARK || []).map(Number), symbol: "none", smooth: true,` &&
       `        lineStyle: { width: 2, color: k.SEMA },` &&
       `        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,` &&
       `          colorStops: [` &&

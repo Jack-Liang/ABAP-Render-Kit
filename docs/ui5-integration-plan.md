@@ -74,6 +74,7 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 - 方法参数上下文中的构造器写显式类型更稳；
 - `DATA ... VALUE strlen(...)` 非法（VALUE 加法只收常量）；
 - **`TYPES ... TYPE STANDARD TABLE OF p LENGTH n DECIMALS d` 非法**（LENGTH/DECIMALS 加法只适用于基本类型声明）：先 `TYPES ty_p TYPE p LENGTH 5 DECIMALS 2 .` 再 `TYPES ty_t TYPE STANDARD TABLE OF ty_p WITH EMPTY KEY .`（实测踩雷：报错 `"LENGTH 5 DECIMALS 2" is not valid`）；
+- **VALUE 构造器对基本类型行要求字面量与行类型兼容**：`VALUE ty_p( ( 32 ) ... )`（i 字面量进 p 行）报 `"32" and the row type ... are incompatible`；结构化行的组件赋值走 MOVE 语义无此限制。数值数组最省事的写法是 `string_table` + 前端 `map(Number)`；
 - 组件访问符是 `-` 不是 `.`（`ls_item.kind` 会被解析成断句）；
 - 字符串模板：`\` 只允许掩码 `{ } | \`；`\n` 无换行语义（ABAP 用 `cl_abap_char_utilities=>newline`）；正则竖线在模板内要写 `\|`；
 - **语法检查必须过真实系统**：abapGit 激活不报语法错，运行时才 dump。用 MCP 的 ATC（`abap_atc_run`→`abap_atc_get_result`）闭环。

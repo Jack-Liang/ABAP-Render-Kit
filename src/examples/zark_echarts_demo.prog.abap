@@ -83,7 +83,7 @@ CLASS lcl_demo_page IMPLEMENTATION.
       iv_label  = 'Reload'
       iv_action = 'reload' ).
 
-    ri_toolbar = lo_toolbar->zif_ark_gui_renderable~render( ).
+    ri_html = lo_toolbar->zif_ark_gui_renderable~render( ).
   ENDMETHOD.
 
   " 1) 纯声明式 API

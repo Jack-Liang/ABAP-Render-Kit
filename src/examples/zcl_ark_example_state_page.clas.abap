@@ -40,14 +40,16 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
         label = '返回' action = 'nav_home' ) ).
 
     " ---- KPI 卡片 ----
+    DATA(lv_sales) = |{ 4286 * mv_factor }|.
+    DATA(lv_orders) = |{ 18532 * mv_factor }|.
     ls_state-sections = VALUE #(
       ( kind = zif_ark_gui_state=>c_section_kind-kpi_grid
         kpi_cards = VALUE #(
-          ( title = '总销售额' value = |{ 4286 * mv_factor } 万|
+          ( title = '总销售额' value = |{ lv_sales } 万|
             delta_text = '▲ 12.4% 环比'
             delta_semantic = zif_ark_gui_state=>c_semantic-positive
             sparkline = VALUE #( ( `32` ) ( `38` ) ( `35` ) ( `42` ) ( `48` ) ( `45` ) ( `52` ) ) )
-          ( title = '订单数' value = |{ 18532 * mv_factor }|
+          ( title = '订单数' value = lv_orders
             delta_text = '▲ 6.8% 环比'
             delta_semantic = zif_ark_gui_state=>c_semantic-positive
             sparkline = VALUE #( ( `12` ) ( `14` ) ( `13` ) ( `15` ) ( `16` ) ( `17` ) ( `19` ) ) )

@@ -189,7 +189,14 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.ark-status--negative::before \{ background: var(--arkNegativeColor); \}\n| &&
       |.ark-status--critical::before \{ background: var(--arkCriticalColor); \}\n| &&
       |.ark-status--informative::before \{ background: var(--arkInformativeColor); \}\n| &&
-      |.ark-num \{ text-align: right; font-variant-numeric: tabular-nums; \}\n\n|.
+      |.ark-num \{ text-align: right; font-variant-numeric: tabular-nums; \}\n| &&
+      |.ark-filterbar \{ display: flex; align-items: center; gap: 8px;| &&
+      | margin-bottom: 12px; \}\n| &&
+      |.ark-filterbar input\[type=text\] \{ width: 200px; \}\n| &&
+      |.ark-sort \{ color: var(--arkTextColor); text-decoration: none; \}\n| &&
+      |.ark-sort:hover \{ color: var(--arkBrandColor); text-decoration: none; \}\n| &&
+      |.ark-empty \{ color: var(--arkNeutralColor); text-align: center;| &&
+      | padding: 20px; \}\n\n|.
   ENDMETHOD.
 
 ENDCLASS.

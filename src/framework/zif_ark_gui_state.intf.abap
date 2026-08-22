@@ -72,6 +72,8 @@ INTERFACE zif_ark_gui_state
       label       TYPE string,
       "! Right-align numbers like Fiori list reports
       align_right TYPE abap_bool,
+      "! Column header offers sort asc/desc toggle (default true)
+      sortable    TYPE abap_bool,
     END OF ty_table_column,
     tt_table_column TYPE STANDARD TABLE OF ty_table_column WITH EMPTY KEY .
 

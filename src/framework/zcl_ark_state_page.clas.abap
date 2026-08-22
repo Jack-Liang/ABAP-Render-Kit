@@ -6,6 +6,10 @@ CLASS zcl_ark_state_page DEFINITION
   PUBLIC SECTION.
     METHODS constructor .
 
+    "! 框架内置表格交互（排序/筛选/下载）在此处理，其余动作交给子类。
+    "! 保留动作名：ark_sort / ark_filter / ark_download
+    METHODS on_event REDEFINITION .
+
     "! Replace the whole page state in one call (full schema control)
     METHODS set_state
       IMPORTING !is_state TYPE zif_ark_gui_state=>ty_page_state .
@@ -38,6 +42,53 @@ CLASS zcl_ark_state_page DEFINITION
     METHODS build_html REDEFINITION .
 
   PRIVATE SECTION.
+    "! 表格节的交互状态（排序/筛选），按节序号记录。
+    "! 不修改 ms_state 本身：业务重建 state 后设置自动重新生效
+    TYPES:
+      BEGIN OF ty_tbl_ui,
+        sec      TYPE i,
+        sort_col TYPE i,
+        "! 1 = 升序, -1 = 降序, 0 = 未排序
+        sort_dir TYPE i,
+        filter   TYPE string,
+      END OF ty_tbl_ui,
+      tt_tbl_ui TYPE STANDARD TABLE OF ty_tbl_ui WITH EMPTY KEY .
+    DATA mt_tbl_ui TYPE tt_tbl_ui .
+
+    METHODS tbl_ui
+      IMPORTING !iv_sec        TYPE i
+      RETURNING VALUE(rs_ui)   TYPE ty_tbl_ui .
+
+    "! 排序 + 筛选后的展示行（纯函数，不改 ms_state）
+    METHODS transform_rows
+      IMPORTING
+        !is_section  TYPE zif_ark_gui_state=>ty_section
+        !iv_sec      TYPE i
+      RETURNING VALUE(rt_rows) TYPE zif_ark_gui_state=>ttt_table_body .
+
+    METHODS is_numeric
+      IMPORTING !iv_value       TYPE string
+      RETURNING VALUE(rv_isnum) TYPE abap_bool .
+
+    METHODS download_csv
+      IMPORTING
+        !is_section TYPE zif_ark_gui_state=>ty_section
+        !iv_sec     TYPE i
+      RAISING   zcx_ark_exception .
+
+    METHODS parse_post_value
+      IMPORTING
+        !iv_name        TYPE string
+        !it_postdata    TYPE zif_ark_html_viewer=>ty_post_data
+      RETURNING VALUE(rv_value) TYPE string .
+
+    "! sapevent POST 体的简易 URL 解码（+ -> 空格、%XX -> UTF-8 字符），
+    "! 中文筛选输入依赖此转换
+    METHODS url_decode
+      IMPORTING
+        !iv_encoded     TYPE string
+      RETURNING VALUE(rv_decoded) TYPE string .
+
     METHODS render_toolbar
       IMPORTING
         !it_items TYPE zif_ark_gui_state=>tt_toolbar_item
@@ -60,6 +111,7 @@ CLASS zcl_ark_state_page DEFINITION
     METHODS render_table
       IMPORTING
         !is_section TYPE zif_ark_gui_state=>ty_section
+        !iv_index   TYPE i
       CHANGING
         !co_html    TYPE REF TO zcl_ark_html .
 
@@ -233,7 +285,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         render_kpi_grid( EXPORTING is_section = is_section iv_index = iv_index
                         CHANGING co_html = co_html ).
       WHEN zif_ark_gui_state=>c_section_kind-table.
-        render_table( EXPORTING is_section = is_section CHANGING co_html = co_html ).
+        render_table( EXPORTING is_section = is_section iv_index = iv_index
+                      CHANGING co_html = co_html ).
       WHEN zif_ark_gui_state=>c_section_kind-form.
         render_form( EXPORTING is_section = is_section CHANGING co_html = co_html ).
       WHEN zif_ark_gui_state=>c_section_kind-chart.
@@ -296,21 +349,51 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_table.
+    DATA(ls_ui) = tbl_ui( iv_index ).
+
+    " 过滤栏 + 下载按钮（ALV 三件套的筛选/导出入口）
+    co_html->add( |<form class="ark-filterbar" method="post" | &&
+                  |action="sapevent:ark_filter">| ).
+    co_html->add( |<input type="hidden" name="sec" value="{ iv_index }">| ).
+    co_html->add( |<input type="text" name="flt" value="{ ls_ui-filter }" | &&
+                  |placeholder="任意列包含…">| ).
+    co_html->add( |<button type="submit" class="toolbar-button">筛选</button>| ).
+    co_html->add( |<a class="toolbar-link" | &&
+                  |href="sapevent:ark_download?sec={ iv_index }">下载 CSV</a>| ).
+    co_html->add( |</form>| ).
+
+    DATA(lt_rows) = transform_rows( is_section = is_section iv_sec = iv_index ).
+
     co_html->add( |<table>| ).
     co_html->add( |<thead><tr>| ).
 
     LOOP AT is_section-columns INTO DATA(ls_column).
-      IF ls_column-align_right = abap_true.
-        co_html->add( |<th style="text-align: right;">{ ls_column-label }</th>| ).
+      DATA(lv_style) = COND #(
+        WHEN ls_column-align_right = abap_true THEN | style="text-align: right;"| ).
+
+      " 可排序列（sortable 缺省即允许，显式 abap_false 关闭）：
+      " 表头为 sapevent 链接，点击循环 升序->降序->取消
+      IF ls_column-sortable <> abap_false AND is_section-rows IS NOT INITIAL.
+        DATA(lv_arrow) = ``.
+        IF ls_ui-sort_col = sy-tabix.
+          CASE ls_ui-sort_dir.
+            WHEN 1.  lv_arrow = ` &#9650;`.
+            WHEN -1. lv_arrow = ` &#9660;`.
+          ENDCASE.
+        ENDIF.
+        co_html->add(
+          |<th{ lv_style }><a class="ark-sort" | &&
+          |href="sapevent:ark_sort?sec={ iv_index }&col={ sy-tabix }">| &&
+          |{ ls_column-label }{ lv_arrow }</a></th>| ).
       ELSE.
-        co_html->add( |<th>{ ls_column-label }</th>| ).
+        co_html->add( |<th{ lv_style }>{ ls_column-label }</th>| ).
       ENDIF.
     ENDLOOP.
 
     co_html->add( |</tr></thead>| ).
     co_html->add( |<tbody>| ).
 
-    LOOP AT is_section-rows INTO DATA(lt_row).
+    LOOP AT lt_rows INTO DATA(lt_row).
       co_html->add( |<tr>| ).
       DATA lv_col TYPE i.
       LOOP AT lt_row INTO DATA(ls_cell).
@@ -325,7 +408,243 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       co_html->add( |</tr>| ).
     ENDLOOP.
 
+    IF lt_rows IS INITIAL.
+      co_html->add( |<tr><td class="ark-empty">无匹配数据</td></tr>| ).
+    ENDIF.
+
     co_html->add( |</tbody></table>| ).
+  ENDMETHOD.
+
+  METHOD on_event.
+    CASE ii_event->mv_action.
+      WHEN 'ark_sort'.
+        DATA(lv_sec) = CONV i( ii_event->query( 'sec' ) ).
+        DATA(lv_col) = CONV i( ii_event->query( 'col' ) ).
+        READ TABLE mt_tbl_ui ASSIGNING FIELD-SYMBOL(<ls_ui>) WITH KEY sec = lv_sec.
+        IF sy-subrc <> 0.
+          APPEND VALUE ty_tbl_ui( sec = lv_sec ) TO mt_tbl_ui
+            ASSIGNING <ls_ui>.
+        ENDIF.
+        IF <ls_ui>-sort_col = lv_col AND <ls_ui>-sort_dir = 1.
+          <ls_ui>-sort_dir = -1.
+        ELSEIF <ls_ui>-sort_col = lv_col AND <ls_ui>-sort_dir = -1.
+          CLEAR: <ls_ui>-sort_col, <ls_ui>-sort_dir.
+        ELSE.
+          <ls_ui>-sort_col = lv_col.
+          <ls_ui>-sort_dir = 1.
+        ENDIF.
+        rs_result-state = 1.
+
+      WHEN 'ark_filter'.
+        lv_sec = CONV i( parse_post_value( iv_name = 'sec' it_postdata = ii_event->mt_postdata ) ).
+        DATA(lv_flt) = parse_post_value( iv_name = 'flt' it_postdata = ii_event->mt_postdata ).
+        READ TABLE mt_tbl_ui ASSIGNING <ls_ui> WITH KEY sec = lv_sec.
+        IF sy-subrc <> 0.
+          APPEND VALUE ty_tbl_ui( sec = lv_sec ) TO mt_tbl_ui ASSIGNING <ls_ui>.
+        ENDIF.
+        <ls_ui>-filter = lv_flt.
+        rs_result-state = 1.
+
+      WHEN 'ark_download'.
+        TRY.
+            download_csv(
+              is_section = ms_state-sections[ CONV i( ii_event->query( 'sec' ) ) ]
+              iv_sec     = CONV i( ii_event->query( 'sec' ) ) ).
+          CATCH cx_sy_itab_line_not_found.
+            " 节序号失效（业务重建 state）：忽略下载
+        ENDTRY.
+        rs_result-state = 1.
+
+      WHEN OTHERS.
+        rs_result = super->on_event( ii_event ).
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD tbl_ui.
+    READ TABLE mt_tbl_ui INTO rs_ui WITH KEY sec = iv_sec.
+    IF sy-subrc <> 0.
+      rs_ui-sec = iv_sec.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD transform_rows.
+    DATA(ls_ui) = tbl_ui( iv_sec ).
+    rt_rows = is_section-rows.
+
+    " 筛选：任意列子串匹配（大小写不敏感），保留匹配行重建表
+    IF ls_ui-filter IS NOT INITIAL.
+      DATA(lv_flt) = to_lower( ls_ui-filter ).
+      DATA(lt_keep) = rt_rows.
+      CLEAR rt_rows.
+      LOOP AT lt_keep INTO DATA(lt_row).
+        DATA(lv_match) = abap_false.
+        LOOP AT lt_row INTO DATA(ls_cell).
+          IF to_lower( ls_cell-value ) CS lv_flt.
+            lv_match = abap_true.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+        IF lv_match = abap_true.
+          APPEND lt_row TO rt_rows.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
+    " 排序：全列数字则按数值比较，否则按文本；方向翻转用倒序循环
+    IF ls_ui-sort_col > 0.
+      READ TABLE rt_rows INTO DATA(lt_first) INDEX 1.
+      IF sy-subrc = 0.
+        READ TABLE lt_first INTO DATA(ls_first_cell) INDEX ls_ui-sort_col.
+        DATA(lv_numeric) = is_numeric( ls_first_cell-value ).
+      ENDIF.
+
+      TYPES:
+        BEGIN OF ty_sort_row,
+          key_num TYPE decfloat16,
+          key_txt TYPE string,
+          cells   TYPE zif_ark_gui_state=>tt_table_cell,
+        END OF ty_sort_row.
+      DATA lt_sort TYPE STANDARD TABLE OF ty_sort_row WITH EMPTY KEY.
+
+      LOOP AT rt_rows INTO DATA(lt_r).
+        READ TABLE lt_r INTO DATA(ls_c) INDEX ls_ui-sort_col.
+        " 千分位逗号剥离后按数值赋键（1,286,000 -> 1286000）
+        DATA(lv_keynum) = replace( val = ls_c-value sub = `,` with = `` occ = 0 ).
+        APPEND VALUE ty_sort_row(
+          key_num = COND decfloat16( WHEN lv_numeric = abap_true
+                                     THEN lv_keynum ELSE 0 )
+          key_txt = to_lower( ls_c-value )
+          cells   = lt_r ) TO lt_sort.
+      ENDLOOP.
+
+      IF lv_numeric = abap_true.
+        SORT lt_sort BY key_num ASCENDING.
+      ELSE.
+        SORT lt_sort BY key_txt ASCENDING.
+      ENDIF.
+      IF ls_ui-sort_dir = -1.
+        " 无自定义比较器，倒序重建
+        DATA lt_desc LIKE lt_sort.
+        LOOP AT lt_sort INTO DATA(ls_s) FROM lines( lt_sort ).
+          APPEND ls_s TO lt_desc.
+        ENDLOOP.
+        lt_sort = lt_desc.
+      ENDIF.
+
+      CLEAR rt_rows.
+      LOOP AT lt_sort INTO ls_s.
+        APPEND ls_s-cells TO rt_rows.
+      ENDLOOP.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD is_numeric.
+    " 仅含数字/千分位逗号/小数点/负号/加号/空白视为数值（用于排序比较）
+    rv_isnum = boolc( iv_value IS NOT INITIAL
+                      AND iv_value CO '0123456789.,-+ ' ).
+  ENDMETHOD.
+
+  METHOD download_csv.
+    " 前端保存对话框 + CSV(UTF-8 BOM) 导出，ALV 本地文件下载同款路径。
+    " 导出内容 = 当前筛选/排序后的可见行
+    DATA lt_csv TYPE string_table.
+    DATA(ls_ui) = tbl_ui( iv_sec ).
+
+    DATA(lv_header) = REDUCE #(
+      INIT h TYPE string
+      FOR ls_col IN is_section-columns
+      NEXT h = COND #( WHEN h IS INITIAL THEN ls_col-label ELSE |{ h };{ ls_col-label }| ) ).
+    APPEND lv_header TO lt_csv.
+
+    LOOP AT transform_rows( is_section = is_section iv_sec = iv_sec )
+         INTO DATA(lt_row).
+      DATA(lv_line) = ``.
+      LOOP AT lt_row INTO DATA(ls_cell).
+        DATA(lv_val) = ls_cell-value.
+        " 含分隔符/引号/换行的值按 CSV 规则加引号转义
+        IF lv_val CA '; "'.
+          lv_val = |"{ replace( val = lv_val sub = `"` with = `""` occ = 0 ) }"|.
+        ENDIF.
+        IF lv_line IS INITIAL.
+          lv_line = lv_val.
+        ELSE.
+          lv_line = |{ lv_line };{ lv_val }|.
+        ENDIF.
+      ENDLOOP.
+      APPEND lv_line TO lt_csv.
+    ENDLOOP.
+
+    DATA lv_path TYPE string.
+    DATA lv_filename TYPE string.
+    DATA lv_fullpath TYPE string.
+    cl_gui_frontend_services=>file_save_dialog(
+      EXPORTING
+        default_extension   = 'csv'
+        default_file_name   = 'ark_export'
+        file_filter         = 'CSV 文件 (*.csv)|*.csv|所有文件|*.*'
+      CHANGING
+        filename            = lv_filename
+        path                = lv_path
+        fullpath            = lv_fullpath ).
+    IF lv_fullpath IS INITIAL.
+      RETURN.  " 用户取消
+    ENDIF.
+
+    cl_gui_frontend_services=>gui_download(
+      EXPORTING
+        filename                = lv_fullpath
+        filetype                = 'DAT'
+        codepage                = '4110'
+        write_bom               = abap_true
+      CHANGING
+        data_tab                = lt_csv ).
+  ENDMETHOD.
+
+  METHOD parse_post_value.
+    " postdata 形如 name=value&name2=value2，取指定字段并做 URL 解码
+    LOOP AT it_postdata INTO DATA(lv_line).
+      FIND REGEX |(^|&)({ iv_name })=(.*)$| IN lv_line
+        SUBMATCHES DATA(lv_val).
+      IF sy-subrc = 0.
+        rv_value = url_decode( lv_val ).
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD url_decode.
+    rv_decoded = iv_encoded.
+    rv_decoded = replace( val = rv_decoded sub = `+` with = ` ` occ = 0 ).
+
+    DATA lv_x TYPE xstring.
+    DATA lv_pos TYPE i VALUE 0.
+    DATA lv_len TYPE i VALUE strlen( rv_decoded ).
+
+    WHILE lv_pos < lv_len.
+      IF substring( val = rv_decoded off = lv_pos len = 1 ) = '%'
+         AND lv_pos + 2 < lv_len.
+        TRY.
+            DATA(lv_hex) = CONV xstring(
+              |X{ to_upper( substring( val = rv_decoded off = lv_pos + 1 len = 2 ) ) }| ).
+            CONCATENATE lv_x lv_hex IN BYTE MODE INTO lv_x.
+            lv_pos = lv_pos + 3.
+            CONTINUE.
+          CATCH cx_root.
+            " 非法 % 序列按普通字符处理
+        ENDTRY.
+      ENDIF.
+      CONCATENATE lv_x cl_abap_codepage=>convert_to( substring( val = rv_decoded off = lv_pos len = 1 ) )
+        IN BYTE MODE INTO lv_x.
+      lv_pos = lv_pos + 1.
+    ENDWHILE.
+
+    IF lv_x IS NOT INITIAL.
+      TRY.
+          rv_decoded = cl_abap_codepage=>convert_from( lv_x ).
+        CATCH cx_root.
+          " 解码失败保留原样
+      ENDTRY.
+    ENDIF.
   ENDMETHOD.
 
   METHOD render_cell.

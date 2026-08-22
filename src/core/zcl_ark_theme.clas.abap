@@ -157,7 +157,38 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       | border-radius: var(--arkRadius); \}\n| &&
       |input:focus, select:focus, textarea:focus \{ outline: none;| &&
       | border-color: var(--arkBrandColor);| &&
-      | box-shadow: 0 0 0 1px var(--arkBrandColor); \}\n|.
+      | box-shadow: 0 0 0 1px var(--arkBrandColor); \}\n| &&
+      |.toolbar-button--emphasized \{ background-color: var(--arkBrandColor);| &&
+      | border-color: var(--arkBrandColor); color: #fff; \}\n| &&
+      |.toolbar-button--emphasized:hover \{ background-color: #005dc2;| &&
+      | color: #fff; \}\n| &&
+      |.ark-page-title \{ font-size: 22px; font-weight: 400; margin: 0 0 4px; \}\n| &&
+      |.ark-page-subtitle \{ color: var(--arkNeutralColor); font-size: 13px;| &&
+      | margin: 0 0 20px; \}\n| &&
+      |.ark-card \{ background: var(--arkBaseColor);| &&
+      | border: 1px solid var(--arkBorderColor);| &&
+      | border-radius: var(--arkRadiusCard); padding: 16px 20px;| &&
+      | margin-bottom: 16px; \}\n| &&
+      |.ark-card-title \{ font-size: 16px; font-weight: 500; margin: 0 0 12px; \}\n| &&
+      |.ark-kpi-grid \{ display: grid;| &&
+      | grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));| &&
+      | gap: 16px; \}\n| &&
+      |.ark-kpi-title \{ font-size: 13px; color: var(--arkNeutralColor); \}\n| &&
+      |.ark-kpi-value \{ font-size: 30px; font-weight: 400; margin: 6px 0 2px; \}\n| &&
+      |.ark-delta \{ font-size: 13px; \}\n| &&
+      |.ark-delta--positive \{ color: var(--arkPositiveColor); \}\n| &&
+      |.ark-delta--negative \{ color: var(--arkNegativeColor); \}\n| &&
+      |.ark-delta--critical \{ color: var(--arkCriticalColor); \}\n| &&
+      |.ark-delta--informative \{ color: var(--arkInformativeColor); \}\n| &&
+      |.ark-delta--neutral \{ color: var(--arkNeutralColor); \}\n| &&
+      |.ark-status \{ display: inline-flex; align-items: center; gap: 6px;| &&
+      | font-size: 13px; \}\n| &&
+      |.ark-status::before \{ content: ""; width: 8px; height: 8px;| &&
+      | border-radius: 50%; background: var(--arkNeutralColor); \}\n| &&
+      |.ark-status--positive::before \{ background: var(--arkPositiveColor); \}\n| &&
+      |.ark-status--negative::before \{ background: var(--arkNegativeColor); \}\n| &&
+      |.ark-status--critical::before \{ background: var(--arkCriticalColor); \}\n| &&
+      |.ark-status--informative::before \{ background: var(--arkInformativeColor); \}\n\n|.
   ENDMETHOD.
 
 ENDCLASS.

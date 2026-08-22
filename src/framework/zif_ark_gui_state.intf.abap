@@ -104,6 +104,8 @@ INTERFACE zif_ark_gui_state
       kind     TYPE ty_section_kind,
       title    TYPE string,
       toolbar  TYPE tt_toolbar_item,
+      "! sapevent action the form section posts to
+      form_action TYPE string,
       kpi_cards TYPE tt_kpi_card,
       columns   TYPE tt_table_column,
       rows      TYPE ttt_table_body,

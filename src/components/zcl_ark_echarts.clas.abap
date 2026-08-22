@@ -20,6 +20,12 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING !iv_mime_name TYPE wwwdatatab-objid DEFAULT c_bundled_mime_name
       RAISING   zcx_ark_exception .
 
+    " 输出 ECharts 库的 <script> 标签（无实例上下文也可用，如状态页的
+    " chart 节）：资产优先级与会话级缓存与 render( ) 一致，
+    " use_bundled_library( ) 已启用时走本地缓存 URL，否则 CDN
+    CLASS-METHODS include_library_script
+      RETURNING VALUE(rv_html) TYPE string .
+
     METHODS constructor
       IMPORTING
         !iv_div_id      TYPE string OPTIONAL           " 容器 div id，缺省自动生成
@@ -235,6 +241,29 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     rv_escaped = replace( val = rv_escaped sub = `</` with = `<\/` occ = 0 ).
   ENDMETHOD.
 
+  METHOD include_library_script.
+    " 与 render( ) 内的库逻辑同源：仅处理会话级缺省资产（实例级
+    " set_library_xdata 的覆盖路径只在 render( ) 里生效）
+    DATA lv_lib_url TYPE string VALUE c_cdn_url.
+
+    IF gv_default_lib_xdata IS NOT INITIAL.
+      TRY.
+          DATA(lv_asset_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+            iv_url     = c_lib_cache_name
+            iv_xdata   = gv_default_lib_xdata
+            iv_type    = 'text'
+            iv_subtype = 'javascript' ).
+          IF lv_asset_url IS NOT INITIAL.
+            lv_lib_url = lv_asset_url.
+          ENDIF.
+        CATCH zcx_ark_exception.
+          " 缓存失败时保持 CDN 回退
+      ENDTRY.
+    ENDIF.
+
+    rv_html = |<script src="{ lv_lib_url }"></script>|.
+  ENDMETHOD.
+
   METHOD render.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
@@ -243,18 +272,12 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     " 资产经 cache_asset 换成本地 URL；缓存挂在 GUI 实例上（同一 HTML 控件只上传
     " 一次），控件销毁重建后随实例失效，不会残留失效 URL
     IF mv_include_lib = abap_true.
-      DATA(lv_lib_url) = c_cdn_url.
-
-      DATA(lv_xdata) = mv_library_xdata.
-      IF lv_xdata IS INITIAL.
-        lv_xdata = gv_default_lib_xdata.
-      ENDIF.
-
-      IF lv_xdata IS NOT INITIAL.
+      IF mv_library_xdata IS NOT INITIAL.
+        " 实例级库覆盖：仍走专属资产路径
         TRY.
             DATA(lv_asset_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
               iv_url     = c_lib_cache_name
-              iv_xdata   = lv_xdata
+              iv_xdata   = mv_library_xdata
               iv_type    = 'text'
               iv_subtype = 'javascript' ).
           CATCH zcx_ark_exception.
@@ -262,11 +285,14 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
         ENDTRY.
 
         IF lv_asset_url IS NOT INITIAL.
-          lv_lib_url = lv_asset_url.
+          lo_html->add( |<script src="{ lv_asset_url }"></script>| ).
+        ELSE.
+          lo_html->add( |<script src="{ c_cdn_url }"></script>| ).
         ENDIF.
+      ELSE.
+        " 会话级资产 / CDN：与状态页等外部调用方共享同一路径
+        lo_html->add( include_library_script( ) ).
       ENDIF.
-
-      lo_html->add( |<script src="{ lv_lib_url }"></script>| ).
     ENDIF.
 
     " 图表容器。指定宽度时水平居中，缺省铺满可用宽度

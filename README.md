@@ -32,6 +32,8 @@ Create **one** report (SE38/ADT, e.g. `ZMY_ARK_APP`), paste this, activate, run:
 REPORT zmy_ark_app.
 
 CLASS lcl_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
+  PUBLIC SECTION.
+    METHODS on_event REDEFINITION .
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
 ENDCLASS.
@@ -40,7 +42,15 @@ CLASS lcl_page IMPLEMENTATION.
   METHOD build_html.
     mo_html->add( |<h1>Hello ARK!</h1>| ).
 
-    " Sized, colorful chart — a plain chunk in the page flow
+    " HTML rendering — fluent builder, any fragment in the page flow
+    mo_html->div(
+      iv_style   = |border:1px solid #ddd; border-radius:8px;|
+                && | padding:12px; max-width:640px;|
+                && | background:#f8fafc|
+      iv_content = |<b>Plain HTML + styles</b>|
+                && | mix freely with components.| ).
+
+    " Sized, colorful chart
     DATA(lo_chart) = NEW zcl_ark_echarts(
       iv_div_id = 'sales'
       iv_width  = '640px'
@@ -56,7 +66,28 @@ CLASS lcl_page IMPLEMENTATION.
         ( 120 ) ( 200 ) ( 150 ) ( 80 ) ( 270 ) ) ).
     mo_html->add( lo_chart->render( ) ).
 
+    " sapevent link — handled in on_event below
+    mo_html->add_a( iv_txt = 'Open the full examples'
+                    iv_act = 'run_examples' ).
     ri_html = mo_html.
+  ENDMETHOD.
+
+  METHOD on_event.
+    CASE ii_event->mv_action.
+      WHEN 'run_examples'.
+        " Jump-run the bundled demo hub (own screen and GUI);
+        " returns here when the user exits it
+        SUBMIT zark_example AND RETURN.
+        TRY.
+            zcl_ark_gui=>get_instance( )->render( ).
+          CATCH zcx_ark_exception.
+            " Full-screen takeover may invalidate the viewer: rebuild
+            zcl_ark_gui=>get_instance( )->free( ).
+            zcl_ark_gui=>create( )->set_page( NEW lcl_page( ) ).
+        ENDTRY.
+      WHEN OTHERS.
+        rs_result = super->on_event( ii_event ).
+    ENDCASE.
   ENDMETHOD.
 ENDCLASS.
 
@@ -85,7 +116,13 @@ AT SELECTION-SCREEN ON EXIT-COMMAND.
   ENDIF.
 ```
 
-For interactivity, redefine `on_event` (sapevent round-trip) and return a new page in the result to navigate — every demo program below shows both patterns.
+To navigate between your own pages from `on_event`, return the new page in the result:
+
+```abap
+WHEN 'nav_detail'.
+  rs_result-page  = NEW lcl_detail_page( ).
+  rs_result-state = 1.
+```
 
 **Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, and chart examples, and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
 

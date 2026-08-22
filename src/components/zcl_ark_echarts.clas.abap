@@ -13,6 +13,17 @@ CLASS zcl_ark_echarts DEFINITION
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
     CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .
     CONSTANTS c_bundled_mime_name TYPE wwwdatatab-objid VALUE 'ZARK_ECHARTS_MIN_JS' .
+    CONSTANTS c_china_map_name TYPE string VALUE 'china' .
+    CONSTANTS c_bundled_china_map TYPE wwwdatatab-objid VALUE 'ZARK_MAP_CHINA_JSON' .
+
+    " 地图数据点（name/value 对），add_map_series 的入参类型。
+    " name 须与 GeoJSON 特性名一致（如中国地图的省份名）
+    TYPES:
+      BEGIN OF ty_map_data,
+        name  TYPE string,
+        value TYPE f,
+      END OF ty_map_data,
+      tt_map_data TYPE STANDARD TABLE OF ty_map_data WITH EMPTY KEY .
 
     " 启用随仓库分发的 ECharts 资产（MIME 对象 ZARK_ECHARTS_MIN_JS）：
     " 整个会话只从 SMW0 读取一次，之后所有图表共享，缺省回退 CDN
@@ -24,6 +35,23 @@ CLASS zcl_ark_echarts DEFINITION
     " chart 节）：资产优先级与会话级缓存与 render( ) 一致，
     " use_bundled_library( ) 已启用时走本地缓存 URL，否则 CDN
     CLASS-METHODS include_library_script
+      RETURNING VALUE(rv_html) TYPE string .
+
+    "! 启用随仓库分发的中国地图 GeoJSON（MIME 对象 ZARK_MAP_CHINA_JSON）：
+    "! 会话级只从 SMW0 读取一次，包装为 window.ARK_MAPS["china"] 的 JS 资产。
+    "! 其他地图：自备 GeoJSON 上传 SMW0 后指定 iv_mime_name，
+    "! 或经 set_map( iv_xdata = ... ) 传入原始 GeoJSON
+    CLASS-METHODS use_bundled_map
+      IMPORTING
+        !iv_map_name  TYPE string DEFAULT c_china_map_name
+        !iv_mime_name TYPE wwwdatatab-objid DEFAULT c_bundled_china_map
+      RAISING   zcx_ark_exception .
+
+    "! 输出已启用地图资产的 <script> 标签（echarts.registerMap 的数据来源，
+    "! 状态页等外部调用方使用）。内置 china 未显式加载时自动尝试，
+    "! 资产缺失或上传失败返回空串
+    CLASS-METHODS include_map_script
+      IMPORTING !iv_map_name   TYPE string
       RETURNING VALUE(rv_html) TYPE string .
 
     METHODS constructor
@@ -69,6 +97,33 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING !iv_action      TYPE string
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
 
+    "! 注册 GeoJSON 地图（map 系列填色图 / geo 坐标系的前置条件）。
+    "! 缺省取会话级 use_bundled_map( ) 已加载的资产；传 iv_xdata
+    "!（原始 GeoJSON 的 UTF-8 字节，如 zcl_ark_convert=>mime_to_xstring( )
+    "! 的返回值）则即时包装注册。须在 add_map_series 之前调用
+    METHODS set_map
+      IMPORTING
+        !iv_name       TYPE string
+        !iv_xdata      TYPE xstring OPTIONAL
+      RETURNING VALUE(ro_self) TYPE REF TO zcl_ark_echarts
+      RAISING   zcx_ark_exception .
+
+    "! 追加 map 系列（choropleth 填色图）：数据为区域名 + 数值对，
+    "! 配合 set_visual_map( ) 控制色带映射
+    METHODS add_map_series
+      IMPORTING
+        !iv_name       TYPE string
+        !it_data       TYPE tt_map_data
+      RETURNING VALUE(ro_self) TYPE REF TO zcl_ark_echarts .
+
+    "! visualMap 数值映射条：min/max 为数值字符串（如 '0'/'1200'），
+    "! 原样嵌入脚本，勿拼接不可信内容
+    METHODS set_visual_map
+      IMPORTING
+        !iv_min        TYPE string
+        !iv_max        TYPE string
+      RETURNING VALUE(ro_self) TYPE REF TO zcl_ark_echarts .
+
     " 离线/内网环境：传入 SMW0 中 echarts.min.js 的二进制内容
     " （zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' )），
     " 渲染时经 cache_asset 换成本地缓存 URL，替代 CDN
@@ -104,6 +159,7 @@ CLASS zcl_ark_echarts DEFINITION
         name          TYPE string,
         type          TYPE string,
         stack         TYPE string,
+        map           TYPE string,
         area          TYPE abap_bool,
         smooth        TYPE abap_bool,
         label         TYPE abap_bool,
@@ -111,9 +167,18 @@ CLASS zcl_ark_echarts DEFINITION
         data_json     TYPE string,
       END OF ty_series .
 
+    TYPES:
+      BEGIN OF ty_map_asset,
+        map_name TYPE string,
+        "! 包装后的 window.ARK_MAPS[...] JS（UTF-8 字节）
+        xdata    TYPE xstring,
+      END OF ty_map_asset,
+      tt_map_asset TYPE HASHED TABLE OF ty_map_asset WITH UNIQUE KEY map_name .
+
     CLASS-DATA gv_instance_counter TYPE i .
     CLASS-DATA gv_default_lib_xdata TYPE xstring .              " use_bundled_library 读入，会话级
     CLASS-DATA gv_default_lib_name TYPE wwwdatatab-objid .     " 已读入的 MIME 对象名
+    CLASS-DATA gt_map_asset TYPE tt_map_asset .                " use_bundled_map 读入，会话级
 
     DATA mv_div_id TYPE string .
     DATA mv_height TYPE i .
@@ -127,6 +192,10 @@ CLASS zcl_ark_echarts DEFINITION
     DATA mv_option_override TYPE string .
     DATA mv_categories_json TYPE string .
     DATA mv_on_click TYPE string .
+    DATA mv_map_name TYPE string .
+    DATA mv_map_xdata TYPE xstring .                     " 实例级地图资产（set_map iv_xdata），已包装
+    DATA mv_visual_min TYPE string .
+    DATA mv_visual_max TYPE string .
     DATA mt_series TYPE STANDARD TABLE OF ty_series WITH DEFAULT KEY .
 
     METHODS build_init_js
@@ -139,6 +208,13 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS escape_js
       IMPORTING !iv_value         TYPE string
       RETURNING VALUE(rv_escaped) TYPE string .
+    METHODS wrap_map_js
+      IMPORTING !iv_map_name     TYPE string
+                !iv_geojson      TYPE string
+      RETURNING VALUE(rv_js)     TYPE string .
+    METHODS build_map_data_json
+      IMPORTING !it_data         TYPE tt_map_data
+      RETURNING VALUE(rv_json)   TYPE string .
 ENDCLASS.
 
 
@@ -202,6 +278,117 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   METHOD set_on_click.
     mv_on_click = iv_action.
     ro_self = me.
+  ENDMETHOD.
+
+  METHOD use_bundled_map.
+    " 会话级每个地图只读一次（大 GeoJSON 的 WWWDATA_IMPORT 很贵）
+    READ TABLE gt_map_asset WITH KEY map_name = iv_map_name TRANSPORTING NO FIELDS.
+    IF sy-subrc <> 0.
+      DATA(lv_geojson) = zcl_ark_convert=>xstring_to_string_utf8(
+                           zcl_ark_convert=>mime_to_xstring( iv_mime_name ) ).
+      INSERT VALUE #(
+        map_name = iv_map_name
+        xdata    = zcl_ark_convert=>string_to_xstring(
+                     wrap_map_js( iv_map_name = iv_map_name iv_geojson = lv_geojson ) ) )
+        INTO TABLE gt_map_asset.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD include_map_script.
+    DATA lv_map_xdata TYPE xstring.
+
+    READ TABLE gt_map_asset INTO DATA(ls_map) WITH KEY map_name = iv_map_name.
+    IF sy-subrc <> 0 AND iv_map_name = c_china_map_name.
+      " 内置地图允许隐式加载（显式 use_bundled_map 的补充路径）
+      TRY.
+          use_bundled_map( ).
+          READ TABLE gt_map_asset INTO ls_map WITH KEY map_name = iv_map_name.
+        CATCH zcx_ark_exception.
+          " MIME 资产未部署：返回空串
+      ENDTRY.
+    ENDIF.
+    IF sy-subrc <> 0 OR ls_map-xdata IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        DATA(lv_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+          iv_url     = |ark_map_{ iv_map_name }.js|
+          iv_xdata   = ls_map-xdata
+          iv_type    = 'text'
+          iv_subtype = 'javascript' ).
+        IF lv_url IS NOT INITIAL.
+          rv_html = |<script src="{ lv_url }"></script>|.
+        ENDIF.
+      CATCH zcx_ark_exception.
+        " 缓存失败返回空串；初始化脚本里的 registerMap 守卫使图表退化为空地图
+    ENDTRY.
+  ENDMETHOD.
+
+  METHOD set_map.
+    mv_map_name = iv_name.
+
+    IF iv_xdata IS NOT INITIAL.
+      " 实例级资产：原始 GeoJSON 字节即时包装
+      mv_map_xdata = zcl_ark_convert=>string_to_xstring(
+                       wrap_map_js(
+                         iv_map_name = iv_name
+                         iv_geojson  = zcl_ark_convert=>xstring_to_string_utf8( iv_xdata ) ) ).
+    ELSE.
+      READ TABLE gt_map_asset WITH KEY map_name = iv_name TRANSPORTING NO FIELDS.
+      IF sy-subrc <> 0.
+        IF iv_name = c_china_map_name.
+          use_bundled_map( ).
+        ELSE.
+          zcx_ark_exception=>raise( |Map { iv_name } not loaded: call use_bundled_map( ) first| ).
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
+    ro_self = me.
+  ENDMETHOD.
+
+  METHOD add_map_series.
+    DATA ls_series TYPE ty_series.
+
+    ls_series-name      = iv_name.
+    ls_series-type      = 'map'.
+    ls_series-map       = mv_map_name.
+    ls_series-data_json = build_map_data_json( it_data ).
+
+    APPEND ls_series TO mt_series.
+    ro_self = me.
+  ENDMETHOD.
+
+  METHOD set_visual_map.
+    mv_visual_min = iv_min.
+    mv_visual_max = iv_max.
+    ro_self = me.
+  ENDMETHOD.
+
+  METHOD wrap_map_js.
+    " GeoJSON 是纯 JSON，<script src> 无法向页面暴露数据；包装成 JS
+    " 全局变量赋值即可经同步 script 标签注入 window.ARK_MAPS["<map>"]。
+    " </ 转义防 </script> 截断（JSON 中只出现在字符串值内，\/ 等价 /）
+    DATA(lv_geojson) = replace( val = iv_geojson sub = `</` with = `<\/` occ = 0 ).
+
+    rv_js = |window.ARK_MAPS = window.ARK_MAPS \|\| \{\};| &&
+            |window.ARK_MAPS['{ escape_js( iv_map_name ) }'] = { lv_geojson };|.
+  ENDMETHOD.
+
+  METHOD build_map_data_json.
+    " zcl_ark_json 序列化结构内表会得到大写键名（NAME/VALUE），地图数据
+    " 必须是小写 name/value，这里手工拼 JSON（与 build_option_js 的
+    " legend 系列名同一信任级别：值经 escape_js 转义）
+    LOOP AT it_data INTO DATA(ls_data).
+      IF rv_json IS NOT INITIAL.
+        rv_json = rv_json && `,`.
+      ENDIF.
+      rv_json = rv_json &&
+        |\{ name: '{ escape_js( ls_data-name ) }', value: { ls_data-value DECIMALS = 2 } \}|.
+    ENDLOOP.
+
+    rv_json = `[ ` && rv_json && ` ]`.
   ENDMETHOD.
 
   METHOD set_library_xdata.
@@ -312,6 +499,32 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
+    " 地图资产脚本（echarts.registerMap 的数据来源），须位于初始化脚本
+    " 之前；实例级 set_map( iv_xdata ) 优先，其次会话级资产。
+    " 上传失败不阻断渲染：registerMap 守卫使图表退化为空地图
+    IF mv_map_name IS NOT INITIAL.
+      DATA(lv_map_html) = include_map_script( mv_map_name ).
+
+      IF mv_map_xdata IS NOT INITIAL.
+        TRY.
+            DATA(lv_map_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+              iv_url     = |ark_map_{ mv_map_name }.js|
+              iv_xdata   = mv_map_xdata
+              iv_type    = 'text'
+              iv_subtype = 'javascript' ).
+            IF lv_map_url IS NOT INITIAL.
+              lv_map_html = |<script src="{ lv_map_url }"></script>|.
+            ENDIF.
+          CATCH zcx_ark_exception.
+            " 实例级资产上传失败：保持会话资产/空串
+        ENDTRY.
+      ENDIF.
+
+      IF lv_map_html IS NOT INITIAL.
+        lo_html->add( lv_map_html ).
+      ENDIF.
+    ENDIF.
+
     " 图表容器。指定宽度时水平居中，缺省铺满可用宽度
     DATA(lv_width) = mv_width.
     IF lv_width IS INITIAL.
@@ -370,6 +583,15 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
         |  \});|                                                                 && lv_nl.
     ENDIF.
 
+    " 地图注册：资产脚本已先行加载 window.ARK_MAPS["<map>"]；
+    " 守卫缺失时图表退化为空地图而非脚本报错
+    DATA lv_map_js TYPE string.
+    IF mv_map_name IS NOT INITIAL.
+      lv_map_js =
+        |  var arkMap = window.ARK_MAPS && window.ARK_MAPS['{ escape_js( mv_map_name ) }'];| && lv_nl &&
+        |  if (arkMap) \{ echarts.registerMap('{ escape_js( mv_map_name ) }', arkMap); \}|    && lv_nl.
+    ENDIF.
+
     rv_js =
       |(function() \{|                                                        && lv_nl &&
       |  var chartDom = document.getElementById('{ escape_js( mv_div_id ) }');|    && lv_nl &&
@@ -379,6 +601,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       |    return;|                                                           && lv_nl &&
       |  \}|                                                                  && lv_nl &&
       |  var myChart = echarts.init(chartDom{ lv_theme_arg });|               && lv_nl &&
+      lv_map_js                                                               &&
       |  var option = | && lv_base_option && |;|                              && lv_nl &&
       lv_override_js                                                          &&
       |  myChart.setOption(option);|                                          && lv_nl &&
@@ -410,6 +633,12 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       lv_toolbox = |  toolbox: \{ feature: \{ saveAsImage: \{ \} \} \},| && lv_nl.
     ENDIF.
 
+    " visualMap 数值映射条（choropleth 填色图常用；min/max 为受控数值字符串）
+    DATA lv_visual_map TYPE string.
+    IF mv_visual_min IS NOT INITIAL AND mv_visual_max IS NOT INITIAL.
+      lv_visual_map = |  visualMap: \{ min: { mv_visual_min }, max: { mv_visual_max }, left: 'right', calculable: true \},| && lv_nl.
+    ENDIF.
+
     " 图例自动取各系列名称
     LOOP AT mt_series ASSIGNING <ls_series>.
       APPEND <ls_series>-name TO lt_legend.
@@ -422,6 +651,9 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
       IF <ls_series>-stack IS NOT INITIAL.
         lv_options = lv_options && |, stack: '{ escape_js( <ls_series>-stack ) }'|.
+      ENDIF.
+      IF <ls_series>-map IS NOT INITIAL.
+        lv_options = lv_options && |, map: '{ escape_js( <ls_series>-map ) }'|.
       ENDIF.
       IF <ls_series>-area = abap_true.
         lv_options = lv_options && |, areaStyle: \{ \}|.
@@ -461,6 +693,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       |  \},|                                                                       && lv_nl &&
       |  legend: \{ data: { lv_legend } \},|                                        && lv_nl &&
       lv_toolbox                                                                    &&
+      lv_visual_map                                                                 &&
       |  grid: \{ left: '3%', right: '4%', bottom: '3%', containLabel: true \},|    && lv_nl &&
       |  xAxis: [ \{ type: 'category', boundaryGap: false, data: { lv_categories } \} ],| && lv_nl &&
       |  yAxis: [ \{ type: 'value' \} ],|                                           && lv_nl &&

@@ -212,9 +212,10 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     " JS 单引号字符串字面量转义。标题/系列名等常直接来自数据库（客户名、物料描述），
     " 未转义的反斜杠/引号/换行会产生非法脚本，导致整页所有图表一起失效。
     " `</` 一并转义，避免值中的 </script> 提前截断宿主脚本块。
-    " CR/LF 经 UCCP 按码点构造：部分发行版 cl_abap_char_utilities 无 cr/lf 属性
-    DATA(lv_cr) = cl_abap_conv_in_ce=>uccp( '000D' ).
-    DATA(lv_lf) = cl_abap_conv_in_ce=>uccp( '000A' ).
+    " CR/LF 用字符串模板 Unicode 转义构造：不依赖 cl_abap_char_utilities 的
+    " cr/lf 属性（部分发行版没有）也不依赖 uccp 方法
+    DATA(lv_cr) = |\u000D|.
+    DATA(lv_lf) = |\u000A|.
 
     rv_escaped = iv_value.
 

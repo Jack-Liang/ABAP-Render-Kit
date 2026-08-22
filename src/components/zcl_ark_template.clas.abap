@@ -66,8 +66,8 @@ CLASS zcl_ark_template IMPLEMENTATION.
   METHOD render.
     " 两阶段哨兵替换：先把占位符换成"行号+控制字符"哨兵，再把哨兵换成真值。
     " 若直接顺序替换，先填的值中含 {{XXX}} 时会被后续替换波及。
-    " 哨兵字符用 UCCP 按码点构造（部分发行版 cl_abap_char_utilities 无 minchar 属性）
-    DATA(lv_mark) = cl_abap_conv_in_ce=>uccp( '0001' ).
+    " 哨兵字符用字符串模板 Unicode 转义构造，不依赖 minchar/uccp
+    DATA(lv_mark) = |\u0001|.
     FIELD-SYMBOLS <ls_value> TYPE ty_value.
 
     rv_text = mv_template.

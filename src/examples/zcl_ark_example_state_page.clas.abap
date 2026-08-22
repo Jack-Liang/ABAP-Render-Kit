@@ -9,6 +9,7 @@ CLASS zcl_ark_example_state_page DEFINITION
 
     METHODS on_event REDEFINITION .
 
+  PROTECTED SECTION.
   PRIVATE SECTION.
     DATA mv_factor TYPE i VALUE 1 .
     DATA mv_message TYPE string .
@@ -21,12 +22,16 @@ CLASS zcl_ark_example_state_page DEFINITION
       IMPORTING !cells TYPE zif_ark_gui_state=>tt_table_cell .
 ENDCLASS.
 
-CLASS zcl_ark_example_state_page IMPLEMENTATION.
+
+
+CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
+
 
   METHOD constructor.
     super->constructor( ).
     build_state( ).
   ENDMETHOD.
+
 
   METHOD build_state.
     " 演示声明式页面：业务代码只填类型化 state，一行 HTML 都不写。
@@ -78,7 +83,7 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
         ( label = '数量' align_right = abap_true )
         ( label = '状态' ) ) ).
 
-    DATA(lt_cells) = VALUE zif_ark_gui_state=>tt_table_cell( 
+    DATA(lt_cells) = VALUE zif_ark_gui_state=>tt_table_cell(
       ( value = '0080012345' action = 'cell_detail' )
       ( value = '华信科技' )
       ( value = '1,286,000' )
@@ -158,9 +163,11 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
     set_state( ls_state ).
   ENDMETHOD.
 
+
   METHOD add_row.
     APPEND VALUE #( cells = cells ) TO ms_table-rows.
   ENDMETHOD.
+
 
   METHOD on_event.
     CASE ii_event->mv_action.
@@ -189,5 +196,4 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
         rs_result = super->on_event( ii_event ).
     ENDCASE.
   ENDMETHOD.
-
 ENDCLASS.

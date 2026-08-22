@@ -6,7 +6,9 @@
     <CLSNAME>ZIF_ARK_GUI_STATE</CLSNAME>
     <LANGU>E</LANGU>
     <DESCRIPT>ARK declarative page state schema (draft)</DESCRIPT>
+    <EXPOSURE>2</EXPOSURE>
     <STATE>1</STATE>
+    <UNICODE>X</UNICODE>
    </VSEOINTERF>
   </asx:values>
  </asx:abap>

@@ -56,6 +56,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     add_card( iv_title  = 'State Page (Declarative)'
               iv_desc   = 'Typed page state -> Fiori-style UI, no HTML in your ABAP code'
               iv_action = 'nav_state' ).
+    add_card( iv_title  = 'UI5 State Page (Declarative)'
+              iv_desc   = 'Same state via UI5 shell: sap.m controls + sapevent bridge (Edge only)'
+              iv_action = 'nav_ui5_state' ).
     add_card( iv_title  = 'Browser Info'
               iv_desc   = 'Detect the HTML viewer engine: IE (MSHTML) or Edge (Chromium)'
               iv_action = 'nav_browser' ).
@@ -111,6 +114,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
         rs_result-state = 1.
       WHEN 'nav_state'.
         rs_result-page = NEW zcl_ark_example_state_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_ui5_state'.
+        rs_result-page = NEW zcl_ark_example_ui5_state_page( ).
         rs_result-state = 1.
       WHEN 'nav_browser'.
         rs_result-page = NEW zcl_ark_example_browser_page( ).

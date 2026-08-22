@@ -124,7 +124,7 @@ WHEN 'nav_detail'.
   rs_result-state = 1.
 ```
 
-**Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, and chart examples, and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
+**Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, chart, and browser-info examples — the last one probes which rendering engine (IE/MSHTML vs Edge/Chromium) the SAP GUI HTML viewer actually uses on your machine — and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
 
 ## Charts (ECharts)
 

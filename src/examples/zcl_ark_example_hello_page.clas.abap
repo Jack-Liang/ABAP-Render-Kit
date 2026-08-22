@@ -13,8 +13,11 @@ CLASS zcl_ark_example_hello_page DEFINITION
     METHODS build_html REDEFINITION .
 
   PRIVATE SECTION.
-    METHODS build_toolbar RETURNING VALUE(ri_toolbar) TYPE REF TO zif_ark_html .
-    METHODS build_content RETURNING VALUE(ri_content) TYPE REF TO zif_ark_html .
+    METHODS add_card
+      IMPORTING
+        !iv_title  TYPE string
+        !iv_desc   TYPE string
+        !iv_action TYPE string .
     METHODS run_demo_report
       IMPORTING !iv_prog TYPE sy-repid
       RAISING   zcx_ark_exception .
@@ -28,67 +31,63 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD build_html.
-    mo_html->add( |<h1>Welcome to ARK Framework</h1>| ).
-    mo_html->add( |<p>This is a simple example demonstrating the ARK ABAP GUI framework.</p>| ).
+    " 颜色类样式必须走 CSS 而非内联：内联样式优先级高于类规则，
+    " 悬停换色（border-color/background-color）才能覆盖静息态。
+    " 布局属性保留内联，样式块缺失时卡片退化为纯文本链接仍可用
+    mo_html->add_css(
+      `.demo-card { border: 1px solid #d0d7de; border-radius: 8px; background-color: #fff; }` &&
+      `.demo-card:hover { border-color: #0969da; background-color: #f0f6ff; text-decoration: none; }` &&
+      `.demo-card:hover .demo-card-title { text-decoration: underline; }` ).
 
-    mo_html->add( build_toolbar( ) ).
+    mo_html->add( |<h1 style="margin-bottom: 4px;">ARK Framework</h1>| ).
+    mo_html->add( |<p style="margin-top: 0; color: #57606a;">| &&
+                  |Interactive HTML user interfaces inside SAP GUI &mdash; pick a demo below.</p>| ).
+
+    mo_html->add( |<h2 style="margin-bottom: 8px;">In-App Pages</h2>| ).
+    add_card( iv_title  = 'Form Builder'
+              iv_desc   = 'Input fields, dropdowns and a submit round-trip via sapevent'
+              iv_action = 'nav_form' ).
+    add_card( iv_title  = 'Table Builder'
+              iv_desc   = 'Column/row/cell API with styles and actions'
+              iv_action = 'nav_table' ).
+    add_card( iv_title  = 'Charts'
+              iv_desc   = 'ECharts mixed with plain HTML on one page'
+              iv_action = 'nav_chart' ).
+    add_card( iv_title  = 'Browser Info'
+              iv_desc   = 'Detect the HTML viewer engine: IE (MSHTML) or Edge (Chromium)'
+              iv_action = 'nav_browser' ).
+
+    mo_html->add( |<h2 style="margin-bottom: 8px;">Standalone Reports</h2>| ).
+    add_card( iv_title  = 'ECharts Demo'
+              iv_desc   = 'Every charting mode: declarative API, override hatch, full option, themes'
+              iv_action = 'run_echarts_demo' ).
+    add_card( iv_title  = 'SFlight Demo'
+              iv_desc   = 'Database-driven dashboard on SFLIGHT / SCARR'
+              iv_action = 'run_sflight_demo' ).
+
     mo_html->add( |<hr>| ).
-    mo_html->add( build_content( ) ).
 
-    ri_html = mo_html.
+    DATA(lv_github_link) = mo_html->a(
+      iv_txt = 'GitHub'
+      iv_act = 'https://github.com/Jack-Liang/ABAP-Render-Kit'
+      iv_typ = zif_ark_html=>c_action_type-url ).
+
+    mo_html->add(
+      |<p style="color: #57606a;">Extracted from abapGit, rendered by CL_GUI_HTML_VIEWER.| &&
+      |&nbsp;&nbsp;Source on { lv_github_link }</p>| ).
   ENDMETHOD.
 
-  METHOD build_toolbar.
-    DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
-
-    lo_toolbar->add_button(
-      iv_label  = 'Form Example'
-      iv_action = 'nav_form' ).
-
-    lo_toolbar->add_button(
-      iv_label  = 'Table Example'
-      iv_action = 'nav_table' ).
-
-    lo_toolbar->add_button(
-      iv_label  = 'Chart Example'
-      iv_action = 'nav_chart' ).
-
-    lo_toolbar->add_separator( ).
-
-    " 独立 demo 报表：SUBMIT 跳转执行，退出后返回本页
-    lo_toolbar->add_button(
-      iv_label  = 'ECharts Demo'
-      iv_action = 'run_echarts_demo' ).
-
-    lo_toolbar->add_button(
-      iv_label  = 'SFlight Demo'
-      iv_action = 'run_sflight_demo' ).
-
-    lo_toolbar->add_separator( ).
-
-    lo_toolbar->add_link(
-      iv_label = 'GitHub'
-      iv_url   = 'https://github.com/Jack-Liang/ABAP-Render-Kit' ).
-
-    ri_toolbar = lo_toolbar->zif_ark_gui_renderable~render( ).
-  ENDMETHOD.
-
-  METHOD build_content.
-    DATA(lo_content) = zcl_ark_html=>create( ).
-
-    lo_content->add( |<h2>Features</h2>| ).
-    lo_content->add( |<ul>| ).
-    lo_content->add( |<li>HTML rendering engine</li>| ).
-    lo_content->add( |<li>Event handling system</li>| ).
-    lo_content->add( |<li>Reusable components</li>| ).
-    lo_content->add( |<li>Form builder</li>| ).
-    lo_content->add( |<li>Table builder</li>| ).
-    lo_content->add( |</ul>| ).
-
-    lo_content->add( |<h2>Getting Started</h2>| ).
-    lo_content->add( |<p>Use the toolbar buttons above to navigate to different examples.</p>| ).
-
-    ri_content = lo_content.
+  METHOD add_card.
+    " 卡片即 sapevent 链接：标题/描述双行。颜色样式在页面 CSS 类中定义
+    " （内联无法被 hover 覆盖），此处内联仅保留布局属性
+    mo_html->add(
+      mo_html->a(
+        iv_txt   = |<span class="demo-card-title" style="display: block; font-size: 15px; font-weight: bold; color: #0969da;">{ iv_title }</span>| &&
+                   |<span style="display: block; margin-top: 6px; font-size: 13px; color: #57606a;">{ iv_desc }</span>|
+        iv_act   = iv_action
+        iv_class = 'demo-card'
+        iv_style = |display: inline-block; width: 240px; margin: 0 12px 12px 0; padding: 14px 16px;| &&
+                   |vertical-align: top; text-decoration: none;| ) ).
   ENDMETHOD.
 
   METHOD on_event.
@@ -101,6 +100,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
         rs_result-state = 1.
       WHEN 'nav_chart'.
         rs_result-page = NEW zcl_ark_example_chart_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_browser'.
+        rs_result-page = NEW zcl_ark_example_browser_page( ).
         rs_result-state = 1.
       WHEN 'run_echarts_demo'.
         run_demo_report( 'ZARK_ECHARTS_DEMO' ).

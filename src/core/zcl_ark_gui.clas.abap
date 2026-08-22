@@ -202,7 +202,13 @@ CLASS zcl_ark_gui IMPLEMENTATION.
               |tr:nth-child(even) \{ background-color: #f9f9f9; \}\n| &&
               |a \{ color: #0066cc; text-decoration: none; \}\n| &&
               |a:hover \{ text-decoration: underline; \}\n| &&
-              |.toolbar \{ margin-bottom: 10px; padding: 5px; background-color: #f0f0f0; \}\n| &&
+              |.toolbar \{ margin-bottom: 10px; padding: 6px 8px; background-color: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; \}\n| &&
+              |.toolbar-button \{ display: inline-block; padding: 4px 12px; margin: 0 6px 0 0; border: 1px solid #b6bec9; border-radius: 3px; background-color: #fff; color: #333; text-decoration: none; \}\n| &&
+              |.toolbar-button:hover \{ border-color: #0066cc; background-color: #eef4fb; color: #0066cc; text-decoration: none; \}\n| &&
+              |.toolbar-link \{ margin-left: 8px; \}\n| &&
+              |.toolbar-text \{ color: #666; margin: 0 6px; \}\n| &&
+              |.separator \{ display: inline-block; width: 1px; height: 16px; background-color: #c0c0c0; margin: 0 8px; vertical-align: middle; \}\n| &&
+              |.disabled \{ color: #999; \}\n| &&
               |.form-row \{ margin-bottom: 10px; \}\n| &&
               |.form-label \{ display: inline-block; width: 120px; font-weight: bold; \}\n| &&
               |</style>\n| &&

@@ -264,8 +264,13 @@ CLASS zcl_ark_gui IMPLEMENTATION.
       ENDTRY.
     ENDIF.
 
-    IF lv_handled = abap_true AND ls_result-page IS NOT INITIAL.
-      set_page( ls_result-page ).
+    IF lv_handled = abap_true.
+      IF ls_result-page IS NOT INITIAL.
+        set_page( ls_result-page ).
+      ELSEIF ls_result-keep_view = abap_false.
+        render( ).
+      ENDIF.
+      " keep_view = X：页面已就地更新（桥帧推送 state），主文档保持常驻
     ELSEIF action IS NOT INITIAL.
       render( ).
     ENDIF.
@@ -285,6 +290,39 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     IF go_instance = me.
       CLEAR go_instance.
     ENDIF.
+  ENDMETHOD.
+
+  METHOD zif_ark_gui_services~push_to_frame.
+    IF mo_html_viewer IS INITIAL.
+      zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
+    ENDIF.
+
+    TYPES ty_c200 TYPE c LENGTH 200.
+    DATA lt_data TYPE STANDARD TABLE OF ty_c200.
+    DATA lv_size TYPE i.
+
+    zcl_ark_convert=>string_to_tab(
+      EXPORTING
+        iv_str = iv_text
+      IMPORTING
+        ev_size = lv_size
+        et_tab  = lt_data ).
+
+    DATA lv_assigned_url TYPE string.
+
+    mo_html_viewer->load_data(
+      EXPORTING
+        iv_type    = 'text'
+        iv_subtype = 'html'
+        iv_size    = lv_size
+      IMPORTING
+        ev_assigned_url = lv_assigned_url
+      CHANGING
+        ct_data_table = lt_data ).
+
+    mo_html_viewer->show_url(
+      iv_url   = lv_assigned_url
+      iv_frame = iv_frame ).
   ENDMETHOD.
 
   METHOD zif_ark_gui_services~cache_asset.

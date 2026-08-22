@@ -59,6 +59,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     add_card( iv_title  = 'Browser Info'
               iv_desc   = 'Detect the HTML viewer engine: IE (MSHTML) or Edge (Chromium)'
               iv_action = 'nav_browser' ).
+    add_card( iv_title  = 'UI5 Host Verification'
+              iv_desc   = 'Plan B probe: CDN / sap.m / sapevent bridge / caching (Edge only)'
+              iv_action = 'nav_ui5' ).
 
     mo_html->add( |<h2 style="margin-bottom: 8px;">Standalone Reports</h2>| ).
     add_card( iv_title  = 'ECharts Demo'
@@ -111,6 +114,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
         rs_result-state = 1.
       WHEN 'nav_browser'.
         rs_result-page = NEW zcl_ark_example_browser_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_ui5'.
+        rs_result-page = NEW zcl_ark_example_ui5_page( ).
         rs_result-state = 1.
       WHEN 'run_echarts_demo'.
         run_demo_report( 'ZARK_ECHARTS_DEMO' ).

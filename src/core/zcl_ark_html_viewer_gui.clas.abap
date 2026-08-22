@@ -198,18 +198,24 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
 
   METHOD zif_ark_html_viewer~show_url.
     DATA lv_url TYPE c LENGTH 250.
+    DATA lv_frame TYPE c LENGTH 50.
 
     IF mo_html_viewer IS INITIAL.
       zcx_ark_exception=>raise( 'HTML viewer not initialized' ).
     ENDIF.
 
-    mv_url = iv_url.
+    " 帧内导航不改变主文档地址，get_url 语义保持"当前主页面"
+    IF iv_frame IS INITIAL.
+      mv_url = iv_url.
+    ENDIF.
 
     lv_url = iv_url.
+    lv_frame = iv_frame.
 
     mo_html_viewer->show_url(
       EXPORTING
         url                    = lv_url
+        in_frame               = lv_frame
       EXCEPTIONS
         cntl_error             = 1
         cnht_error_not_allowed = 2

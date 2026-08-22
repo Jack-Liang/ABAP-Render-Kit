@@ -14,7 +14,11 @@ INTERFACE zif_ark_html_viewer PUBLIC .
                     CHANGING !ct_data_table TYPE STANDARD TABLE
                     RAISING zcx_ark_exception .
   METHODS set_registered_events IMPORTING !it_events TYPE cntl_simple_events RAISING zcx_ark_exception .
-  METHODS show_url IMPORTING !iv_url TYPE string RAISING zcx_ark_exception .
+  "! iv_frame supplied: navigate the named frame instead of the main document
+  "! (response channel for the UI5 state bridge)
+  METHODS show_url IMPORTING !iv_url TYPE string
+                            !iv_frame TYPE string OPTIONAL
+                   RAISING zcx_ark_exception .
   METHODS free .
   METHODS close_document .
   METHODS get_url RETURNING VALUE(rv_url) TYPE string .

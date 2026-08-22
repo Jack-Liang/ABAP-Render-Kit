@@ -47,7 +47,9 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 
 ## 4. 分阶段路线
 
-1. **宿主验证（当前未做，第一优先）**：把 showcase 搬进 a4h + Edge 内核 SAP GUI（先 CDN），实测：①WebView2 能否拉 CDN；②sap.m 渲染；③隐藏 iframe sapevent 桥端到端延迟；④会话内资源缓存。任一不过需调整方案（本地 self-contained 资源先行）。
+1. **宿主验证（已开发，待 a4h + Edge 实测）**：入口 `ZARK_EXAMPLE` → 主页卡片 *UI5 Host Verification*（`zcl_ark_example_ui5_page`）。页面内自带验证报告面板（可一键复制回传），覆盖：① UI5/ECharts CDN 可达性与耗时；② sap.m/f 渲染（ShellBar/Toolbar）；③ sapevent 桥三条路径（隐藏 iframe GET / 主框架 GET / 表单 POST）+ 连发 10 次 + 全量 state 就地更新，均带往返毫秒数；④ 资源双取缓存探测 + 启动资源统计 + 启动耗时（跨次运行对比）。
+   - 桥机制（本阶段落地）：主页面 JS 发 `SAPEVENT:` URL（前缀自动探测：`file:///` / `sap-cust://sap-place-holder/` / 裸）→ ABAP `on_event` 处理 → `push_to_frame` 把内嵌新 state JSON 的小文档 `show_url( in_frame = 'ark_bridge' )` 进隐藏桥帧 → 桥帧脚本 `postMessage` 回主页面 → UI5 常驻不重载。
+   - 框架新增（向后兼容）：`ty_handling_result-keep_view`（处理了但禁止整页重渲染）、`zif_ark_gui_services~push_to_frame`、`zif_ark_html_viewer~show_url` 的 `iv_frame` 参数。任一验证项不过需调整方案（本地 self-contained 资源先行）。
 2. **UI5 启动壳**：固定 HTML（bootstrap + require + JSONModel + 事件桥），作为框架资产分发。
 3. **state→UI5 映射层**：`ty_page_state` → JSONModel 数据结构 + 声明式 UI5 视图描述；UI5 页面基类（对照 `zcl_ark_state_page` 的 API 形态：set_state/add_section/表格三件套）。
 4. **离线分发**：Node + ui5-tooling 做 self-contained 构建（仅维护者机器，产物 W3MI 入 `src/assets/`，走现有 `cache_asset` 链路，与 ECharts 的 MIME 模式同构）。

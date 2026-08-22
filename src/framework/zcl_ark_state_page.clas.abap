@@ -603,7 +603,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
   METHOD parse_post_value.
     " postdata 形如 name=value&name2=value2，取指定字段并做 URL 解码
     LOOP AT it_postdata INTO DATA(lv_line).
-      FIND REGEX |(^|&)({ iv_name })=(.*)$| IN lv_line
+      FIND REGEX |(^\|&)({ iv_name })=(.*)$| IN lv_line
         SUBMATCHES DATA(lv_val).
       IF sy-subrc = 0.
         rv_value = url_decode( lv_val ).

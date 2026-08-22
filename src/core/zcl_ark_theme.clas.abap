@@ -93,25 +93,25 @@ CLASS zcl_ark_theme IMPLEMENTATION.
     " ':root' custom properties. Defaults follow SAP Fiori Quartz Light.
     " Escape \{ \} inside string templates
     rv_css =
-      |:root \{\n| &&
-      |  --arkBrandColor: { token( iv_name = 'brandColor' iv_default = '#0070f2' ) };\n| &&
-      |  --arkPositiveColor: { token( iv_name = 'positiveColor' iv_default = '#107e3e' ) };\n| &&
-      |  --arkNegativeColor: { token( iv_name = 'negativeColor' iv_default = '#bb0000' ) };\n| &&
-      |  --arkCriticalColor: { token( iv_name = 'criticalColor' iv_default = '#e9730c' ) };\n| &&
-      |  --arkInformativeColor: { token( iv_name = 'informativeColor' iv_default = '#0a6ed1' ) };\n| &&
-      |  --arkTextColor: { token( iv_name = 'textColor' iv_default = '#1d2d3e' ) };\n| &&
-      |  --arkNeutralColor: { token( iv_name = 'neutralColor' iv_default = '#6a6d70' ) };\n| &&
-      |  --arkPageBackground: { token( iv_name = 'pageBackground' iv_default = '#f5f5f5' ) };\n| &&
-      |  --arkBaseColor: { token( iv_name = 'baseColor' iv_default = '#ffffff' ) };\n| &&
-      |  --arkHoverBackground: { token( iv_name = 'hoverBackground' iv_default = '#f0f0f0' ) };\n| &&
-      |  --arkSelectionBackground: { token( iv_name = 'selectionBackground' iv_default = '#e5f0fa' ) };\n| &&
-      |  --arkBorderColor: { token( iv_name = 'borderColor' iv_default = '#e5e5e5' ) };\n| &&
-      |  --arkBorderStrongColor: { token( iv_name = 'borderStrongColor' iv_default = '#c9c9c9' ) };\n| &&
-      |  --arkRadius: { token( iv_name = 'radius' iv_default = '8px' ) };\n| &&
-      |  --arkRadiusCard: { token( iv_name = 'radiusCard' iv_default = '12px' ) };\n| &&
-      |  --arkFontFamily: { token( iv_name = 'fontFamily' iv_default = '"72", "72full", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif' ) };\n| &&
-      |  --arkFontSize: { token( iv_name = 'fontSize' iv_default = '14px' ) };\n| &&
-      |\}\n\n|.
+      |:root \{ | &&
+      |  --arkBrandColor: { token( iv_name = 'brandColor' iv_default = '#0070f2' ) }; | &&
+      |  --arkPositiveColor: { token( iv_name = 'positiveColor' iv_default = '#107e3e' ) }; | &&
+      |  --arkNegativeColor: { token( iv_name = 'negativeColor' iv_default = '#bb0000' ) }; | &&
+      |  --arkCriticalColor: { token( iv_name = 'criticalColor' iv_default = '#e9730c' ) }; | &&
+      |  --arkInformativeColor: { token( iv_name = 'informativeColor' iv_default = '#0a6ed1' ) }; | &&
+      |  --arkTextColor: { token( iv_name = 'textColor' iv_default = '#1d2d3e' ) }; | &&
+      |  --arkNeutralColor: { token( iv_name = 'neutralColor' iv_default = '#6a6d70' ) }; | &&
+      |  --arkPageBackground: { token( iv_name = 'pageBackground' iv_default = '#f5f5f5' ) }; | &&
+      |  --arkBaseColor: { token( iv_name = 'baseColor' iv_default = '#ffffff' ) }; | &&
+      |  --arkHoverBackground: { token( iv_name = 'hoverBackground' iv_default = '#f0f0f0' ) }; | &&
+      |  --arkSelectionBackground: { token( iv_name = 'selectionBackground' iv_default = '#e5f0fa' ) }; | &&
+      |  --arkBorderColor: { token( iv_name = 'borderColor' iv_default = '#e5e5e5' ) }; | &&
+      |  --arkBorderStrongColor: { token( iv_name = 'borderStrongColor' iv_default = '#c9c9c9' ) }; | &&
+      |  --arkRadius: { token( iv_name = 'radius' iv_default = '8px' ) }; | &&
+      |  --arkRadiusCard: { token( iv_name = 'radiusCard' iv_default = '12px' ) }; | &&
+      |  --arkFontFamily: { token( iv_name = 'fontFamily' iv_default = '"72", "72full", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif' ) }; | &&
+      |  --arkFontSize: { token( iv_name = 'fontSize' iv_default = '14px' ) }; | &&
+      |\} |.
   ENDMETHOD.
 
   METHOD component_block.
@@ -122,81 +122,81 @@ CLASS zcl_ark_theme IMPLEMENTATION.
     rv_css =
       |body \{ font-family: var(--arkFontFamily); font-size: var(--arkFontSize);| &&
       | color: var(--arkTextColor); background: var(--arkPageBackground);| &&
-      | margin: 0; padding: 24px 32px; \}\n| &&
-      |a \{ color: var(--arkBrandColor); text-decoration: none; \}\n| &&
-      |a:hover \{ text-decoration: underline; \}\n| &&
+      | margin: 0; padding: 24px 32px; \} | &&
+      |a \{ color: var(--arkBrandColor); text-decoration: none; \} | &&
+      |a:hover \{ text-decoration: underline; \} | &&
       |table \{ border-collapse: collapse; width: 100%;| &&
-      | background: var(--arkBaseColor); border-radius: var(--arkRadiusCard); \}\n| &&
+      | background: var(--arkBaseColor); border-radius: var(--arkRadiusCard); \} | &&
       |th \{ text-align: left; font-size: 12px; font-weight: 500;| &&
       | color: var(--arkNeutralColor); padding: 10px 16px;| &&
-      | border-bottom: 1px solid var(--arkBorderStrongColor); \}\n| &&
+      | border-bottom: 1px solid var(--arkBorderStrongColor); \} | &&
       |td \{ padding: 10px 16px; font-size: 13px;| &&
-      | border-bottom: 1px solid var(--arkBorderColor); \}\n| &&
-      |tr:last-child td \{ border-bottom: none; \}\n| &&
-      |tr:hover td \{ background: var(--arkHoverBackground); \}\n| &&
+      | border-bottom: 1px solid var(--arkBorderColor); \} | &&
+      |tr:last-child td \{ border-bottom: none; \} | &&
+      |tr:hover td \{ background: var(--arkHoverBackground); \} | &&
       |.toolbar \{ display: flex; align-items: center; gap: 8px;| &&
       | margin-bottom: 16px; padding: 8px; background: var(--arkBaseColor);| &&
-      | border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); \}\n| &&
+      | border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); \} | &&
       |.toolbar-button \{ display: inline-block; padding: 5px 12px;| &&
       | margin: 0 2px 0 0; border: 1px solid var(--arkBorderStrongColor);| &&
       | border-radius: var(--arkRadius); background-color: var(--arkBaseColor);| &&
-      | color: var(--arkTextColor); text-decoration: none; font-size: 13px; \}\n| &&
+      | color: var(--arkTextColor); text-decoration: none; font-size: 13px; \} | &&
       |.toolbar-button:hover \{ background-color: var(--arkHoverBackground);| &&
-      | color: var(--arkTextColor); text-decoration: none; \}\n| &&
-      |.toolbar-link \{ margin-left: 8px; \}\n| &&
-      |.toolbar-text \{ color: var(--arkNeutralColor); margin: 0 6px; \}\n| &&
+      | color: var(--arkTextColor); text-decoration: none; \} | &&
+      |.toolbar-link \{ margin-left: 8px; \} | &&
+      |.toolbar-text \{ color: var(--arkNeutralColor); margin: 0 6px; \} | &&
       |.separator \{ display: inline-block; width: 1px; height: 20px;| &&
       | background-color: var(--arkBorderStrongColor); margin: 0 8px;| &&
-      | vertical-align: middle; \}\n| &&
-      |.disabled \{ color: var(--arkNeutralColor); opacity: 0.6; \}\n| &&
-      |.form-row \{ margin-bottom: 12px; \}\n| &&
+      | vertical-align: middle; \} | &&
+      |.disabled \{ color: var(--arkNeutralColor); opacity: 0.6; \} | &&
+      |.form-row \{ margin-bottom: 12px; \} | &&
       |.form-label \{ display: inline-block; width: 120px; font-weight: 500;| &&
-      | color: var(--arkNeutralColor); \}\n| &&
+      | color: var(--arkNeutralColor); \} | &&
       |input, select, textarea \{ font-family: var(--arkFontFamily);| &&
       | font-size: 13px; padding: 4px 8px; border: 1px solid var(--arkBorderStrongColor);| &&
-      | border-radius: var(--arkRadius); \}\n| &&
+      | border-radius: var(--arkRadius); \} | &&
       |input:focus, select:focus, textarea:focus \{ outline: none;| &&
       | border-color: var(--arkBrandColor);| &&
-      | box-shadow: 0 0 0 1px var(--arkBrandColor); \}\n| &&
+      | box-shadow: 0 0 0 1px var(--arkBrandColor); \} | &&
       |.toolbar-button--emphasized \{ background-color: var(--arkBrandColor);| &&
-      | border-color: var(--arkBrandColor); color: #fff; \}\n| &&
+      | border-color: var(--arkBrandColor); color: #fff; \} | &&
       |.toolbar-button--emphasized:hover \{ background-color: #005dc2;| &&
-      | color: #fff; \}\n| &&
-      |.ark-page-title \{ font-size: 22px; font-weight: 400; margin: 0 0 4px; \}\n| &&
+      | color: #fff; \} | &&
+      |.ark-page-title \{ font-size: 22px; font-weight: 400; margin: 0 0 4px; \} | &&
       |.ark-page-subtitle \{ color: var(--arkNeutralColor); font-size: 13px;| &&
-      | margin: 0 0 20px; \}\n| &&
+      | margin: 0 0 20px; \} | &&
       |.ark-card \{ background: var(--arkBaseColor);| &&
       | border: 1px solid var(--arkBorderColor);| &&
       | border-radius: var(--arkRadiusCard); padding: 16px 20px;| &&
-      | margin-bottom: 16px; \}\n| &&
-      |.ark-card-title \{ font-size: 16px; font-weight: 500; margin: 0 0 12px; \}\n| &&
+      | margin-bottom: 16px; \} | &&
+      |.ark-card-title \{ font-size: 16px; font-weight: 500; margin: 0 0 12px; \} | &&
       |.ark-kpi-grid \{ display: grid;| &&
       | grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));| &&
-      | gap: 16px; \}\n| &&
-      |.ark-kpi-title \{ font-size: 13px; color: var(--arkNeutralColor); \}\n| &&
-      |.ark-kpi-value \{ font-size: 30px; font-weight: 400; margin: 6px 0 2px; \}\n| &&
-      |.ark-delta \{ font-size: 13px; \}\n| &&
-      |.ark-delta--positive \{ color: var(--arkPositiveColor); \}\n| &&
-      |.ark-delta--negative \{ color: var(--arkNegativeColor); \}\n| &&
-      |.ark-delta--critical \{ color: var(--arkCriticalColor); \}\n| &&
-      |.ark-delta--informative \{ color: var(--arkInformativeColor); \}\n| &&
-      |.ark-delta--neutral \{ color: var(--arkNeutralColor); \}\n| &&
+      | gap: 16px; \} | &&
+      |.ark-kpi-title \{ font-size: 13px; color: var(--arkNeutralColor); \} | &&
+      |.ark-kpi-value \{ font-size: 30px; font-weight: 400; margin: 6px 0 2px; \} | &&
+      |.ark-delta \{ font-size: 13px; \} | &&
+      |.ark-delta--positive \{ color: var(--arkPositiveColor); \} | &&
+      |.ark-delta--negative \{ color: var(--arkNegativeColor); \} | &&
+      |.ark-delta--critical \{ color: var(--arkCriticalColor); \} | &&
+      |.ark-delta--informative \{ color: var(--arkInformativeColor); \} | &&
+      |.ark-delta--neutral \{ color: var(--arkNeutralColor); \} | &&
       |.ark-status \{ display: inline-flex; align-items: center; gap: 6px;| &&
-      | font-size: 13px; \}\n| &&
+      | font-size: 13px; \} | &&
       |.ark-status::before \{ content: ""; width: 8px; height: 8px;| &&
-      | border-radius: 50%; background: var(--arkNeutralColor); \}\n| &&
-      |.ark-status--positive::before \{ background: var(--arkPositiveColor); \}\n| &&
-      |.ark-status--negative::before \{ background: var(--arkNegativeColor); \}\n| &&
-      |.ark-status--critical::before \{ background: var(--arkCriticalColor); \}\n| &&
-      |.ark-status--informative::before \{ background: var(--arkInformativeColor); \}\n| &&
-      |.ark-num \{ text-align: right; font-variant-numeric: tabular-nums; \}\n| &&
+      | border-radius: 50%; background: var(--arkNeutralColor); \} | &&
+      |.ark-status--positive::before \{ background: var(--arkPositiveColor); \} | &&
+      |.ark-status--negative::before \{ background: var(--arkNegativeColor); \} | &&
+      |.ark-status--critical::before \{ background: var(--arkCriticalColor); \} | &&
+      |.ark-status--informative::before \{ background: var(--arkInformativeColor); \} | &&
+      |.ark-num \{ text-align: right; font-variant-numeric: tabular-nums; \} | &&
       |.ark-filterbar \{ display: flex; align-items: center; gap: 8px;| &&
-      | margin-bottom: 12px; \}\n| &&
-      |.ark-filterbar input\[type=text\] \{ width: 200px; \}\n| &&
-      |.ark-sort \{ color: var(--arkTextColor); text-decoration: none; \}\n| &&
-      |.ark-sort:hover \{ color: var(--arkBrandColor); text-decoration: none; \}\n| &&
+      | margin-bottom: 12px; \} | &&
+      |.ark-filterbar input[type=text] \{ width: 200px; \} | &&
+      |.ark-sort \{ color: var(--arkTextColor); text-decoration: none; \} | &&
+      |.ark-sort:hover \{ color: var(--arkBrandColor); text-decoration: none; \} | &&
       |.ark-empty \{ color: var(--arkNeutralColor); text-align: center;| &&
-      | padding: 20px; \}\n\n|.
+      | padding: 20px; \} |.
   ENDMETHOD.
 
 ENDCLASS.

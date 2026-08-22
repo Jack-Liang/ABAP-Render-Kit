@@ -181,15 +181,15 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
   METHOD serialize_option.
     " /ui2/cl_json 软依赖：动态调用，类不存在时回退 zcl_ark_json。
-    " pretty_name 为 string 类型枚举，'2' 对应 pretty_mode-camel_case，
-    " 下划线字段名转 camelCase（boundary_gap -> boundaryGap）。
-    " 注意：动态调用传整型 2 会因参数类型不匹配静默失败，必须传字符型
+    " pretty_name 为 char1 枚举：none=` ` low_case='L' camel_case='X'
+    " extended='Y' user='U' user_low_case='C'。
+    " camel_case 将下划线字段名转 camelCase（boundary_gap -> boundaryGap）
     TRY.
         CALL METHOD ('/UI2/CL_JSON')=>serialize
           EXPORTING
             data        = ig_data
             compress    = abap_true
-            pretty_name = '2'
+            pretty_name = 'X'
           RECEIVING
             r_json      = rv_json.
       CATCH cx_sy_dyn_call_error.

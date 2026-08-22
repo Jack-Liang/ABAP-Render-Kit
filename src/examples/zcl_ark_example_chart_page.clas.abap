@@ -127,24 +127,36 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
   METHOD build_table.
     DATA(lo_table) = zcl_ark_html_table=>create( ).
 
-    lo_table->add_column( 'Day' ).
-    lo_table->add_column( 'Email' ).
-    lo_table->add_column( 'Union Ads' ).
-    lo_table->add_column( 'Video Ads' ).
-    lo_table->add_column( 'Direct' ).
-    lo_table->add_column( 'Search Engine' ).
+    lo_table->add_column( iv_header = 'Day' ).
+    lo_table->add_column( iv_header = 'Email' ).
+    lo_table->add_column( iv_header = 'Union Ads' ).
+    lo_table->add_column( iv_header = 'Video Ads' ).
+    lo_table->add_column( iv_header = 'Direct' ).
+    lo_table->add_column( iv_header = 'Search Engine' ).
 
     lo_table->add_row( ).
-    lo_table->add_cell( 'Mon' ). lo_table->add_cell( '120' ). lo_table->add_cell( '220' ).
-    lo_table->add_cell( '150' ). lo_table->add_cell( '320' ). lo_table->add_cell( '820' ).
+    lo_table->add_cell( iv_value = 'Mon' ).
+    lo_table->add_cell( iv_value = '120' ).
+    lo_table->add_cell( iv_value = '220' ).
+    lo_table->add_cell( iv_value = '150' ).
+    lo_table->add_cell( iv_value = '320' ).
+    lo_table->add_cell( iv_value = '820' ).
 
     lo_table->add_row( ).
-    lo_table->add_cell( 'Tue' ). lo_table->add_cell( '132' ). lo_table->add_cell( '182' ).
-    lo_table->add_cell( '232' ). lo_table->add_cell( '332' ). lo_table->add_cell( '932' ).
+    lo_table->add_cell( iv_value = 'Tue' ).
+    lo_table->add_cell( iv_value = '132' ).
+    lo_table->add_cell( iv_value = '182' ).
+    lo_table->add_cell( iv_value = '232' ).
+    lo_table->add_cell( iv_value = '332' ).
+    lo_table->add_cell( iv_value = '932' ).
 
     lo_table->add_row( ).
-    lo_table->add_cell( 'Wed' ). lo_table->add_cell( '101' ). lo_table->add_cell( '191' ).
-    lo_table->add_cell( '201' ). lo_table->add_cell( '301' ). lo_table->add_cell( '901' ).
+    lo_table->add_cell( iv_value = 'Wed' ).
+    lo_table->add_cell( iv_value = '101' ).
+    lo_table->add_cell( iv_value = '191' ).
+    lo_table->add_cell( iv_value = '201' ).
+    lo_table->add_cell( iv_value = '301' ).
+    lo_table->add_cell( iv_value = '901' ).
 
     ri_html = lo_table->zif_ark_gui_renderable~render( ).
   ENDMETHOD.

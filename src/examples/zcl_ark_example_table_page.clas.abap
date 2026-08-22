@@ -1,114 +1,116 @@
 CLASS zcl_ark_example_table_page DEFINITION
   PUBLIC
-  INHERITING FROM zcl_ark_gui_page
+  INHERITING FROM zcl_ark_ui5_page
   FINAL
   CREATE PUBLIC .
 
   PUBLIC SECTION.
     METHODS constructor .
 
+    "! 经典主框架事件（工具栏 link 走 ark.nav 整页导航路径）
     METHODS on_event REDEFINITION .
 
   PROTECTED SECTION.
-    METHODS build_html REDEFINITION .
+    "! 桥事件（行编辑/删除/恢复 —— state 驱动就地更新）
+    METHODS on_state_event REDEFINITION .
 
   PRIVATE SECTION.
-    METHODS build_toolbar RETURNING VALUE(ri_toolbar) TYPE REF TO zif_ark_html .
-    METHODS build_table RETURNING VALUE(ri_table) TYPE REF TO zif_ark_html .
+    TYPES:
+      BEGIN OF ty_emp,
+        id     TYPE string,
+        name   TYPE string,
+        dept   TYPE string,
+        role   TYPE string,
+        status TYPE string,
+        sema   TYPE zif_ark_gui_state=>ty_semantic,
+      END OF ty_emp,
+      tt_emp TYPE STANDARD TABLE OF ty_emp WITH EMPTY KEY .
+
+    DATA mt_emp TYPE tt_emp .
+    DATA mv_message TYPE string .
+
+    METHODS build_state .
 ENDCLASS.
 
 CLASS zcl_ark_example_table_page IMPLEMENTATION.
 
   METHOD constructor.
     super->constructor( ).
-    set_title( 'ARK Framework - Table Example' ).
+    build_state( ).
   ENDMETHOD.
 
-  METHOD build_html.
-    mo_html->add( |<h1>Table Example</h1>| ).
-    mo_html->add( |<p>This page demonstrates the table builder component.</p>| ).
 
-    mo_html->add( build_toolbar( ) ).
-    mo_html->add( |<hr>| ).
-    mo_html->add( build_table( ) ).
+  METHOD build_state.
+    " 表格构建器示例（UI5 声明式版）：列/行/语义色/行内动作全部类型化
+    " 描述，渲染交给启动壳（sap.m.Table）。行编辑/删除经桥回传后重建
+    " state，就地更新不重启。7.57 规避：构造器浅层，先构变量逐行 APPEND
+    DATA ls_state TYPE zif_ark_gui_state=>ty_page_state.
+    DATA ls_section TYPE zif_ark_gui_state=>ty_section.
+    DATA lt_cells TYPE zif_ark_gui_state=>tt_table_cell.
+    DATA lv_subtitle TYPE string.
 
-    ri_html = mo_html.
+    IF mt_emp IS INITIAL.
+      APPEND VALUE ty_emp( id = '001' name = 'Alice Smith'   dept = 'Engineering'
+                          role = 'Developer' status = '在职'
+                          sema = zif_ark_gui_state=>c_semantic-positive ) TO mt_emp.
+      APPEND VALUE ty_emp( id = '002' name = 'Bob Johnson'   dept = 'Marketing'
+                          role = 'Manager' status = '在职'
+                          sema = zif_ark_gui_state=>c_semantic-positive ) TO mt_emp.
+      APPEND VALUE ty_emp( id = '003' name = 'Charlie Brown' dept = 'Sales'
+                          role = 'Sales Rep' status = '试用'
+                          sema = zif_ark_gui_state=>c_semantic-critical ) TO mt_emp.
+      APPEND VALUE ty_emp( id = '004' name = 'Diana Prince'  dept = 'HR'
+                          role = 'Director' status = '休假'
+                          sema = zif_ark_gui_state=>c_semantic-informative ) TO mt_emp.
+      APPEND VALUE ty_emp( id = '005' name = 'Eve Davis'     dept = 'Engineering'
+                          role = 'Tester' status = '离职中'
+                          sema = zif_ark_gui_state=>c_semantic-negative ) TO mt_emp.
+    ENDIF.
+
+    lv_subtitle = '点击行内 编辑/删除 链接或工具栏按钮 —— 经桥回传后表格与行数就地更新'.
+    IF mv_message IS NOT INITIAL.
+      lv_subtitle = mv_message.
+    ENDIF.
+
+    ls_state = VALUE #( title = '表格构建器 · UI5'
+                        subtitle = lv_subtitle ).
+
+    ls_state-toolbar = VALUE #(
+      ( kind = zif_ark_gui_state=>c_toolbar_kind-button
+        label = '恢复全部行' action = 'tbl_restore' emphasized = abap_true )
+      ( kind = zif_ark_gui_state=>c_toolbar_kind-separator )
+      ( kind = zif_ark_gui_state=>c_toolbar_kind-text
+        label = |共 { lines( mt_emp ) } 行| )
+      ( kind = zif_ark_gui_state=>c_toolbar_kind-link
+        label = '表单示例' action = 'nav_form' )
+      ( kind = zif_ark_gui_state=>c_toolbar_kind-link
+        label = '返回首页' action = 'nav_home' ) ).
+
+    ls_section = VALUE zif_ark_gui_state=>ty_section(
+      kind  = zif_ark_gui_state=>c_section_kind-table
+      title = '员工名录'
+      columns = VALUE #(
+        ( label = 'ID' align_right = abap_true )
+        ( label = '姓名' ) ( label = '部门' ) ( label = '角色' )
+        ( label = '状态' ) ( label = '编辑' ) ( label = '删除' ) ) ).
+
+    LOOP AT mt_emp INTO DATA(ls_emp).
+      CLEAR lt_cells.
+      APPEND VALUE #( value = ls_emp-id ) TO lt_cells.
+      APPEND VALUE #( value = ls_emp-name ) TO lt_cells.
+      APPEND VALUE #( value = ls_emp-dept ) TO lt_cells.
+      APPEND VALUE #( value = ls_emp-role ) TO lt_cells.
+      APPEND VALUE #( value = ls_emp-status semantic = ls_emp-sema ) TO lt_cells.
+      APPEND VALUE #( value = '编辑' action = 'row_edit' ) TO lt_cells.
+      APPEND VALUE #( value = '删除' action = 'row_del' ) TO lt_cells.
+      APPEND VALUE #( cells = lt_cells ) TO ls_section-rows.
+    ENDLOOP.
+
+    APPEND ls_section TO ls_state-sections.
+
+    set_state( ls_state ).
   ENDMETHOD.
 
-  METHOD build_toolbar.
-    DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
-
-    lo_toolbar->add_button(
-      iv_label  = 'Back to Home'
-      iv_action = 'nav_home' ).
-
-    lo_toolbar->add_button(
-      iv_label  = 'Form Example'
-      iv_action = 'nav_form' ).
-
-    lo_toolbar->add_separator( ).
-
-    lo_toolbar->add_text( iv_text = 'Total rows: 5' ).
-
-    ri_toolbar = lo_toolbar->zif_ark_gui_renderable~render( ).
-  ENDMETHOD.
-
-  METHOD build_table.
-    DATA(lo_table) = zcl_ark_html_table=>create( iv_id = 'sample_table' ).
-
-    lo_table->add_column( iv_header = 'ID' iv_width = '10%' ).
-    lo_table->add_column( iv_header = 'Name' iv_width = '30%' ).
-    lo_table->add_column( iv_header = 'Department' iv_width = '25%' ).
-    lo_table->add_column( iv_header = 'Role' iv_width = '20%' ).
-    lo_table->add_column( iv_header = 'Actions' iv_width = '15%' ).
-
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = '001' ).
-    lo_table->add_cell( iv_value = 'Alice Smith' ).
-    lo_table->add_cell( iv_value = 'Engineering' ).
-    lo_table->add_cell( iv_value = 'Developer' ).
-    lo_table->add_cell(
-      iv_value = 'Edit | Delete'
-      iv_style = 'color: #0066cc;' ).
-
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = '002' ).
-    lo_table->add_cell( iv_value = 'Bob Johnson' ).
-    lo_table->add_cell( iv_value = 'Marketing' ).
-    lo_table->add_cell( iv_value = 'Manager' ).
-    lo_table->add_cell(
-      iv_value = 'Edit | Delete'
-      iv_style = 'color: #0066cc;' ).
-
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = '003' ).
-    lo_table->add_cell( iv_value = 'Charlie Brown' ).
-    lo_table->add_cell( iv_value = 'Sales' ).
-    lo_table->add_cell( iv_value = 'Sales Rep' ).
-    lo_table->add_cell(
-      iv_value = 'Edit | Delete'
-      iv_style = 'color: #0066cc;' ).
-
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = '004' ).
-    lo_table->add_cell( iv_value = 'Diana Prince' ).
-    lo_table->add_cell( iv_value = 'HR' ).
-    lo_table->add_cell( iv_value = 'Director' ).
-    lo_table->add_cell(
-      iv_value = 'Edit | Delete'
-      iv_style = 'color: #0066cc;' ).
-
-    lo_table->add_row( ).
-    lo_table->add_cell( iv_value = '005' ).
-    lo_table->add_cell( iv_value = 'Eve Davis' ).
-    lo_table->add_cell( iv_value = 'Engineering' ).
-    lo_table->add_cell( iv_value = 'Tester' ).
-    lo_table->add_cell(
-      iv_value = 'Edit | Delete'
-      iv_style = 'color: #0066cc;' ).
-
-    ri_table = lo_table->zif_ark_gui_renderable~render( ).
-  ENDMETHOD.
 
   METHOD on_event.
     CASE ii_event->mv_action.
@@ -120,6 +122,34 @@ CLASS zcl_ark_example_table_page IMPLEMENTATION.
         rs_result-state = 1.
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).
+    ENDCASE.
+  ENDMETHOD.
+
+
+  METHOD on_state_event.
+    DATA lv_row TYPE i.
+
+    CASE ii_event->mv_action.
+      WHEN 'row_edit'.
+        " 单元格链接：前端附加 __row（1 基行号）
+        mv_message = |行 { ii_event->query( '__row' ) } 编辑（桥往返，就地更新）|.
+        build_state( ).
+
+      WHEN 'row_del'.
+        lv_row = CONV i( ii_event->query( '__row' ) ).
+        IF lv_row >= 1 AND lv_row <= lines( mt_emp ).
+          DELETE mt_emp INDEX lv_row.
+          mv_message = |已删除第 { lv_row } 行（桥往返，表格就地重建）|.
+        ENDIF.
+        build_state( ).
+
+      WHEN 'tbl_restore'.
+        CLEAR mt_emp.
+        mv_message = '已恢复全部 5 行（桥往返）'.
+        build_state( ).
+
+      WHEN OTHERS.
+        rs_result = super->on_state_event( ii_event ).
     ENDCASE.
   ENDMETHOD.
 

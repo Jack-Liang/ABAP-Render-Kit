@@ -45,10 +45,10 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
 
     mo_html->add( |<h2 style="margin-bottom: 8px;">In-App Pages</h2>| ).
     add_card( iv_title  = 'Form Builder'
-              iv_desc   = 'Input fields, dropdowns and a submit round-trip via sapevent'
+              iv_desc   = 'Typed form fields -> UI5 shell; bridge POST round-trip (Edge only)'
               iv_action = 'nav_form' ).
     add_card( iv_title  = 'Table Builder'
-              iv_desc   = 'Column/row/cell API with styles and actions'
+              iv_desc   = 'Declarative sap.m table: semantic states, row actions via bridge (Edge only)'
               iv_action = 'nav_table' ).
     add_card( iv_title  = 'Charts'
               iv_desc   = 'ECharts mixed with plain HTML on one page'

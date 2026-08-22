@@ -53,7 +53,7 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 2. **UI5 启动壳（已开发，浏览器验证通过）**：`zcl_ark_ui5_shell`（框架资产）——固定 HTML/JS：UI5 async bootstrap + ECharts 资产链（复用 `zcl_ark_echarts`）+ sapevent 事件桥（`ark.state` 桥事件 / `ark.nav` 主框架导航 / `ark.formGo` 桥表单 POST）。真源为 `demo/ui5-shell-preview.html`（浏览器可测），经 `tools/gen_ui5_shell.mjs` 逐字生成 ABAP 类，勿手改标记区。
 3. **state→UI5 映射层（已开发 v1）**：`zcl_ark_ui5_page` 基类（API 对齐 `zcl_ark_state_page`：set_state / add_section / add_button…）+ 壳 JS 映射器：kpi_grid（原生卡+sparkline）/ table（sap.m.Table + ObjectStatus/Link 语义色）/ chart（ECharts option + 点击回传）/ form（经桥 POST）。**桥协议**：前端事件带 `__ark=1` → `on_state_event` 钩子重建 state → `push_state` 回推 ark_bridge 帧（keep_view，UI5 常驻）。**v1 取舍**：表格排序/筛选/CSV 内置与 sap.m 表单映射留待后续；工具栏 link 走主框架导航（对齐 A 路线恒可点语义）。
 4. **离线分发**：Node + ui5-tooling 做 self-contained 构建（仅维护者机器，产物 W3MI 入 `src/assets/`，走现有 `cache_asset` 链路，与 ECharts 的 MIME 模式同构）。
-5. **示例迁移** + ECharts 分区混排正式化：首个示例已迁移（`zcl_ark_example_ui5_state_page`，首页卡片 *UI5 State Page*）；其余示例与混排正式化待宿主实测通过后推进。
+5. **示例迁移** + ECharts 分区混排正式化：已完成 `zcl_ark_example_ui5_state_page`（销售概览）与 `zcl_ark_example_form_page` / `zcl_ark_example_table_page`（表单/表格构建器，改声明式 + 桥交互：随机填充、提交回显、行编辑/删除/恢复）；Charts 与 SFlight 等其余示例待迁。
 
 ## 5. 现有资产清单
 

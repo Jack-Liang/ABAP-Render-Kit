@@ -58,6 +58,17 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING !iv_save_as_image TYPE abap_bool DEFAULT abap_true
       RETURNING VALUE(ro_self)    TYPE REF TO zcl_ark_echarts .
 
+    "! 图表元素点击回传：点击柱/折线点/饼块/地图区域时以 sapevent 触发
+    "! iv_action，页面 on_event 里经 ii_event->query( ) 读取参数：
+    "!   name   类目名或数据点名（如饼块/地图区域名）
+    "!   series 系列名
+    "!   value  数值（scatter 等对象值回传为 JSON 字符串）
+    "!   idx    dataIndex
+    "! 值在框架侧自动 URL 解码；单个参数上限 250 字符（编码后中文约 9 字符/字）
+    METHODS set_on_click
+      IMPORTING !iv_action      TYPE string
+      RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
+
     " 离线/内网环境：传入 SMW0 中 echarts.min.js 的二进制内容
     " （zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' )），
     " 渲染时经 cache_asset 换成本地缓存 URL，替代 CDN
@@ -115,6 +126,7 @@ CLASS zcl_ark_echarts DEFINITION
     DATA mv_option_json TYPE string .
     DATA mv_option_override TYPE string .
     DATA mv_categories_json TYPE string .
+    DATA mv_on_click TYPE string .
     DATA mt_series TYPE STANDARD TABLE OF ty_series WITH DEFAULT KEY .
 
     METHODS build_init_js
@@ -184,6 +196,11 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
   METHOD set_toolbox.
     mv_save_as_image = iv_save_as_image.
+    ro_self = me.
+  ENDMETHOD.
+
+  METHOD set_on_click.
+    mv_on_click = iv_action.
     ro_self = me.
   ENDMETHOD.
 
@@ -316,6 +333,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     DATA lv_nl TYPE string.
     DATA lv_base_option TYPE string.
     DATA lv_override_js TYPE string.
+    DATA lv_click_js TYPE string.
 
     lv_nl = cl_abap_char_utilities=>newline.
 
@@ -336,6 +354,22 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
         |  for (var k in optionOverride) \{ if (optionOverride.hasOwnProperty(k)) \{ option[k] = optionOverride[k]; \} \}| && lv_nl.
     ENDIF.
 
+    " 图表元素点击 → sapevent（框架内首个 JS 主动 sapevent：viewer 已按
+    " appl_event 注册，location.href 导航同样触发后端 roundtrip）。
+    " 值 encodeURIComponent 编码，zcl_ark_gui_event 侧自动解码
+    IF mv_on_click IS NOT INITIAL.
+      lv_click_js =
+        |  myChart.on('click', function(p) \{|                                    && lv_nl &&
+        |    var v = p.value;|                                                    && lv_nl &&
+        |    if (v && typeof v === 'object') \{ v = JSON.stringify(v); \}|        && lv_nl &&
+        |    location.href = 'sapevent:{ escape_js( mv_on_click ) }'|             && lv_nl &&
+        |      + '?name=' + encodeURIComponent(p.name \|\| '')|                   && lv_nl &&
+        |      + '&series=' + encodeURIComponent(p.seriesName \|\| '')|           && lv_nl &&
+        |      + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| && lv_nl &&
+        |      + '&idx=' + (p.dataIndex === undefined ? -1 : p.dataIndex);|       && lv_nl &&
+        |  \});|                                                                 && lv_nl.
+    ENDIF.
+
     rv_js =
       |(function() \{|                                                        && lv_nl &&
       |  var chartDom = document.getElementById('{ escape_js( mv_div_id ) }');|    && lv_nl &&
@@ -348,6 +382,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       |  var option = | && lv_base_option && |;|                              && lv_nl &&
       lv_override_js                                                          &&
       |  myChart.setOption(option);|                                          && lv_nl &&
+      lv_click_js                                                             &&
       |  window.addEventListener('resize', function() \{ myChart.resize(); \});| && lv_nl &&
       |\})();|.
   ENDMETHOD.

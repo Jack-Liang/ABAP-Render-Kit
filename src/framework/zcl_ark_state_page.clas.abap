@@ -692,10 +692,32 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     DATA(lv_option) = is_section-chart_option.
     lv_option = replace( val = lv_option sub = `</` with = `<\/` occ = 0 ).
 
+    " 图表元素点击 → sapevent，参数同 zcl_ark_echarts=>set_on_click，
+    " 额外带 chart=节序号区分多个图表节。action 来自应用 state，
+    " 信任级别与 toolbar action 一致
+    DATA lv_click_js TYPE string.
+    IF is_section-chart_click_action IS NOT INITIAL.
+      lv_click_js =
+        |c.on('click', function(p) \{| &&
+        |var v = p.value;| &&
+        |if (v && typeof v === 'object') \{ v = JSON.stringify(v); \}| &&
+        |location.href = 'sapevent:{ is_section-chart_click_action }'| &&
+        |  + '?name=' + encodeURIComponent(p.name \|\| '')| &&
+        |  + '&series=' + encodeURIComponent(p.seriesName \|\| '')| &&
+        |  + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| &&
+        |  + '&idx=' + (p.dataIndex === undefined ? -1 : p.dataIndex)| &&
+        |  + '&chart={ iv_index };| &&
+        |\});| .
+    ENDIF.
+
     co_html->add_js(
       |(function() \{| &&
       |var el = document.getElementById('{ lv_id }');| &&
-      |if (window.echarts && el) \{ echarts.init(el).setOption({ lv_option }); \}| &&
+      |if (window.echarts && el) \{| &&
+      |var c = echarts.init(el);| &&
+      |c.setOption({ lv_option });| &&
+      lv_click_js &&
+      |\}| &&
       |\})();| ).
   ENDMETHOD.
 

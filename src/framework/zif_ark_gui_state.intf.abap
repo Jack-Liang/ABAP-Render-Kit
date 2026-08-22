@@ -121,6 +121,11 @@ INTERFACE zif_ark_gui_state
       "! For chart sections: complete ECharts option serialized as JSON.
       "! Reuse zcl_ark_echarts option building and pass its JSON here.
       chart_option TYPE string,
+      "! For chart sections: fire this sapevent action when a chart element
+      "! (bar / pie slice / map region / ...) is clicked. Payload params
+      "! name / series / value / idx (see zcl_ark_echarts=>set_on_click)
+      "! plus chart (= section index) to tell multiple chart sections apart
+      chart_click_action TYPE string,
     END OF ty_section,
     tt_section TYPE STANDARD TABLE OF ty_section WITH EMPTY KEY .
 

@@ -134,10 +134,11 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
 
     APPEND ms_table TO ls_state-sections.
 
-    " ---- 图表（ECharts option JSON 直入）----
+    " ---- 图表（ECharts option JSON 直入；chart_click_action 点击柱子回传）----
     ls_state-sections = VALUE #( BASE ls_state-sections
       ( kind = zif_ark_gui_state=>c_section_kind-chart
         title = '月度销售额'
+        chart_click_action = 'state_chart_click'
         chart_option =
           `{ "xAxis": { "type": "category", "data": ["1月","2月","3月","4月","5月","6月"] },` &&
           `  "yAxis": { "type": "value" },` &&
@@ -187,6 +188,11 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
             mv_message = |筛选已应用: 客户 = { lv_city }|.
           ENDIF.
         ENDLOOP.
+        build_state( ).
+        rs_result-state = 1.
+      WHEN 'state_chart_click'.
+        " 图表点击回传：name=类目（月份），chart=节序号；值已自动 URL 解码
+        mv_message = |图表点击: { ii_event->query( 'name' ) } = { ii_event->query( 'value' ) }|.
         build_state( ).
         rs_result-state = 1.
       WHEN 'nav_home'.

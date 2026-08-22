@@ -37,10 +37,18 @@ CLASS zcl_ark_example_ui5_state_page IMPLEMENTATION.
   METHOD build_state.
     " UI5 声明式页面演示：与 zcl_ark_example_state_page 同一 state 内容，
     " 渲染走 UI5 启动壳 —— 工具栏/表格为 sap.m，KPI/图表为 ECharts 分区，
-    " 交互经 sapevent 桥回推新 state（UI5 常驻不重启）
-    DATA(ls_state) = VALUE zif_ark_gui_state=>ty_page_state(
-      title    = '销售概览 · UI5'
-      subtitle = '声明式 state + UI5 启动壳 — 点击工具栏按钮 / 表格链接 / 图表 / 提交表单试试' ).
+    " 交互经 sapevent 桥回推新 state（UI5 常驻不重启）。
+    " 7.57 规避（本类实测踩雷）：构造器语句一律浅层 —— 先构变量/逐卡
+    " APPEND，构造器括号内不出现跨行 && 链与深层嵌套内表
+    DATA ls_state TYPE zif_ark_gui_state=>ty_page_state.
+    DATA lt_kpi TYPE zif_ark_gui_state=>tt_kpi_card.
+    DATA ls_kpi TYPE zif_ark_gui_state=>ty_kpi_card.
+    DATA lt_fields TYPE zif_ark_gui_state=>tt_form_field.
+    DATA lt_options TYPE string_table.
+    DATA lv_option TYPE string.
+
+    ls_state = VALUE #( title = '销售概览 · UI5'
+                        subtitle = '声明式 state + UI5 启动壳 — 点击工具栏按钮 / 表格链接 / 图表 / 提交表单试试' ).
 
     ls_state-toolbar = VALUE #(
       ( kind = zif_ark_gui_state=>c_toolbar_kind-button
@@ -51,28 +59,37 @@ CLASS zcl_ark_example_ui5_state_page IMPLEMENTATION.
       ( kind = zif_ark_gui_state=>c_toolbar_kind-link
         label = '返回' action = 'nav_home' ) ).
 
-    " ---- KPI 卡片 ----
+    " ---- KPI 卡片：逐卡构造后 APPEND ----
     DATA(lv_sales) = |{ 4286 * mv_factor }|.
     DATA(lv_orders) = |{ 18532 * mv_factor }|.
-    ls_state-sections = VALUE #(
-      ( kind = zif_ark_gui_state=>c_section_kind-kpi_grid
-        kpi_cards = VALUE #(
-          ( title = '总销售额' value = |{ lv_sales } 万|
-            delta_text = '▲ 12.4% 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-positive
-            sparkline = VALUE #( ( `32` ) ( `38` ) ( `35` ) ( `42` ) ( `48` ) ( `45` ) ( `52` ) ) )
-          ( title = '订单数' value = lv_orders
-            delta_text = '▲ 6.8% 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-positive
-            sparkline = VALUE #( ( `12` ) ( `14` ) ( `13` ) ( `15` ) ( `16` ) ( `17` ) ( `19` ) ) )
-          ( title = '退货率' value = '2.1%'
-            delta_text = '▼ 0.4pp 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-negative
-            sparkline = VALUE #( ( `3.4` ) ( `3.2` ) ( `2.9` ) ( `2.7` ) ( `2.4` ) ( `2.3` ) ( `2.1` ) ) )
-          ( title = '客户满意度' value = '94.6'
-            delta_text = '▲ 1.2 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-informative
-            sparkline = VALUE #( ( `90` ) ( `91` ) ( `92` ) ( `92.8` ) ( `93.5` ) ( `94` ) ( `94.6` ) ) ) ) ).
+
+    ls_kpi = VALUE #( title = '总销售额' value = |{ lv_sales } 万|
+                      delta_text = '▲ 12.4% 环比'
+                      delta_semantic = zif_ark_gui_state=>c_semantic-positive ).
+    ls_kpi-sparkline = VALUE #( ( `32` ) ( `38` ) ( `35` ) ( `42` ) ( `48` ) ( `45` ) ( `52` ) ).
+    APPEND ls_kpi TO lt_kpi.
+
+    ls_kpi = VALUE #( title = '订单数' value = lv_orders
+                      delta_text = '▲ 6.8% 环比'
+                      delta_semantic = zif_ark_gui_state=>c_semantic-positive ).
+    ls_kpi-sparkline = VALUE #( ( `12` ) ( `14` ) ( `13` ) ( `15` ) ( `16` ) ( `17` ) ( `19` ) ).
+    APPEND ls_kpi TO lt_kpi.
+
+    ls_kpi = VALUE #( title = '退货率' value = '2.1%'
+                      delta_text = '▼ 0.4pp 环比'
+                      delta_semantic = zif_ark_gui_state=>c_semantic-negative ).
+    ls_kpi-sparkline = VALUE #( ( `3.4` ) ( `3.2` ) ( `2.9` ) ( `2.7` ) ( `2.4` ) ( `2.3` ) ( `2.1` ) ).
+    APPEND ls_kpi TO lt_kpi.
+
+    ls_kpi = VALUE #( title = '客户满意度' value = '94.6'
+                      delta_text = '▲ 1.2 环比'
+                      delta_semantic = zif_ark_gui_state=>c_semantic-informative ).
+    ls_kpi-sparkline = VALUE #( ( `90` ) ( `91` ) ( `92` ) ( `92.8` ) ( `93.5` ) ( `94` ) ( `94.6` ) ).
+    APPEND ls_kpi TO lt_kpi.
+
+    APPEND VALUE zif_ark_gui_state=>ty_section(
+      kind = zif_ark_gui_state=>c_section_kind-kpi_grid
+      kpi_cards = lt_kpi ) TO ls_state-sections.
 
     " ---- 表格（嵌套内表无法内联构造，ADD_ROW 逐行追加 — 7.57 兼容）----
     ms_table = VALUE zif_ark_gui_state=>ty_section(
@@ -126,30 +143,32 @@ CLASS zcl_ark_example_ui5_state_page IMPLEMENTATION.
 
     APPEND ms_table TO ls_state-sections.
 
-    " ---- 图表（ECharts option JSON 直入；点击柱子经桥回传）----
-    ls_state-sections = VALUE #( BASE ls_state-sections
-      ( kind = zif_ark_gui_state=>c_section_kind-chart
-        title = '月度销售额'
-        chart_click_action = 'ui5s_chart_click'
-        chart_option =
-          `{ "tooltip": { "trigger": "axis" },` &&
-          `  "grid": { "left": 56, "right": 24, "top": 30, "bottom": 30 },` &&
-          `  "xAxis": { "type": "category", "data": ["1月","2月","3月","4月","5月","6月"] },` &&
-          `  "yAxis": { "type": "value", "name": "万元" },` &&
-          `  "series": [{ "type": "bar", "name": "销售额",` &&
-          `    "data": [420,455,490,530,580,620],` &&
-          `    "itemStyle": { "color": "#0070f2", "borderRadius": [4,4,0,0] } }] }` ) ).
+    " ---- 图表（option 先拼变量，构造器外完成跨行 && 链）----
+    lv_option =
+      `{ "tooltip": { "trigger": "axis" },` &&
+      `  "grid": { "left": 56, "right": 24, "top": 30, "bottom": 30 },` &&
+      `  "xAxis": { "type": "category", "data": ["1月","2月","3月","4月","5月","6月"] },` &&
+      `  "yAxis": { "type": "value", "name": "万元" },` &&
+      `  "series": [{ "type": "bar", "name": "销售额",` &&
+      `    "data": [420,455,490,530,580,620],` &&
+      `    "itemStyle": { "color": "#0070f2", "borderRadius": [4,4,0,0] } }] }`.
+    APPEND VALUE zif_ark_gui_state=>ty_section(
+      kind = zif_ark_gui_state=>c_section_kind-chart
+      title = '月度销售额'
+      chart_click_action = 'ui5s_chart_click'
+      chart_option = lv_option ) TO ls_state-sections.
 
     " ---- 表单（经桥 POST：隐藏 __ark 字段 + target=ark_bridge）----
-    ls_state-sections = VALUE #( BASE ls_state-sections
-      ( kind = zif_ark_gui_state=>c_section_kind-form
-        title = '筛选条件'
-        form_action = 'ui5s_form_save'
-        form_fields = VALUE #(
-          ( input_type = 'text' label = '客户名' name = 'city' value = '华信科技' )
-          ( input_type = 'select' label = '渠道' name = 'channel'
-            value = '直销' options = VALUE #( ( `直销` ) ( `分销` ) ( `电商` ) ) )
-          ( input_type = 'submit' label = '' name = '' value = '应用筛选' ) ) ) ).
+    APPEND VALUE #( input_type = 'text' label = '客户名' name = 'city' value = '华信科技' ) TO lt_fields.
+    lt_options = VALUE #( ( `直销` ) ( `分销` ) ( `电商` ) ).
+    APPEND VALUE #( input_type = 'select' label = '渠道' name = 'channel'
+                    value = '直销' options = lt_options ) TO lt_fields.
+    APPEND VALUE #( input_type = 'submit' label = '' name = '' value = '应用筛选' ) TO lt_fields.
+    APPEND VALUE zif_ark_gui_state=>ty_section(
+      kind = zif_ark_gui_state=>c_section_kind-form
+      title = '筛选条件'
+      form_action = 'ui5s_form_save'
+      form_fields = lt_fields ) TO ls_state-sections.
 
     IF mv_message IS NOT INITIAL.
       ls_state-subtitle = mv_message.

@@ -24,6 +24,14 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
   METHOD constructor.
     super->constructor( ).
     set_title( 'ARK Framework - ECharts Component' ).
+
+    " 启用随仓库分发的 ECharts MIME 资产（会话级只读一次）；
+    " 对象不存在时组件自动回退 CDN
+    TRY.
+        zcl_ark_echarts=>use_bundled_library( ).
+      CATCH zcx_ark_exception.
+        " MIME 资产未部署，保持 CDN
+    ENDTRY.
   ENDMETHOD.
 
   METHOD build_html.
@@ -72,15 +80,6 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
     DATA(lo_chart) = NEW zcl_ark_echarts(
       iv_div_id = 'chart_area'
       iv_height = 420 ).
-
-    " 优先使用随仓库分发的 MIME 资产 ZARK_ECHARTS_MIN_JS（离线可用）；
-    " 对象不存在时组件自动回退 CDN
-    TRY.
-        lo_chart->set_library_xdata(
-          zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' ) ).
-      CATCH zcx_ark_exception.
-        " MIME 资产未部署，保持 CDN
-    ENDTRY.
 
     lo_chart->set_title( 'Stacked Area Chart' ).
     lo_chart->set_toolbox( ).

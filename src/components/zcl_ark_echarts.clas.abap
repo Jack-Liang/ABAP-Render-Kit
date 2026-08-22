@@ -9,6 +9,13 @@ CLASS zcl_ark_echarts DEFINITION
 
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
     CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .
+    CONSTANTS c_bundled_mime_name TYPE wwwdatatab-objid VALUE 'ZARK_ECHARTS_MIN_JS' .
+
+    " 启用随仓库分发的 ECharts 资产（MIME 对象 ZARK_ECHARTS_MIN_JS）：
+    " 整个会话只从 SMW0 读取一次，之后所有图表共享，缺省回退 CDN
+    CLASS-METHODS use_bundled_library
+      IMPORTING !iv_mime_name TYPE wwwdatatab-objid DEFAULT c_bundled_mime_name
+      RAISING   zcx_ark_exception .
 
     METHODS constructor
       IMPORTING
@@ -66,6 +73,8 @@ CLASS zcl_ark_echarts DEFINITION
       END OF ty_series .
 
     CLASS-DATA gv_instance_counter TYPE i .
+    CLASS-DATA gv_default_lib_xdata TYPE xstring .   " use_bundled_library 读入，会话级
+    CLASS-DATA gv_cached_lib_url TYPE string .       " cache_asset 换得的 URL，会话级
 
     DATA mv_div_id TYPE string .
     DATA mv_height TYPE i .
@@ -85,6 +94,13 @@ ENDCLASS.
 
 
 CLASS zcl_ark_echarts IMPLEMENTATION.
+
+  METHOD use_bundled_library.
+    " 会话级只读一次（1MB+ 的 WWWDATA_IMPORT 很贵）
+    IF gv_default_lib_xdata IS INITIAL.
+      gv_default_lib_xdata = zcl_ark_convert=>mime_to_xstring( iv_mime_name ).
+    ENDIF.
+  ENDMETHOD.
 
   METHOD constructor.
     gv_instance_counter = gv_instance_counter + 1.
@@ -139,20 +155,32 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
     " ECharts 库。同页多个图表时，仅第一个组件需要带上（iv_include_lib）
-    " 优先使用 set_library_xdata 提供的本地资产（SMW0/MIME），缺省回退 CDN
+    " 资产优先级：实例级 set_library_xdata > 会话级 use_bundled_library > CDN
+    " cache_asset 换得的 URL 会话级缓存，避免每次渲染都上传 1MB+ 给前端控件
     IF mv_include_lib = abap_true.
       DATA(lv_lib_url) = c_cdn_url.
 
-      IF mv_library_xdata IS NOT INITIAL.
-        TRY.
-            lv_lib_url = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
-              iv_url     = c_lib_cache_name
-              iv_xdata   = mv_library_xdata
-              iv_type    = 'text'
-              iv_subtype = 'javascript' ).
-          CATCH zcx_ark_exception.
-            " 缓存失败时保持 CDN 回退
-        ENDTRY.
+      DATA(lv_xdata) = mv_library_xdata.
+      IF lv_xdata IS INITIAL.
+        lv_xdata = gv_default_lib_xdata.
+      ENDIF.
+
+      IF lv_xdata IS NOT INITIAL.
+        IF gv_cached_lib_url IS INITIAL.
+          TRY.
+              gv_cached_lib_url = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+                iv_url     = c_lib_cache_name
+                iv_xdata   = lv_xdata
+                iv_type    = 'text'
+                iv_subtype = 'javascript' ).
+            CATCH zcx_ark_exception.
+              " 缓存失败时保持 CDN 回退
+          ENDTRY.
+        ENDIF.
+
+        IF gv_cached_lib_url IS NOT INITIAL.
+          lv_lib_url = gv_cached_lib_url.
+        ENDIF.
       ENDIF.
 
       lo_html->add( |<script src="{ lv_lib_url }"></script>| ).
@@ -182,7 +210,11 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     rv_js =
       |(function() \{|                                                        && lv_nl &&
       |  var chartDom = document.getElementById('{ mv_div_id }');|            && lv_nl &&
-      |  if (!chartDom \|\| typeof echarts === 'undefined') \{ return; \}|      && lv_nl &&
+      |  if (!chartDom) \{ return; \}|                                        && lv_nl &&
+      |  if (typeof echarts === 'undefined') \{|                              && lv_nl &&
+      |    chartDom.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">ECharts 库加载失败：资产缺失或浏览器内核不受支持（SAP GUI HTML Viewer 为 IE 内核，可能需要 ECharts 5.x）。</div>';| && lv_nl &&
+      |    return;|                                                           && lv_nl &&
+      |  \}|                                                                  && lv_nl &&
       |  var myChart = echarts.init(chartDom{ lv_theme_arg });|               && lv_nl &&
       |  var option = | && build_option_js( ) && |;|                          && lv_nl &&
       |  myChart.setOption(option);|                                          && lv_nl &&

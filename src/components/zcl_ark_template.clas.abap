@@ -64,22 +64,21 @@ CLASS zcl_ark_template IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render.
-    " 两阶段哨兵替换：先把占位符换成"行号+控制字符"哨兵，再把哨兵换成真值。
+    " 两阶段哨兵替换：先把占位符换成人工标记串，再把标记换成真值。
     " 若直接顺序替换，先填的值中含 {{XXX}} 时会被后续替换波及。
-    " 哨兵字符用字符串模板 Unicode 转义构造，不依赖 minchar/uccp
-    DATA(lv_mark) = |\u0001|.
+    " 哨兵用 ASCII 标记串而非控制字符：\u 转义/minchar/uccp 在部分发行版不可用
     FIELD-SYMBOLS <ls_value> TYPE ty_value.
 
     rv_text = mv_template.
 
     LOOP AT mt_values ASSIGNING <ls_value>.
       DATA(lv_token) = `{{` && <ls_value>-name && `}}`.
-      DATA(lv_sentinel) = |{ lv_mark }{ sy-tabix }{ lv_mark }|.
+      DATA(lv_sentinel) = |@@ARK[{ sy-tabix }]@@|.
       REPLACE ALL OCCURRENCES OF lv_token IN rv_text WITH lv_sentinel.
     ENDLOOP.
 
     LOOP AT mt_values ASSIGNING <ls_value>.
-      DATA(lv_sentinel_out) = |{ lv_mark }{ sy-tabix }{ lv_mark }|.
+      DATA(lv_sentinel_out) = |@@ARK[{ sy-tabix }]@@|.
       REPLACE ALL OCCURRENCES OF lv_sentinel_out IN rv_text WITH <ls_value>-value.
     ENDLOOP.
   ENDMETHOD.

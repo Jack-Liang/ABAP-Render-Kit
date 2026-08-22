@@ -718,14 +718,21 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     " 图表元素点击 → sapevent，参数同 zcl_ark_echarts=>set_on_click，
     " 额外带 chart=节序号区分多个图表节。action 来自应用 state，
-    " 信任级别与 toolbar action 一致
+    " 信任级别与 toolbar action 一致。
+    " Chromium 内核需探测 URL 前缀（同 zcl_ark_echarts / abapGit #6339）
     DATA lv_click_js TYPE string.
     IF is_section-chart_click_action IS NOT INITIAL.
       lv_click_js =
         |c.on('click', function(p) \{| &&
         |var v = p.value;| &&
         |if (v && typeof v === 'object') \{ v = JSON.stringify(v); \}| &&
-        |location.href = 'sapevent:{ is_section-chart_click_action }'| &&
+        |var arkPrefix = '';| &&
+        |if (document.querySelector('a[href*="file:///SAPEVENT:"]')) \{| &&
+        |  arkPrefix = 'file:///';| &&
+        |\} else if (document.querySelector('a[href^="sap-cust"]')) \{| &&
+        |  arkPrefix = 'sap-cust://sap-place-holder/';| &&
+        |\}| &&
+        |location.href = arkPrefix + 'SAPEVENT:{ is_section-chart_click_action }'| &&
         |  + '?name=' + encodeURIComponent(p.name \|\| '')| &&
         |  + '&series=' + encodeURIComponent(p.seriesName \|\| '')| &&
         |  + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| &&

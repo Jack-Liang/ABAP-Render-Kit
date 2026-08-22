@@ -100,11 +100,16 @@ CLASS zcl_ark_convert IMPLEMENTATION.
   ENDMETHOD.
   METHOD url_decode.
     " sapevent GET/POST 参数值的简易 URL 解码（+ -> 空格、%XX -> UTF-8 字符）。
-    " 非法 % 序列按普通字符处理，整体解码失败保留原样
+    " 非法 % 序列按普通字符处理，整体解码失败保留原样。
+    " %XX 路径：两位十六进制经 CO 校验后用 c->x 标准转换取字节 ——
+    " 原 CONV xstring( |X..| ) 写法的 X 前缀并非十六进制字符，
+    " 运行期必然抛异常走 CATCH，%XX 会被当作普通文本（中文解码出乱码）
     rv_decoded = iv_encoded.
     rv_decoded = replace( val = rv_decoded sub = `+` with = ` ` occ = 0 ).
 
     DATA lv_x TYPE xstring.
+    DATA lv_two TYPE string.
+    DATA lv_hexbyte TYPE x LENGTH 1.
     DATA lv_pos TYPE i VALUE 0.
     DATA lv_len TYPE i.
     lv_len = strlen( rv_decoded ).
@@ -112,16 +117,14 @@ CLASS zcl_ark_convert IMPLEMENTATION.
     WHILE lv_pos < lv_len.
       IF substring( val = rv_decoded off = lv_pos len = 1 ) = '%'
          AND lv_pos + 2 < lv_len.
-        TRY.
-            DATA(lv_hex) = CONV xstring(
-              |X{ to_upper( substring( val = rv_decoded off = lv_pos + 1 len = 2 ) ) }| ).
-            CONCATENATE lv_x lv_hex INTO lv_x IN BYTE MODE.
-            lv_pos = lv_pos + 3.
-            CONTINUE.
-          CATCH cx_root.
-            " 非法 % 序列按普通字符处理
-          ENDTRY.
+        lv_two = to_upper( substring( val = rv_decoded off = lv_pos + 1 len = 2 ) ).
+        IF lv_two CO `0123456789ABCDEF`.
+          lv_hexbyte = lv_two.
+          CONCATENATE lv_x lv_hexbyte INTO lv_x IN BYTE MODE.
+          lv_pos = lv_pos + 3.
+          CONTINUE.
         ENDIF.
+      ENDIF.
       DATA(lv_byte) = cl_abap_codepage=>convert_to( substring( val = rv_decoded off = lv_pos len = 1 ) ).
       CONCATENATE lv_x lv_byte INTO lv_x IN BYTE MODE.
       lv_pos = lv_pos + 1.

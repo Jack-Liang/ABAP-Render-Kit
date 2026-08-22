@@ -571,15 +571,22 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
         |  for (var k in optionOverride) \{ if (optionOverride.hasOwnProperty(k)) \{ option[k] = optionOverride[k]; \} \}| && lv_nl.
     ENDIF.
 
-    " 图表元素点击 → sapevent（框架内首个 JS 主动 sapevent：viewer 已按
-    " appl_event 注册，location.href 导航同样触发后端 roundtrip）。
-    " 值 encodeURIComponent 编码，zcl_ark_gui_event 侧自动解码
+    " 图表元素点击 → sapevent。Chromium 内核（SAP GUI 7.70 PL13+/8.00，
+    " SAP Note 3355910）不拦截 JS 发起的裸 sapevent: 导航：页面内
+    " <a href="sapevent:.."> 会被内核解析为 file:///SAPEVENT:.. 再由控件
+    " 拦截，故先探测前缀再拼 URL（同 abapGit getSapeventPrefix 方案）
     IF mv_on_click IS NOT INITIAL.
       lv_click_js =
         |  myChart.on('click', function(p) \{|                                    && lv_nl &&
         |    var v = p.value;|                                                    && lv_nl &&
         |    if (v && typeof v === 'object') \{ v = JSON.stringify(v); \}|        && lv_nl &&
-        |    location.href = 'sapevent:{ escape_js( mv_on_click ) }'|             && lv_nl &&
+        |    var arkPrefix = '';|                                                 && lv_nl &&
+        |    if (document.querySelector('a[href*="file:///SAPEVENT:"]')) \{|      && lv_nl &&
+        |      arkPrefix = 'file:///';|                                           && lv_nl &&
+        |    \} else if (document.querySelector('a[href^="sap-cust"]')) \{|       && lv_nl &&
+        |      arkPrefix = 'sap-cust://sap-place-holder/';|                       && lv_nl &&
+        |    \}|                                                                  && lv_nl &&
+        |    location.href = arkPrefix + 'SAPEVENT:{ escape_js( mv_on_click ) }'| && lv_nl &&
         |      + '?name=' + encodeURIComponent(p.name \|\| '')|                   && lv_nl &&
         |      + '&series=' + encodeURIComponent(p.seriesName \|\| '')|           && lv_nl &&
         |      + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| && lv_nl &&

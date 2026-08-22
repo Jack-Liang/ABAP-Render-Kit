@@ -169,21 +169,28 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
 
   METHOD respond.
     " 桥协议：响应文档载入 ark_bridge 帧，其脚本 postMessage 回常驻主页面。
-    " __ark_state 标记用于过滤无关 message 事件
+    " __ark_state 标记用于过滤无关 message 事件。
+    " 金丝雀：响应文档若被 show_url 送进主框架（FRAME 参数未命中 ark_bridge），
+    " 写 window.name 遗言（下次进页面由 post_mortem 行显示）+ 直接显示红字诊断
     DATA lv_json TYPE string.
     lv_json = zcl_ark_json=>to_json( is_state ).
 
-    " 金丝雀：响应文档若被 show_url 送进主框架（FRAME 参数未命中 ark_bridge），
-    " 直接把白屏变成可见的红字诊断；正常落帧则 postMessage 回主页面
-    get_services( )->push_to_frame(
-      iv_frame = 'ark_bridge'
-      iv_text  = `<script>try {` &&
-                 ` if (window.parent === window) {` &&
-                 `   document.body.innerHTML = '<pre style="color:#b00;font:13px monospace">` &&
-                 `ARK 桥诊断: 响应文档落入主框架 - show_url 的 FRAME 参数未命中 ark_bridge 帧</pre>';` &&
-                 ` } else { parent.postMessage({__ark_state: 1, payload: ` && lv_json &&
-                 `}, '*'); }` &&
-                 ` } catch (e) { }</script>` ).
+    TRY.
+        get_services( )->push_to_frame(
+          iv_frame = 'ark_bridge'
+          iv_text  = `<script>try {` &&
+                     ` if (window.parent === window) {` &&
+                     `   try { window.name = "ARKD:MAIN_REPLACED:" + String(location.href).substring(0, 60); } catch (e2) { }` &&
+                     `   document.body.innerHTML = '<pre style="color:#b00;font:13px monospace">` &&
+                     `ARK 桥诊断: 响应文档落入主框架 - show_url 的 FRAME 参数未命中 ark_bridge 帧</pre>';` &&
+                     ` } else { parent.postMessage({__ark_state: 1, payload: ` && lv_json &&
+                     `}, '*'); }` &&
+                     ` } catch (e) { }</script>` ).
+      CATCH zcx_ark_exception.
+        " 推帧失败（如 FRAME 参数在该内核不可用）：异常冒泡会触发框架兜底
+        " render() 整页重载 → 页面重boot → 再触发 → 白屏循环。吞掉异常，
+        " 保持 keep_view 语义，前端表现为该项超时 FAIL，页面存活可继续诊断
+    ENDTRY.
   ENDMETHOD.
 
 
@@ -284,6 +291,9 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `}` &&
       `var ARK = { seq: 0, t0: {}, stat: { iframe: [], main: [], post: [], refresh: -1 },` &&
       `  burstN: 0, burstGot: 0, burstMs: [], sparks: [], lines: [], bootCore: -1, echReady: false };` &&
+      `ARK.pm = (String(window.name).indexOf("ARKD:") === 0) ? String(window.name).substring(5) : "";` &&
+      `function arkMark(s) { try { window.name = "ARKD:" + s; } catch (e) { } }` &&
+      `function arkClearMark() { try { if (String(window.name).indexOf("ARKD:") === 0) { window.name = ""; } } catch (e) { } }` &&
       `function rpt(id, status, detail) {` &&
       `  var st = document.getElementById("r_st_" + id);` &&
       `  var dt = document.getElementById("r_dt_" + id);` &&
@@ -339,17 +349,26 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `function fireIframe(action, params) {` &&
       `  if (!arkReady(action)) { return -1; }` &&
       `  params = params || {}; params.seq = nextSeq();` &&
-      `  window.frames["ark_bridge"].location.href = arkUrl(action, params);` &&
+      `  arkMark("fire:iframe:" + action);` &&
+      `  var fdoc = window.frames["ark_bridge"].document;` &&
+      `  var a = fdoc.getElementById("ark_fire_a");` &&
+      `  if (!a) { a = fdoc.createElement("a"); a.id = "ark_fire_a"; fdoc.body.appendChild(a); }` &&
+      `  a.setAttribute("href", arkUrl(action, params));` &&
+      `  a.click();` &&
       `  return params.seq;` &&
       `}` &&
       `function fireMain(action, params) {` &&
       `  if (!arkReady(action)) { return; }` &&
       `  params = params || {}; params.seq = nextSeq();` &&
-      `  location.href = arkUrl(action, params);` &&
+      `  if (action !== "nav_home") { arkMark("fire:main:" + action); }` &&
+      `  var a = document.getElementById("ark_main_anchor");` &&
+      `  a.setAttribute("href", arkUrl(action, params));` &&
+      `  a.click();` &&
       `}` &&
       `function firePost(action, fields) {` &&
       `  if (!arkReady(action)) { return; }` &&
       `  fields = fields || {};` &&
+      `  arkMark("fire:post:" + action);` &&
       `  var f = document.getElementById("ark_form");` &&
       `  f.action = arkPrefix() + "SAPEVENT:" + action;` &&
       `  document.getElementById("ark_f_seq").value = String(nextSeq());` &&
@@ -362,6 +381,7 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `window.addEventListener("message", function (ev) {` &&
       `  var d = ev.data;` &&
       `  if (!d || d.__ark_state !== 1) { return; }` &&
+      `  arkClearMark();` &&
       `  var p = d.payload || {};` &&
       `  var s = Number(p.SEQ || 0), dt = -1;` &&
       `  if (s > 0 && ARK.t0[s] !== undefined) { dt = Math.round(now() - ARK.t0[s]); delete ARK.t0[s]; }` &&
@@ -423,12 +443,14 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
     " ===== 页面结构：报告面板 + UI5 挂载点 + 原生分区 + 桥基础设施 =====
     mo_html->add(
       `<a id="ark_probe" href="sapevent:x" style="display:none"></a>` &&
+      `<a id="ark_main_anchor" href="sapevent:x" style="display:none"></a>` &&
       `<div class="rpt-card">` &&
       `  <div class="rpt-title">宿主验证报告（Edge 内核 SAP GUI · a4h）</div>` &&
       `  <table class="rpt-table">` &&
       `    <tr><td>① UI5 CDN</td><td id="r_st_cdn_ui5">…</td><td id="r_dt_cdn_ui5">探测中</td></tr>` &&
       `    <tr><td>① ECharts CDN</td><td id="r_st_cdn_echarts">…</td><td id="r_dt_cdn_echarts">探测中</td></tr>` &&
       `    <tr><td>② sap.m/f 渲染</td><td id="r_st_ui5_render">…</td><td id="r_dt_ui5_render">探测中</td></tr>` &&
+      `    <tr><td>☠ 上次死因</td><td id="r_st_post_mortem">…</td><td id="r_dt_post_mortem">无记录</td></tr>` &&
       `    <tr><td>③ sapevent 前缀</td><td id="r_st_bridge_prefix">…</td><td id="r_dt_bridge_prefix">探测中</td></tr>` &&
       `    <tr><td>③ 桥 · iframe GET</td><td id="r_st_bridge_a">…</td><td id="r_dt_bridge_a">未测</td></tr>` &&
       `    <tr><td>③ 桥 · 主框架 GET</td><td id="r_st_bridge_b">…</td><td id="r_dt_bridge_b">未测</td></tr>` &&
@@ -439,7 +461,8 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `    <tr><td>④ 启动资源统计</td><td id="r_st_cache_res">…</td><td id="r_dt_cache_res">未测</td></tr>` &&
       `    <tr><td>④ 启动耗时</td><td id="r_st_boot_ms">…</td><td id="r_dt_boot_ms">探测中</td></tr>` &&
       `  </table>` &&
-      `  <button class="rpt-btn" onclick="autoRun()">重跑自动测试(仅安全项)</button>` &&
+      `  <button class="rpt-btn" onclick="autoRun()">重跑自动测试(无风险项)</button>` &&
+      `  <button class="rpt-btn" onclick="testA()">测:iframe GET</button>` &&
       `  <button class="rpt-btn" onclick="testB()">测:主框架 GET</button>` &&
       `  <button class="rpt-btn" onclick="testC()">测:表单 POST</button>` &&
       `  <button class="rpt-btn" onclick="burst()">连发 ×10</button>` &&
@@ -641,6 +664,11 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `}` &&
       `function autoRun() {` &&
       `  try {` &&
+      `    if (ARK.pm) {` &&
+      `      rpt("post_mortem", "FAIL", "上次页面消失,黑匣子遗言: " + ARK.pm +` &&
+      `        "（fire:*=触发后未收到响应; MAIN_REPLACED=响应劫持主文档）");` &&
+      `      arkClearMark();` &&
+      `    }` &&
       `    var pfx = arkPrefix();` &&
       `    var pa = document.getElementById("ark_probe") || {};` &&
       `    rpt("bridge_prefix", pfx ? "INFO" : "FAIL",` &&
@@ -649,8 +677,6 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `      " · 页面 = " + String(location.href).substring(0, 40));` &&
       `    if (!pfx) {` &&
       `      rpt("bridge_a", "SKIP", "无前缀，自动触发已跳过（防白屏），请回报上方探测值");` &&
-      `    } else {` &&
-      `      testA();` &&
       `    }` &&
       `    cacheProbe();` &&
       `  } catch (ex) { errlog("autoRun: " + ex.message); }` &&
@@ -719,7 +745,7 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `          new Button({ text: "Ping×10", press: function () { burst(); } }),` &&
       `          new Button({ text: "POST 桥", press: function () { firePost("ui5_post", { kind: "post" }); } }),` &&
       `          new Button({ text: "Back Home",` &&
-      `            press: function () { location.href = arkPrefix() + "SAPEVENT:nav_home"; } }),` &&
+      `            press: function () { fireMain("nav_home"); } }),` &&
       `          new ToolbarSpacer(),` &&
       `          new Text({ text: "sapevent 事件桥：刷新 / 连发 / 表单 POST / 行链接" }).addStyleClass("kpi-title"),` &&
       `          new ToolbarSpacer(),` &&

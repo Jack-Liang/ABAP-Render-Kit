@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ARK UI5 Shell — 启动壳预览（阶段②③映射层浏览器验证）</title>
+<!-- ============================================================
+  本页 = zcl_ark_ui5_shell 产出的启动壳 + 一个模拟 ABAP 桥的 mock 脚本。
+  SHELL_CSS / SHELL_JS 标记区逐字移植进 ABAP 类（demo 只为浏览器可测）：
+  - UI5 走 OpenUI5 CDN（.org 域名）；ABAP 侧同 URL（离线包是阶段④）
+  - ECharts 在 ABAP 侧走 zcl_ark_echarts 资产链（MIME/缓存/CDN），
+    demo 直接用 jsdelivr CDN
+  - 真实宿主里 ark.state 通过隐藏 iframe ark_bridge 发 sapevent；
+    本页 mock 拦截 ark.* 就地模拟 ABAP 往返（applyState 就地更新）
+============================================================= -->
+<style>
+/* ===== ARK5:SHELL_CSS START ===== */
+html, body { margin: 0; background: #f0f0f0;
+  font-family: "72", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+.ark5-title { font-size: 22px; font-weight: 400; margin: 18px 32px 2px; color: #1d2d3e; }
+.ark5-sub { font-size: 13px; color: #6a6d70; margin: 0 32px 14px; }
+.ark5-toolbar-wrap { padding: 0 32px; }
+.ark5-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px;
+  padding: 14px 18px; margin: 0 32px 16px; }
+.ark5-card-title { font-size: 15px; font-weight: 700; color: #1d2d3e; margin: 0 0 8px; }
+.ark5-kpi-grid { display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.ark5-kpi-title { font-size: 13px; color: #6a6d70; }
+.ark5-kpi-value { font-size: 28px; color: #1d2d3e; margin: 4px 0 2px; }
+.ark5-kpi-delta { font-size: 13px; }
+.ark5-spark { width: 100%; height: 34px; margin-top: 6px; }
+.ark5-chart { width: 100%; height: 300px; }
+.ark5-tbl { width: 100%; }
+.ark5-form-row { display: flex; align-items: center; margin: 8px 0; }
+.ark5-form-label { width: 140px; font-size: 13px; color: #6a6d70; flex: none; }
+.ark5-form-row input[type=text], .ark5-form-row input[type=number],
+.ark5-form-row input[type=date], .ark5-form-row select, .ark5-form-row textarea {
+  flex: 1; max-width: 420px; padding: 6px 10px; font-size: 13px;
+  border: 1px solid #8f8f8f; border-radius: 4px; background: #fff; }
+.ark5-form-btn { font-size: 13px; padding: 6px 16px; margin-top: 8px;
+  border: 1px solid #0070f2; color: #0070f2; background: #fff;
+  border-radius: 4px; cursor: pointer; }
+.ark5-form-btn:hover { background: #f0f7ff; }
+#errlog { font: 12px monospace; color: #b00; padding: 8px 32px; white-space: pre-wrap; }
+/* ===== ARK5:SHELL_CSS END ===== */
+</style>
+</head>
+<body>
+<!-- ===== ARK5:SHELL_BODY START ===== -->
+<a id="ark_probe" href="sapevent:x" style="display:none"></a>
+<div id="ark5_shellbar"></div>
+<div id="ark5_toolbar" class="ark5-toolbar-wrap"></div>
+<h1 class="ark5-title" id="ark5_title"></h1>
+<p class="ark5-sub" id="ark5_sub"></p>
+<div id="ark5_sections"></div>
+<iframe id="ark_bridge" name="ark_bridge" style="display:none;width:0;height:0;border:0;"></iframe>
+<div id="errlog"></div>
+<div id="ark5_testlog" style="font:12px monospace;color:#333;padding:0 32px 24px;white-space:pre-wrap"></div>
+<!-- ===== ARK5:SHELL_BODY END ===== -->
+
+<!-- UI5 bootstrap（async：sap.ui 同步就绪，库文件异步）+ ECharts 同步标签 -->
+<script id="sap-ui-bootstrap"
+        src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m,sap.f"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+
+<script>
+/* ===== ARK5:SHELL_JS START ===== */
+(function () {
+  "use strict";
+
+  window.onerror = function (m, src, l) {
+    var el = document.getElementById("errlog");
+    if (el) { el.textContent += "JS ERROR: " + m + " @" + (src || "") + ":" + l + "\n"; }
+    return false;
+  };
+  function errlog(msg) {
+    var el = document.getElementById("errlog");
+    if (el) { el.textContent += msg + "\n"; }
+  }
+
+  var ARK5 = { state: null, charts: [], ui5Ready: false, mods: null, ctl: {} };
+
+  // zcl_ark_json 键名大写、abap_bool 序列化为 "X"/""（flag 兼容 true/1）
+  function flag(v) { return v === true || v === "X" || v === 1 || v === "true"; }
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  var SEMA = {
+    positive:    { color: "#107e3e", state: "Success" },
+    negative:    { color: "#bb0000", state: "Error" },
+    critical:    { color: "#e9730c", state: "Warning" },
+    informative: { color: "#0a6ed1", state: "Information" },
+    neutral:     { color: "#6a6d70", state: "None" }
+  };
+  function sema(name) { return SEMA[name] || { color: "#0070f2", state: "None" }; }
+  function toast(msg) {
+    if (ARK5.mods && ARK5.mods.MessageToast) { ARK5.mods.MessageToast.show(msg); }
+    else { errlog("TOAST: " + msg); }
+  }
+
+  // ---- sapevent 桥（与宿主验证页同一套已验证机制）----
+  function arkPrefix() {
+    var a = document.getElementById("ark_probe");
+    var base = String(location.href);
+    var tries = [];
+    if (a) {
+      tries.push(String(a.href || ""));
+      tries.push(String(a.getAttribute("href") || ""));
+    }
+    tries.push(base);
+    var n, h, i, head;
+    for (n = 0; n < tries.length; n++) {
+      i = tries[n].toLowerCase().indexOf("sapevent:");
+      if (i > 0) {
+        head = tries[n].substring(0, i);
+        if (head.charAt(head.length - 1) === "/") { return head; }
+      }
+    }
+    if (/^saphtmlp:/i.test(base) || /^sap-cust:/i.test(base)) {
+      return "sap-cust://sap-place-holder/";
+    }
+    if (/^file:/i.test(base)) { return "file:///"; }
+    return "";
+  }
+  function arkUrl(action, params) {
+    var u = arkPrefix() + "SAPEVENT:" + action, k, qs = [];
+    params = params || {};
+    for (k in params) {
+      if (params.hasOwnProperty(k)) { qs.push(k + "=" + encodeURIComponent(params[k])); }
+    }
+    return qs.length ? u + "?" + qs.join("&") : u;
+  }
+  function parseParams(s) {
+    var out = {}, pairs, i, kv;
+    if (!s) { return out; }
+    pairs = String(s).split("&");
+    for (i = 0; i < pairs.length; i++) {
+      kv = pairs[i].split("=");
+      if (kv.length >= 1 && kv[0]) {
+        out[kv[0]] = decodeURIComponent(kv.slice(1).join("=") || "");
+      }
+    }
+    return out;
+  }
+
+  window.ark = {
+    // 桥事件（隐藏 iframe GET）：ABAP 侧回推新 state，主页面常驻不重载
+    state: function (action, params) {
+      var p = {}, k;
+      for (k in (params || {})) { p[k] = params[k]; }
+      p.__ark = "1";
+      window.frames["ark_bridge"].location.href = arkUrl(action, p);
+    },
+    // 主框架导航：页面跳转（整页重渲染），桥事件的反面路径
+    nav: function (action, params) {
+      location.href = arkUrl(action, params);
+    },
+    // 表单经桥 POST：target=ark_bridge，响应同样 postMessage 回来
+    formGo: function (f, action) {
+      f.action = arkUrl(action, { __ark: "1" });
+      return true;
+    },
+    // 桥响应入口：隐藏帧脚本 parent.postMessage({__ark_state:1,payload:...})
+    receive: function (payload) {
+      ARK5.state = payload || {};
+      renderAll();
+    },
+    // 调试/测试辅助：当前渲染 state 的深拷贝
+    snapshot: function () { return JSON.parse(JSON.stringify(ARK5.state || {})); }
+  };
+
+  window.addEventListener("message", function (ev) {
+    var d = ev.data;
+    if (!d || d.__ark_state !== 1) { return; }
+    window.ark.receive(d.payload || {});
+  });
+
+  // ---- 文本分区（标题/副标题）----
+  function renderText() {
+    var st = ARK5.state || {};
+    document.getElementById("ark5_title").textContent = st.TITLE || "";
+    document.getElementById("ark5_sub").textContent = st.SUBTITLE || "";
+  }
+
+  // ---- 原生分区重建：KPI / 图表容器 / 表单 / 各节挂载点 ----
+  function renderSections() {
+    var host = document.getElementById("ark5_sections");
+    var i;
+    for (i = 0; i < ARK5.charts.length; i++) {
+      try { ARK5.charts[i].dispose(); } catch (e) { }
+    }
+    ARK5.charts = [];
+    destroySectionUi5();
+    host.innerHTML = "";
+    var st = ARK5.state || {};
+    (st.SECTIONS || []).forEach(function (sec, si) {
+      var card = document.createElement("div");
+      card.className = "ark5-card";
+      if (sec.TITLE) {
+        var h = document.createElement("div");
+        h.className = "ark5-card-title";
+        h.textContent = sec.TITLE;
+        card.appendChild(h);
+      }
+      if ((sec.TOOLBAR || []).length) {
+        var tb = document.createElement("div");
+        tb.id = "ark5_tb_" + si;
+        card.appendChild(tb);
+      }
+      if (sec.KIND === "kpi_grid") { buildKpi(card, sec, si); }
+      else if (sec.KIND === "table") {
+        var tbl = document.createElement("div");
+        tbl.id = "ark5_tbl_" + si;
+        card.appendChild(tbl);
+      }
+      else if (sec.KIND === "chart") {
+        var ch = document.createElement("div");
+        ch.id = "ark5_ch_" + si;
+        ch.className = "ark5-chart";
+        card.appendChild(ch);
+      }
+      else if (sec.KIND === "form") { buildForm(card, sec); }
+      host.appendChild(card);
+    });
+  }
+
+  function buildKpi(card, sec, si) {
+    var grid = document.createElement("div");
+    grid.className = "ark5-kpi-grid";
+    (sec.KPI_CARDS || []).forEach(function (k, ki) {
+      var d = document.createElement("div");
+      var t = document.createElement("div");
+      t.className = "ark5-kpi-title";
+      t.textContent = k.TITLE || "";
+      d.appendChild(t);
+      var v = document.createElement("div");
+      v.className = "ark5-kpi-value";
+      v.textContent = k.VALUE || "";
+      d.appendChild(v);
+      if (k.DELTA_TEXT) {
+        var dl = document.createElement("span");
+        dl.className = "ark5-kpi-delta";
+        dl.style.color = sema(k.DELTA_SEMANTIC).color;
+        dl.textContent = k.DELTA_TEXT;
+        d.appendChild(dl);
+      }
+      if ((k.SPARKLINE || []).length) {
+        var sp = document.createElement("div");
+        sp.id = "ark5_sp_" + si + "_" + ki;
+        sp.className = "ark5-spark";
+        d.appendChild(sp);
+      }
+      grid.appendChild(d);
+    });
+    card.appendChild(grid);
+  }
+
+  function buildForm(card, sec) {
+    var f = document.createElement("form");
+    f.method = "post";
+    f.target = "ark_bridge";
+    if (sec.FORM_ACTION) {
+      f.onsubmit = function () { return window.ark.formGo(this, sec.FORM_ACTION); };
+    }
+    var hid = document.createElement("input");
+    hid.type = "hidden";
+    hid.name = "__ark";
+    hid.value = "1";
+    f.appendChild(hid);
+    (sec.FORM_FIELDS || []).forEach(function (fd) {
+      if (fd.INPUT_TYPE === "hidden") {
+        var hi = document.createElement("input");
+        hi.type = "hidden";
+        hi.name = fd.NAME || "";
+        hi.value = fd.VALUE || "";
+        f.appendChild(hi);
+        return;
+      }
+      var row = document.createElement("div");
+      row.className = "ark5-form-row";
+      if (fd.INPUT_TYPE !== "submit") {
+        var lb = document.createElement("span");
+        lb.className = "ark5-form-label";
+        lb.textContent = fd.LABEL || "";
+        row.appendChild(lb);
+      }
+      var el;
+      if (fd.INPUT_TYPE === "select") {
+        el = document.createElement("select");
+        (fd.OPTIONS || []).forEach(function (op) {
+          var o = document.createElement("option");
+          o.textContent = op;
+          if (op === fd.VALUE) { o.selected = true; }
+          el.appendChild(o);
+        });
+      } else if (fd.INPUT_TYPE === "textarea") {
+        el = document.createElement("textarea");
+        el.rows = 4;
+        el.value = fd.VALUE || "";
+      } else if (fd.INPUT_TYPE === "checkbox") {
+        el = document.createElement("input");
+        el.type = "checkbox";
+        el.checked = flag(fd.VALUE);
+      } else if (fd.INPUT_TYPE === "submit") {
+        el = document.createElement("button");
+        el.type = "submit";
+        el.className = "ark5-form-btn";
+        el.textContent = fd.VALUE || fd.LABEL || "提交";
+      } else {
+        el = document.createElement("input");
+        el.type = fd.INPUT_TYPE || "text";
+        el.value = fd.VALUE || "";
+      }
+      if (fd.NAME) { el.name = fd.NAME; }
+      row.appendChild(el);
+      f.appendChild(row);
+    });
+    card.appendChild(f);
+  }
+
+  // ---- ECharts 分区（sparkline + chart 节）----
+  function chartOf(id) {
+    var el = document.getElementById(id);
+    if (!el || !window.echarts) { return null; }
+    return echarts.getInstanceByDom(el) || echarts.init(el);
+  }
+  function renderCharts() {
+    if (!window.echarts) { return; }
+    var st = ARK5.state || {};
+    (st.SECTIONS || []).forEach(function (sec, si) {
+      if (sec.KIND === "kpi_grid") {
+        (sec.KPI_CARDS || []).forEach(function (k, ki) {
+          var ch = chartOf("ark5_sp_" + si + "_" + ki);
+          if (!ch) { return; }
+          ARK5.charts.push(ch);
+          ch.setOption({
+            grid: { left: 0, right: 0, top: 2, bottom: 2 },
+            xAxis: { type: "category", show: false },
+            yAxis: { type: "value", show: false },
+            series: [{ type: "line", data: (k.SPARKLINE || []).map(Number),
+              symbol: "none", smooth: true,
+              lineStyle: { width: 2, color: sema(k.DELTA_SEMANTIC).color },
+              areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [
+                  { offset: 0, color: sema(k.DELTA_SEMANTIC).color + "40" },
+                  { offset: 1, color: sema(k.DELTA_SEMANTIC).color + "00" } ] } } }]
+          });
+        });
+      } else if (sec.KIND === "chart") {
+        var ch2 = chartOf("ark5_ch_" + si);
+        if (!ch2) { return; }
+        ARK5.charts.push(ch2);
+        if (sec.CHART_MAP && window.ARK_MAPS && window.ARK_MAPS[sec.CHART_MAP]) {
+          echarts.registerMap(sec.CHART_MAP, window.ARK_MAPS[sec.CHART_MAP]);
+        }
+        var opt = {};
+        try { opt = JSON.parse(sec.CHART_OPTION || "{}"); } catch (e) {
+          errlog("chart_option JSON 解析失败: " + e.message);
+        }
+        ch2.setOption(opt, true);
+        if (sec.CHART_CLICK_ACTION) {
+          ch2.off("click");
+          ch2.on("click", (function (act, sIdx) {
+            return function (p) {
+              var v = p.value;
+              if (v && typeof v === "object") { v = JSON.stringify(v); }
+              ark.state(act, {
+                name: p.name || "", series: p.seriesName || "",
+                value: v === undefined ? "" : String(v),
+                idx: p.dataIndex === undefined ? -1 : p.dataIndex,
+                chart: sIdx
+              });
+            };
+          })(sec.CHART_CLICK_ACTION, si + 1));
+        }
+      }
+    });
+  }
+
+  // ---- UI5 分区（ShellBar / 工具栏 / sap.m.Table）----
+  function destroySectionUi5() {
+    var k;
+    for (k in ARK5.ctl) {
+      if (k.indexOf("s_") === 0 || k === "tb") {
+        try { ARK5.ctl[k].destroy(); } catch (e) { }
+        delete ARK5.ctl[k];
+      }
+    }
+  }
+  function buildToolbarItems(tb, items) {
+    (items || []).forEach(function (it) {
+      var params = parseParams(it.PARAMETERS);
+      if (it.KIND === "button" || it.KIND === "link") {
+        // link 与 A 路线 render_toolbar 一致：恒可点（enabled 仅约束 button）
+        tb.addContent(new ARK5.mods.Button({
+          text: it.LABEL || "",
+          type: (it.KIND === "button" && flag(it.EMPHASIZED)) ? "Emphasized" : "Transparent",
+          enabled: it.KIND === "link" ? true : flag(it.ENABLED),
+          press: (function (a, p, kind) {
+            return function () {
+              if (kind === "link") { ark.nav(a, p); } else { ark.state(a, p); }
+            };
+          })(it.ACTION, params, it.KIND)
+        }));
+      } else if (it.KIND === "text") {
+        tb.addContent(new ARK5.mods.Text({ text: it.LABEL || "" }));
+      } else if (it.KIND === "separator") {
+        // sap.m.Toolbar 无竖线分隔控件，以弹性空档近似（v1 取舍）
+        tb.addContent(new ARK5.mods.ToolbarSpacer());
+      }
+    });
+  }
+  function buildTableInto(el, sec, si) {
+    var key = "s_" + si;
+    if (ARK5.ctl[key]) {
+      try { ARK5.ctl[key].destroy(); } catch (e) { }
+      delete ARK5.ctl[key];
+      if (el.firstChild) { el.innerHTML = ""; }
+    }
+    var cols = [];
+    (sec.COLUMNS || []).forEach(function (c) {
+      cols.push(new ARK5.mods.Column({
+        hAlign: flag(c.ALIGN_RIGHT) ? "End" : "Begin",
+        demandPopin: true, minScreenWidth: "Tablet",
+        header: new ARK5.mods.Label({ text: c.LABEL || "" })
+      }));
+    });
+    var items = [];
+    (sec.ROWS || []).forEach(function (r, ri) {
+      var cells = [];
+      (r.CELLS || []).forEach(function (cell) {
+        if (cell.SEMANTIC) {
+          cells.push(new ARK5.mods.ObjectStatus({
+            text: cell.VALUE || "", state: sema(cell.SEMANTIC).state }));
+        } else if (cell.ACTION) {
+          cells.push(new ARK5.mods.Link({
+            text: cell.VALUE || "",
+            press: (function (a, rn) {
+              return function () { ark.state(a, { __row: rn }); };
+            })(cell.ACTION, ri + 1)
+          }));
+        } else {
+          cells.push(new ARK5.mods.Text({ text: cell.VALUE || "" }));
+        }
+      });
+      items.push(new ARK5.mods.ColumnListItem({ cells: cells }));
+    });
+    var t = new ARK5.mods.Table({
+      columns: cols, items: items,
+      growing: true, growingThreshold: 100
+    });
+    t.addStyleClass("ark5-tbl");
+    ARK5.ctl[key] = t;
+    t.placeAt(el);
+  }
+  function buildUi5() {
+    if (!ARK5.ui5Ready || !ARK5.state) { return; }
+    var st = ARK5.state;
+    if (!ARK5.ctl.shell) {
+      ARK5.ctl.shell = new ARK5.mods.ShellBar({ showNavButton: false });
+      ARK5.ctl.shell.placeAt("ark5_shellbar");
+    }
+    ARK5.ctl.shell.setTitle(st.TITLE || "");
+    // 页面工具栏独占挂载点：无条件清掉旧控件遗留（UI5 destroy 在渲染
+    // 队列延迟下会留下改名死节点 sap-ui-destroyed-*；真实宿主页面前台
+    // 常驻，此防御主要覆盖后台标签页 rAF 节流与异常时序）
+    var tbMount = document.getElementById("ark5_toolbar");
+    if (tbMount && tbMount.firstChild) { tbMount.innerHTML = ""; }
+    if (ARK5.ctl.tb) {
+      try { ARK5.ctl.tb.destroy(); } catch (e) { }
+      ARK5.ctl.tb = null;
+    }
+    var tb = new ARK5.mods.Toolbar({ design: "Solid" });
+    buildToolbarItems(tb, st.TOOLBAR);
+    ARK5.ctl.tb = tb;
+    tb.placeAt("ark5_toolbar");
+    (st.SECTIONS || []).forEach(function (sec, si) {
+      var tbEl = document.getElementById("ark5_tb_" + si);
+      if (tbEl && (sec.TOOLBAR || []).length) {
+        var stb = new ARK5.mods.Toolbar({ design: "Solid" });
+        buildToolbarItems(stb, sec.TOOLBAR);
+        ARK5.ctl["s_tb" + si] = stb;
+        stb.placeAt(tbEl);
+      }
+      var tblEl = document.getElementById("ark5_tbl_" + si);
+      if (tblEl && sec.KIND === "table") { buildTableInto(tblEl, sec, si); }
+    });
+  }
+
+  function renderAll() {
+    renderText();
+    renderSections();
+    renderCharts();
+    buildUi5();
+  }
+
+  // ---- 启动 ----
+  window.__arkShellBoot = function (initialState) {
+    ARK5.state = initialState || {};
+    renderAll();
+    if (window.sap && sap.ui && sap.ui.require) {
+      sap.ui.require([
+        "sap/f/ShellBar", "sap/m/Toolbar", "sap/m/ToolbarSpacer", "sap/m/Button",
+        "sap/m/Text", "sap/m/Table", "sap/m/Column", "sap/m/Label",
+        "sap/m/ColumnListItem", "sap/m/ObjectStatus", "sap/m/Link",
+        "sap/m/MessageToast"
+      ], function (ShellBar, Toolbar, ToolbarSpacer, Button, Text, Table,
+                   Column, Label, ColumnListItem, ObjectStatus, Link, MessageToast) {
+        ARK5.mods = { ShellBar: ShellBar, Toolbar: Toolbar, ToolbarSpacer: ToolbarSpacer,
+          Button: Button, Text: Text, Table: Table, Column: Column, Label: Label,
+          ColumnListItem: ColumnListItem, ObjectStatus: ObjectStatus, Link: Link,
+          MessageToast: MessageToast };
+        ARK5.ui5Ready = true;
+        buildUi5();
+      }, function (e) {
+        errlog("sap.ui.require 失败: " + (e && e.message || e));
+      });
+    } else {
+      errlog("UI5 bootstrap 不可用：仅原生分区渲染（表格/工具栏缺席）");
+    }
+  };
+})();
+/* ===== ARK5:SHELL_JS END ===== */
+</script>
+
+<script>
+/* ===== 初始 state（与 zcl_ark_example_ui5_state_page 的 build_state 同构：
+       键大写、abap_bool 为 "X"/""、数值数组字符串化）===== */
+window.__arkShellBoot({
+  TITLE: "销售概览 · 2026 Q3 — UI5 State Page",
+  SUBTITLE: "工具栏/表格为 sap.m；KPI 与图表为原生 ECharts 分区；事件经 sapevent 桥回推新 state（本页为浏览器模拟往返）",
+  TOOLBAR: [
+    { KIND: "button", LABEL: "刷新数据", ACTION: "ui5s_refresh", EMPHASIZED: "X", ENABLED: "X", PARAMETERS: "" },
+    { KIND: "button", LABEL: "不可用演示", ACTION: "ui5s_noop", EMPHASIZED: "", ENABLED: "", PARAMETERS: "" },
+    { KIND: "separator" },
+    { KIND: "text", LABEL: "放大系数 x1" },
+    { KIND: "link", LABEL: "返回首页", ACTION: "nav_home" }
+  ],
+  SECTIONS: [
+    { KIND: "kpi_grid", TITLE: "",
+      KPI_CARDS: [
+        { TITLE: "总销售额", VALUE: "¥ 4286 万", DELTA_TEXT: "▲ 12.4% 环比", DELTA_SEMANTIC: "positive",
+          SPARKLINE: ["32","38","35","42","48","45","52","58"] },
+        { TITLE: "订单数", VALUE: "18532", DELTA_TEXT: "▲ 6.8% 环比", DELTA_SEMANTIC: "positive",
+          SPARKLINE: ["12","14","13","15","16","17","19"] },
+        { TITLE: "退货率", VALUE: "2.1%", DELTA_TEXT: "▼ 0.4pp 环比", DELTA_SEMANTIC: "negative",
+          SPARKLINE: ["3.4","3.2","2.9","2.7","2.4","2.3","2.1"] },
+        { TITLE: "客户满意度", VALUE: "94.6", DELTA_TEXT: "▲ 1.2 环比", DELTA_SEMANTIC: "informative",
+          SPARKLINE: ["90","91","92","92.8","93.5","94","94.6"] } ] },
+    { KIND: "table", TITLE: "销售凭证",
+      COLUMNS: [
+        { LABEL: "凭证", ALIGN_RIGHT: "", SORTABLE: "X" },
+        { LABEL: "客户", ALIGN_RIGHT: "", SORTABLE: "X" },
+        { LABEL: "净价值", ALIGN_RIGHT: "X", SORTABLE: "X" },
+        { LABEL: "数量", ALIGN_RIGHT: "X", SORTABLE: "X" },
+        { LABEL: "状态", ALIGN_RIGHT: "", SORTABLE: "X" } ],
+      ROWS: [
+        { CELLS: [ { VALUE: "0080012345", ACTION: "ui5s_cell" }, { VALUE: "华信科技" },
+                   { VALUE: "1,286,000" }, { VALUE: "120" },
+                   { VALUE: "已完成", SEMANTIC: "positive" } ] },
+        { CELLS: [ { VALUE: "0080012346", ACTION: "ui5s_cell" }, { VALUE: "南方物流集团" },
+                   { VALUE: "862,400" }, { VALUE: "58" },
+                   { VALUE: "待审批", SEMANTIC: "critical" } ] },
+        { CELLS: [ { VALUE: "0080012347", ACTION: "ui5s_cell" }, { VALUE: "北方重工" },
+                   { VALUE: "2,045,900" }, { VALUE: "12" },
+                   { VALUE: "已发货", SEMANTIC: "positive" } ] },
+        { CELLS: [ { VALUE: "0080012348", ACTION: "ui5s_cell" }, { VALUE: "东海商贸" },
+                   { VALUE: "95,700" }, { VALUE: "640" },
+                   { VALUE: "被拒绝", SEMANTIC: "negative" } ] },
+        { CELLS: [ { VALUE: "0080012349", ACTION: "ui5s_cell" }, { VALUE: "西部能源" },
+                   { VALUE: "530,200" }, { VALUE: "35" },
+                   { VALUE: "处理中", SEMANTIC: "neutral" } ] } ] },
+    { KIND: "chart", TITLE: "月度销售额",
+      CHART_OPTION: '{ "tooltip": { "trigger": "axis" }, "grid": { "left": 56, "right": 24, "top": 30, "bottom": 30 }, "xAxis": { "type": "category", "data": ["1月","2月","3月","4月","5月","6月"] }, "yAxis": { "type": "value", "name": "万元" }, "series": [{ "type": "bar", "name": "销售额", "data": [420,455,490,530,580,620], "itemStyle": { "color": "#0070f2", "borderRadius": [4,4,0,0] } }] }',
+      CHART_CLICK_ACTION: "ui5s_chart_click", CHART_MAP: "" },
+    { KIND: "form", TITLE: "筛选条件",
+      FORM_ACTION: "ui5s_form_save",
+      FORM_FIELDS: [
+        { INPUT_TYPE: "text", LABEL: "客户名", NAME: "city", VALUE: "华信科技", OPTIONS: [] },
+        { INPUT_TYPE: "select", LABEL: "渠道", NAME: "channel", VALUE: "直销", OPTIONS: ["直销","分销","电商"] },
+        { INPUT_TYPE: "submit", LABEL: "", NAME: "", VALUE: "应用筛选", OPTIONS: [] } ] }
+  ]
+});
+</script>
+
+<script>
+/* ===== 预览 mock：拦截 ark.* 模拟 ABAP 桥往返（不进 ABAP 类）===== */
+(function () {
+  "use strict";
+  var factor = 1;
+  var roundtrips = 0;
+
+  function clone() { return window.ark.snapshot(); }
+  function busy(on) {
+    if (window.sap && sap.m && sap.m.BusyIndicator && sap.m.BusyIndicator.show) {
+      if (on) { sap.m.BusyIndicator.show(0); } else { sap.m.BusyIndicator.hide(); }
+    }
+  }
+  function roundtrip(mutate, msg) {
+    busy(true);
+    setTimeout(function () {
+      busy(false);
+      var next = clone();
+      mutate(next);
+      roundtrips += 1;
+      next.SUBTITLE = "桥往返 #" + roundtrips + "（模拟）· " + (msg || "");
+      window.ark.receive(next);
+    }, 200 + Math.random() * 200);
+  }
+
+  window.ark.state = function (action, params) {
+    params = params || {};
+    if (action === "ui5s_cell") {
+      roundtrip(function (n) {
+        var r = n.SECTIONS[1].ROWS;
+        r.push(r.shift());
+      }, "行 " + (params.__row || "?") + " cell_detail · 行序列轮转");
+      return;
+    }
+    if (action === "ui5s_refresh") {
+      roundtrip(function (n) {
+        factor = factor % 5 + 1;
+        var opt = JSON.parse(n.SECTIONS[2].CHART_OPTION);
+        opt.series[0].data = opt.series[0].data.map(function (v) { return v * 2; });
+        n.SECTIONS[2].CHART_OPTION = JSON.stringify(opt);
+        var i;
+        for (i = 0; i < n.TOOLBAR.length; i++) {
+          if (n.TOOLBAR[i].KIND === "text") {
+            n.TOOLBAR[i].LABEL = "放大系数 x" + factor;
+          }
+        }
+      }, "refresh · 图表数据翻倍，系数 x" + factor);
+      return;
+    }
+    if (action === "ui5s_chart_click") {
+      roundtrip(function (n) { }, "图表点击: " + (params.name || "?") + " = " + (params.value || "?"));
+      return;
+    }
+    roundtrip(function (n) { }, "action=" + action);
+  };
+  window.ark.nav = function (action) {
+    roundtrip(function (n) { }, "nav(真实宿主为主框架导航): " + action);
+  };
+  window.ark.formGo = function (f, action) {
+    var parts = [], i;
+    for (i = 0; i < f.elements.length; i++) {
+      var e = f.elements[i];
+      if (!e.name || e.type === "submit" || e.name === "__ark") { continue; }
+      parts.push(e.name + "=" + encodeURIComponent(e.type === "checkbox" ? (e.checked ? "X" : "") : e.value));
+    }
+    var body = parts.join("&");
+    roundtrip(function (n) {
+      var m = body.match(/city=([^&]*)/);
+      if (m) { n.SUBTITLE = "筛选已应用: 客户 = " + decodeURIComponent(m[1]); }
+    }, "表单 POST " + action + " · body: " + body);
+    return false;  // 阻止真实提交（预览无 ABAP 宿主）
+  };
+})();
+</script>
+<script>
+/* ===== 预览自检（不进 ABAP 类）：IAB 输入路由故障时的降级验证 =====
+   验证链路：① postMessage 桥路径（真实桥响应通道）→ renderAll
+            ② ark.state(...)（UI5 press 处理器调用的同一函数）
+            ③ UI5 press 绑定存在性 ④ ark.formGo 表单路径 */
+(function () {
+  "use strict";
+  var log = document.getElementById("ark5_testlog");
+  function tput(line) { log.textContent += line + "\n"; }
+  function chk(name, ok, detail) {
+    tput((ok ? "PASS" : "FAIL") + " | " + name + (detail ? " | " + detail : ""));
+  }
+  function sub() { return document.getElementById("ark5_sub").textContent; }
+  // 后台标签页 rAF 节流会让 UI5 渲染队列挂起：读数前强制同步冲刷
+  function flush() {
+    try {
+      if (window.sap && sap.ui && sap.ui.getCore && sap.ui.getCore().applyChanges) {
+        sap.ui.getCore().applyChanges();
+      }
+    } catch (e) { }
+  }
+
+  setTimeout(function () {
+    // ① postMessage 桥路径：模拟 ABAP 响应文档回投（与真实宿主同通道）
+    var p1 = window.ark.snapshot();
+    p1.SUBTITLE = "SELFTEST-POSTMESSAGE-OK";
+    window.postMessage({ __ark_state: 1, payload: p1 }, "*");
+    setTimeout(function () {
+      flush();
+      chk("postMessage→renderAll", sub().indexOf("SELFTEST-POSTMESSAGE-OK") >= 0, sub());
+
+      // ② ark.state：与 UI5 press 处理器同一入口（mock 模拟 ABAP 往返）
+      window.ark.state("ui5s_refresh");
+      setTimeout(function () {
+        flush();
+        var tbEl = document.getElementById("ark5_toolbar");
+        var domTxt = tbEl.innerText.replace(/\n/g, "/");
+        var snap = window.ark.snapshot();
+        var stateTxt = (snap.TOOLBAR || []).map(function (t) {
+          return t.KIND + ":" + (t.LABEL || "");
+        }).join(" | ");
+        var tbRoot = tbEl.children[0] ? tbEl.children[0].id : "(none)";
+        var kids = [];
+        for (i = 0; i < tbEl.children.length; i++) {
+          kids.push(tbEl.children[i].id + "#" +
+            tbEl.children[i].innerText.replace(/\n/g, "/").substring(0, 30));
+        }
+        var live = document.querySelectorAll('div[id^="__toolbar"]');
+        var liveIds = [];
+        for (i = 0; i < live.length; i++) { liveIds.push(live[i].id); }
+        chk("ark.state→桥往返→就地更新", domTxt.indexOf("x2") >= 0 && sub().indexOf("桥往返") >= 0,
+          "kids=[" + kids.join(" ; ") + "] liveToolbar=[" + liveIds.join(",") +
+          "] state=" + stateTxt + " sub=" + sub());
+
+        // ③ UI5 press 绑定存在性（从当前 DOM 按钮 id 映射回控件）
+        var btns = document.querySelectorAll("#ark5_toolbar button");
+        var bound = 0, i;
+        for (i = 0; i < btns.length; i++) {
+          var c = sap.ui.getCore().byId(btns[i].id);
+          if (c && c.mEventRegistry && c.mEventRegistry.press) { bound += 1; }
+        }
+        chk("UI5 press 绑定", bound >= 2, "绑定 " + bound + "/" + btns.length);
+
+        // ④ 表单路径：真实表单元素经 formGo（mock POST）
+        var f = document.querySelector("form[target=ark_bridge]");
+        if (f) {
+          var go = window.ark.formGo(f, "ui5s_form_save");
+          setTimeout(function () {
+            chk("formGo→POST 往返", sub().indexOf("表单 POST") >= 0 || sub().indexOf("筛选已应用") >= 0,
+              "ret=" + go + " sub=" + sub());
+            tput("SELFTEST-DONE");
+          }, 900);
+        } else {
+          chk("formGo→POST 往返", false, "未找到桥表单");
+          tput("SELFTEST-DONE");
+        }
+      }, 900);
+    }, 300);
+  }, 3500);
+})();
+</script>
+</body>
+</html>

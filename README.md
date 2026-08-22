@@ -4,6 +4,14 @@
 
 ARK is a modern UI framework for ABAP, extracted and refined from the battle-tested [abapGit](https://github.com/abapGit/abapGit) project. It enables developers to build rich, interactive HTML-based user interfaces within SAP GUI using familiar ABAP patterns.
 
+> ⚠️ **Experimental Project**
+>
+> This is an **experimental** project. APIs, class names, and behavior may change without notice between releases. It is not affiliated with SAP or abapGit, and no warranty is provided.
+>
+> - Do **not** use in production systems without thorough testing.
+> - Expect breaking changes as the framework evolves.
+> - Feedback, bug reports, and contributions are welcome, but treat current builds as alpha-quality.
+
 ## Features
 
 - **HTML Rendering Engine** — Fluent API for building HTML with automatic indentation

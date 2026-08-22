@@ -7,6 +7,9 @@ CLASS zcl_ark_echarts DEFINITION
     " 单条系列的数据点类型
     TYPES ty_values TYPE STANDARD TABLE OF i WITH DEFAULT KEY .
 
+    CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
+    CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .
+
     METHODS constructor
       IMPORTING
         !iv_div_id      TYPE string OPTIONAL           " 容器 div id，缺省自动生成
@@ -37,6 +40,13 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING !iv_save_as_image TYPE abap_bool DEFAULT abap_true
       RETURNING VALUE(ro_self)    TYPE REF TO zcl_ark_echarts .
 
+    " 离线/内网环境：传入 SMW0 中 echarts.min.js 的二进制内容
+    " （zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' )），
+    " 渲染时经 cache_asset 换成本地缓存 URL，替代 CDN
+    METHODS set_library_xdata
+      IMPORTING !iv_xdata       TYPE xstring
+      RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
+
     " 渲染为 HTML 片段（div + 初始化脚本），可与其他内容混排：
     "   mo_html->add( lo_chart->render( ) ).
     METHODS render
@@ -63,6 +73,7 @@ CLASS zcl_ark_echarts DEFINITION
     DATA mv_include_lib TYPE abap_bool .
     DATA mv_title TYPE string .
     DATA mv_save_as_image TYPE abap_bool .
+    DATA mv_library_xdata TYPE xstring .
     DATA mv_categories_json TYPE string .
     DATA mt_series TYPE STANDARD TABLE OF ty_series WITH DEFAULT KEY .
 
@@ -125,12 +136,32 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ro_self = me.
   ENDMETHOD.
 
+  METHOD set_library_xdata.
+    mv_library_xdata = iv_xdata.
+    ro_self = me.
+  ENDMETHOD.
+
   METHOD render.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
-    " ECharts 库（CDN）。同页多个图表时，仅第一个组件需要带上
+    " ECharts 库。同页多个图表时，仅第一个组件需要带上（iv_include_lib）
+    " 优先使用 set_library_xdata 提供的本地资产（SMW0/MIME），缺省回退 CDN
     IF mv_include_lib = abap_true.
-      lo_html->add( `<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>` ).
+      DATA(lv_lib_url) = c_cdn_url.
+
+      IF mv_library_xdata IS NOT INITIAL.
+        TRY.
+            lv_lib_url = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+              iv_url     = c_lib_cache_name
+              iv_xdata   = mv_library_xdata
+              iv_type    = 'text'
+              iv_subtype = 'javascript' ).
+          CATCH zcx_ark_exception.
+            " 缓存失败时保持 CDN 回退
+        ENDTRY.
+      ENDIF.
+
+      lo_html->add( |<script src="{ lv_lib_url }"></script>| ).
     ENDIF.
 
     " 图表容器

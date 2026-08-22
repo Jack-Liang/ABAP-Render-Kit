@@ -157,7 +157,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     rv_js =
       |(function() \{|                                                        && lv_nl &&
       |  var chartDom = document.getElementById('{ mv_div_id }');|            && lv_nl &&
-      |  if (!chartDom || typeof echarts === 'undefined') \{ return; \}|      && lv_nl &&
+      |  if (!chartDom \|\| typeof echarts === 'undefined') \{ return; \}|      && lv_nl &&
       |  var myChart = echarts.init(chartDom{ lv_theme_arg });|               && lv_nl &&
       |  var option = | && build_option_js( ) && |;|                          && lv_nl &&
       |  myChart.setOption(option);|                                          && lv_nl &&

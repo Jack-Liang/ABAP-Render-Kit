@@ -244,7 +244,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     co_html->add( |<div class="toolbar">| ).
 
     LOOP AT it_items INTO DATA(ls_item).
-      CASE ls_item.kind.
+      CASE ls_item-kind.
         WHEN zif_ark_gui_state=>c_toolbar_kind-button.
           DATA(lv_class) = 'toolbar-button'.
           IF ls_item-emphasized = abap_true.

@@ -46,6 +46,10 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
       iv_label  = 'Table Example'
       iv_action = 'nav_table' ).
 
+    lo_toolbar->add_button(
+      iv_label  = 'Chart Example'
+      iv_action = 'nav_chart' ).
+
     lo_toolbar->add_separator( ).
 
     lo_toolbar->add_link(
@@ -80,6 +84,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
         rs_result-state = 1.
       WHEN 'nav_table'.
         rs_result-page = NEW zcl_ark_example_table_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_chart'.
+        rs_result-page = NEW zcl_ark_example_chart_page( ).
         rs_result-state = 1.
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).

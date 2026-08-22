@@ -10,6 +10,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Page Navigation** — Stack-based history with back/forward support
 - **Event System** — Sapevent-based communication between frontend and ABAP backend
 - **UI Components** — Form, Table, Toolbar, and more ready-to-use components
+- **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content
 - **Theme Support** — CSS theming system
 - **Zero External Dependencies** — Runs entirely within SAP GUI using standard `CL_GUI_HTML_VIEWER`
 
@@ -79,6 +80,31 @@ WHEN 'nav_detail'.
   rs_result-state = 1.
 ```
 
+## Charts (ECharts)
+
+`zcl_ark_echarts` renders a chart as a plain HTML fragment, so it mixes freely with headings, tables, toolbars, or a second chart on the same page:
+
+```abap
+DATA(lo_chart) = NEW zcl_ark_echarts( iv_div_id = 'chart1' iv_height = 420 ).
+
+lo_chart->set_title( 'Stacked Area Chart' ).
+lo_chart->set_xaxis_categories( VALUE string_table( ( `Mon` ) ( `Tue` ) ( `Wed` ) ) ).
+lo_chart->add_series(
+  iv_name  = 'Email'
+  it_data  = VALUE zcl_ark_echarts=>ty_values( ( 120 ) ( 132 ) ( 101 ) )
+  iv_stack = 'Total'
+  iv_area  = abap_true ).
+
+mo_html->add( |<h1>Dashboard</h1>| ).
+mo_html->add( lo_chart->render( ) ).   " just one chunk in the page flow
+```
+
+Notes:
+
+- ECharts is loaded from CDN by the first chart on the page; pass `iv_include_lib = abap_false` to any additional chart on the same page.
+- For offline systems, upload `echarts.min.js` to the MIME repository (SMW0) and serve it via `get_services( )->cache_asset( iv_xdata = ... )` instead.
+- See `ZCL_ARK_EXAMPLE_CHART_PAGE` for a full mixed-content example (reachable from the demo's home page via *Chart Example*).
+
 ## Installation
 
 1. Install via [abapGit](https://github.com/abapGit/abapGit) — paste this repository URL
@@ -103,7 +129,8 @@ src/
 ├── components/        # Tier 3: UI Components
 │   ├── zcl_ark_html_form         # Form builder
 │   ├── zcl_ark_html_table        # Table builder
-│   └── zcl_ark_html_toolbar      # Toolbar builder
+│   ├── zcl_ark_html_toolbar      # Toolbar builder
+│   └── zcl_ark_echarts           # ECharts chart component
 └── examples/          # Demo applications
 ```
 

@@ -11,7 +11,7 @@
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 
-### src/core/ (Core Engine — 16 objects)
+### src/core/ (Core Engine — 17 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
@@ -21,6 +21,7 @@
 | ZCL_ARK_GUI_UTILS | CLAS | GUI utilities |
 | ZCL_ARK_HTML_PARTS | CLAS | HTML parts collection |
 | ZCL_ARK_HTML_VIEWER_GUI | CLAS | HTML viewer implementation |
+| ZCL_ARK_THEME | CLAS | Theme: Fiori design tokens + default CSS |
 | ZCL_ARK_CONVERT | CLAS | Conversion utilities |
 | ZCL_ARK_JSON | CLAS | JSON serializer (standard sXML, zero deps) |
 | ZIF_ARK_HTML | INTF | HTML interface |
@@ -31,13 +32,15 @@
 | ZIF_ARK_HTML_VIEWER | INTF | HTML viewer interface |
 | ZIF_ARK_GUI_ASSET_MANAGER | INTF | Asset manager interface |
 
-### src/framework/ (Page Framework — 4 objects)
+### src/framework/ (Page Framework — 6 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCL_ARK_GUI_COMPONENT | CLAS | Component base class |
 | ZCL_ARK_GUI_PAGE | CLAS | Page base class |
+| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (renders ty_page_state) |
 | ZIF_ARK_GUI_MODAL | INTF | Modal interface |
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
+| ZIF_ARK_GUI_STATE | INTF | Declarative page state schema (draft) |
 
 ### src/components/ (UI Components — 5 objects)
 | Object | Type | Description |
@@ -48,7 +51,7 @@
 | ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 
-### src/examples/ (Examples — 9 objects)
+### src/examples/ (Examples — 10 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
@@ -59,6 +62,7 @@
 | ZCL_ARK_EXAMPLE_FORM_PAGE | CLAS | Form demo page |
 | ZCL_ARK_EXAMPLE_TABLE_PAGE | CLAS | Table demo page |
 | ZCL_ARK_EXAMPLE_CHART_PAGE | CLAS | Chart demo page (mixed chart + table content) |
+| ZCL_ARK_EXAMPLE_STATE_PAGE | CLAS | Declarative state page demo |
 | ZCL_ARK_EXAMPLE_BROWSER_PAGE | CLAS | HTML viewer engine probe page (IE / Edge) |
 
-## Total: 34 ABAP objects
+## Total: 38 ABAP objects

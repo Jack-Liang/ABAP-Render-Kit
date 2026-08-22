@@ -1,0 +1,4 @@
+id: 45a80ca9-f87a-47cd-adc6-b2686ad6a0bb
+event: message
+data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"[A4H_001_DEVELOPER_EN]"}],"isError":false}}
+

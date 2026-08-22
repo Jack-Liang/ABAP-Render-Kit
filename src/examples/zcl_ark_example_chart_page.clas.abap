@@ -16,6 +16,8 @@ CLASS zcl_ark_example_chart_page DEFINITION
     METHODS build_area_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
     METHODS build_bar_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
     METHODS build_table RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
+    DATA mv_drill_name TYPE string .
+    DATA mv_drill_value TYPE string .
 ENDCLASS.
 
 
@@ -54,7 +56,12 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
     mo_html->add( build_table( ) ).
 
     " 图表 2：柱状图（iv_include_lib = abap_false，不重复加载库）
-    mo_html->add( |<h2>Second Chart (Bar)</h2>| ).
+    mo_html->add( |<h2>Second Chart (Bar) — 点击柱子下钻</h2>| ).
+
+    IF mv_drill_name IS NOT INITIAL.
+      mo_html->add( |<p>已选择: <b>{ mv_drill_name }</b>（value = { mv_drill_value }）</p>| ).
+    ENDIF.
+
     mo_html->add( build_bar_chart( ) ).
 
     ri_html = mo_html.
@@ -131,9 +138,16 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
       VALUE string_table( ( `Mon` ) ( `Tue` ) ( `Wed` ) ( `Thu` ) ( `Fri` ) ( `Sat` ) ( `Sun` ) ) ).
 
     lo_chart->add_series(
-      iv_name = 'Total'
-      iv_type = 'bar'
-      it_data = VALUE zcl_ark_echarts=>ty_values( ( 1630 ) ( 1810 ) ( 1795 ) ( 1890 ) ( 2250 ) ( 2550 ) ( 2580 ) ) ).
+      iv_name            = 'Total'
+      iv_type            = 'bar'
+      it_data            = VALUE zcl_ark_echarts=>ty_values(
+                                         ( 1630000 ) ( 1810000 ) ( 1795000 ) ( 1890000 )
+                                         ( 2250000 ) ( 2550000 ) ( 2580000 ) )
+      iv_label           = abap_true
+      iv_label_thousands = abap_true ).
+
+    " 点击柱子 -> sapevent chart_drill -> on_event 读取参数
+    lo_chart->set_on_click( 'chart_drill' ).
 
     ri_html = lo_chart->render( ).
   ENDMETHOD.
@@ -179,6 +193,11 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
     CASE ii_event->mv_action.
       WHEN 'nav_home'.
         rs_result-page  = NEW zcl_ark_example_hello_page( ).
+        rs_result-state = 1.
+      WHEN 'chart_drill'.
+        " 图表点击回传：query 值已自动 URL 解码
+        mv_drill_name  = ii_event->query( 'name' ).
+        mv_drill_value = ii_event->query( 'value' ).
         rs_result-state = 1.
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).

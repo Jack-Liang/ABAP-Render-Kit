@@ -214,29 +214,16 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD build_html_document.
+    " Default styles come from the theme (Fiori Quartz Light design tokens);
+    " see zcl_ark_theme. Pages can override single tokens before render( ).
     rv_html = |<!DOCTYPE html>\n| &&
               |<html>\n| &&
               |<head>\n| &&
               |<meta charset="utf-8">\n| &&
               |<meta http-equiv="X-UA-Compatible" content="IE=edge">\n| &&
               |<style type="text/css">\n| &&
-              |body \{ font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 10px; \}\n| &&
-              |table \{ border-collapse: collapse; width: 100%; \}\n| &&
-              |th, td \{ border: 1px solid #ddd; padding: 8px; text-align: left; \}\n| &&
-              |th \{ background-color: #f2f2f2; \}\n| &&
-              |tr:nth-child(even) \{ background-color: #f9f9f9; \}\n| &&
-              |a \{ color: #0066cc; text-decoration: none; \}\n| &&
-              |a:hover \{ text-decoration: underline; \}\n| &&
-              |.toolbar \{ margin-bottom: 10px; padding: 6px 8px; background-color: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; \}\n| &&
-              |.toolbar-button \{ display: inline-block; padding: 4px 12px; margin: 0 6px 0 0; border: 1px solid #b6bec9; border-radius: 3px; background-color: #fff; color: #333; text-decoration: none; \}\n| &&
-              |.toolbar-button:hover \{ border-color: #0066cc; background-color: #eef4fb; color: #0066cc; text-decoration: none; \}\n| &&
-              |.toolbar-link \{ margin-left: 8px; \}\n| &&
-              |.toolbar-text \{ color: #666; margin: 0 6px; \}\n| &&
-              |.separator \{ display: inline-block; width: 1px; height: 16px; background-color: #c0c0c0; margin: 0 8px; vertical-align: middle; \}\n| &&
-              |.disabled \{ color: #999; \}\n| &&
-              |.form-row \{ margin-bottom: 10px; \}\n| &&
-              |.form-label \{ display: inline-block; width: 120px; font-weight: bold; \}\n| &&
-              |</style>\n| &&
+              zcl_ark_theme=>get_instance( )->get_css( ) &&
+              |\n</style>\n| &&
               |</head>\n| &&
               |<body>\n| &&
               |{ iv_content }\n| &&

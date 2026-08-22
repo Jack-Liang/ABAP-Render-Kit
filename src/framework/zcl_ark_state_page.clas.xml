@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZCL_ARK_EXAMPLE_BROWSER_PAGE</CLSNAME>
+    <CLSNAME>ZCL_ARK_STATE_PAGE</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>ARK Example Browser Info Page</DESCRIPT>
+    <DESCRIPT>ARK declarative state page (renders ty_page_state)</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

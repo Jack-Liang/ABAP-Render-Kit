@@ -1,0 +1,4 @@
+id: 45a80ca9-f87a-47cd-adc6-b2686ad6a0bb
+event: message
+data: {"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"{\"worklistId\":\"2E963595AD991FE1A7BF3792A4BCB8A2\",\"destination\":\"A4H_001_DEVELOPER_EN\"}"}],"isError":false,"structuredContent":{"worklistId":"2E963595AD991FE1A7BF3792A4BCB8A2","destination":"A4H_001_DEVELOPER_EN"}}}
+

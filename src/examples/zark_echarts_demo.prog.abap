@@ -6,6 +6,7 @@
 *&   2) 声明式 + 逃生舱口：柱状图 + set_option_override（dataZoom/markLine）
 *&   3) 通用模式：set_option 传入完整 ABAP 结构（/ui2/cl_json camelCase）画饼图
 *&   4) 主题与平滑曲线：dark 主题折线图
+*&   5) 地图：随仓库分发的中国地图 GeoJSON choropleth + 点击省份下钻
 *&
 *& 宿主屏幕 1001 样板与 ZARK_EXAMPLE 一致。
 *&---------------------------------------------------------------------*
@@ -32,6 +33,8 @@ CLASS lcl_demo_page DEFINITION
     METHODS build_bar_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
     METHODS build_pie_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
     METHODS build_dark_line_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
+    METHODS build_map_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
+    DATA mv_clicked TYPE string .
 ENDCLASS.
 
 
@@ -72,6 +75,12 @@ CLASS lcl_demo_page IMPLEMENTATION.
 
     mo_html->add( |<h2>4. 主题 · dark 平滑折线</h2>| ).
     mo_html->add( build_dark_line_chart( ) ).
+
+    mo_html->add( |<h2>5. 地图 · 中国省份 choropleth（点击省份下钻）</h2>| ).
+    IF mv_clicked IS NOT INITIAL.
+      mo_html->add( |<p><b>{ mv_clicked }</b></p>| ).
+    ENDIF.
+    mo_html->add( build_map_chart( ) ).
 
     ri_html = mo_html.
   ENDMETHOD.
@@ -217,10 +226,55 @@ CLASS lcl_demo_page IMPLEMENTATION.
     ri_html = lo_chart->render( ).
   ENDMETHOD.
 
+  " 5) 随仓库分发的中国地图 GeoJSON：choropleth 填色 + set_on_click 下钻
+  METHOD build_map_chart.
+    TRY.
+        " 会话级加载 ZARK_MAP_CHINA_JSON（set_map('china') 也会隐式加载，
+        " 这里显式调用以便资产缺失时走本地提示分支）
+        zcl_ark_echarts=>use_bundled_map( ).
+      CATCH zcx_ark_exception.
+        ri_html = zcl_ark_html=>create( ).
+        ri_html->add( |<p>地图资产 ZARK_MAP_CHINA_JSON 未部署（abapGit 拉取即得），跳过本节。</p>| ).
+        RETURN.
+    ENDTRY.
+
+    DATA(lo_chart) = NEW zcl_ark_echarts(
+      iv_div_id      = 'demo_map'
+      iv_height      = 460
+      iv_include_lib = abap_false ).
+
+    lo_chart->set_title( '各省销量分布' ).
+    lo_chart->set_map( 'china' ).
+    lo_chart->set_visual_map( iv_min = '0' iv_max = '1200' ).
+
+    lo_chart->add_map_series(
+      iv_name = '销量'
+      it_data = VALUE zcl_ark_echarts=>tt_map_data(
+        ( name = '北京' value = 880 )
+        ( name = '上海' value = 960 )
+        ( name = '广东' value = 1180 )
+        ( name = '浙江' value = 890 )
+        ( name = '江苏' value = 1050 )
+        ( name = '四川' value = 620 )
+        ( name = '湖北' value = 750 )
+        ( name = '山东' value = 990 )
+        ( name = '河南' value = 830 )
+        ( name = '陕西' value = 510 ) ) ).
+
+    " 点击省份 -> sapevent map_drill -> on_event 读取参数
+    lo_chart->set_on_click( 'map_drill' ).
+
+    ri_html = lo_chart->render( ).
+  ENDMETHOD.
+
   METHOD on_event.
     CASE ii_event->mv_action.
       WHEN 'reload'.
         rs_result-page  = NEW lcl_demo_page( ).
+        rs_result-state = 1.
+      WHEN 'map_drill'.
+        " 地图点击回传：name=省份名，value=数值；中文值已自动 URL 解码
+        mv_clicked = |点击省份: { ii_event->query( 'name' ) }（销量 { ii_event->query( 'value' ) }）|.
         rs_result-state = 1.
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).

@@ -303,16 +303,26 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `  try { document.execCommand("copy"); toast("报告已复制"); } catch (e) { errlog("复制失败: " + e.message); }` &&
       `}` &&
       `function arkPrefix() {` &&
-      `  var h = "", a = document.getElementById("ark_probe");` &&
-      `  if (a && a.href) { h = String(a.href); }` &&
-      `  var i = h.toLowerCase().indexOf("sapevent:");` &&
-      `  if (i > 0) {` &&
-      `    var head = h.substring(0, i);` &&
-      `    if (head.charAt(head.length - 1) === "/") { return head; }` &&
-      `  }` &&
+      `  var a = document.getElementById("ark_probe");` &&
       `  var base = String(location.href);` &&
+      `  var tries = [];` &&
+      `  if (a) {` &&
+      `    tries.push(String(a.href || ""));` &&
+      `    tries.push(String(a.getAttribute("href") || ""));` &&
+      `  }` &&
+      `  tries.push(base);` &&
+      `  var n, h, i, head;` &&
+      `  for (n = 0; n < tries.length; n++) {` &&
+      `    i = tries[n].toLowerCase().indexOf("sapevent:");` &&
+      `    if (i > 0) {` &&
+      `      head = tries[n].substring(0, i);` &&
+      `      if (head.charAt(head.length - 1) === "/") { return head; }` &&
+      `    }` &&
+      `  }` &&
+      `  if (/^saphtmlp:/i.test(base) || /^sap-cust:/i.test(base)) {` &&
+      `    return "sap-cust://sap-place-holder/";` &&
+      `  }` &&
       `  if (/^file:/i.test(base)) { return "file:///"; }` &&
-      `  if (/^sap-cust/i.test(base)) { return "sap-cust://sap-place-holder/"; }` &&
       `  return "";` &&
       `}` &&
       `function arkReady(action) {` &&
@@ -632,10 +642,11 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `function autoRun() {` &&
       `  try {` &&
       `    var pfx = arkPrefix();` &&
+      `    var pa = document.getElementById("ark_probe") || {};` &&
       `    rpt("bridge_prefix", pfx ? "INFO" : "FAIL",` &&
-      `      "前缀 = " + (pfx || "(空)") + " · 探测锚点 href = " +` &&
-      `      String((document.getElementById("ark_probe") || {}).href || "?") +` &&
-      `      " · 页面 href = " + String(location.href).substring(0, 50));` &&
+      `      "前缀 = " + (pfx || "(空)") + " · 锚点 href(二次读) = " + String(pa.href || "?") +` &&
+      `      " · attr = " + String(pa.getAttribute ? pa.getAttribute("href") : "?") +` &&
+      `      " · 页面 = " + String(location.href).substring(0, 40));` &&
       `    if (!pfx) {` &&
       `      rpt("bridge_a", "SKIP", "无前缀，自动触发已跳过（防白屏），请回报上方探测值");` &&
       `    } else {` &&

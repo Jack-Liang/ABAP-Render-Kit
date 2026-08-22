@@ -215,7 +215,7 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
     mo_html_viewer->show_url(
       EXPORTING
         url                    = lv_url
-        in_frame               = lv_frame
+        frame                  = lv_frame
       EXCEPTIONS
         cntl_error             = 1
         cnht_error_not_allowed = 2

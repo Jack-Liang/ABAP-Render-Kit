@@ -48,14 +48,16 @@
 | ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 
-### src/examples/ (Examples — 6 objects)
+### src/examples/ (Examples — 8 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
+| ZARK_ECHARTS_DEMO | PROG | ECharts component capability demo |
+| ZARK_SFLIGHT_DEMO | PROG | Database-driven dashboard demo (SFLIGHT/SCARR) |
 | ZCL_ARK_EXAMPLE_APP | CLAS | Demo application |
 | ZCL_ARK_EXAMPLE_HELLO_PAGE | CLAS | Hello world page |
 | ZCL_ARK_EXAMPLE_FORM_PAGE | CLAS | Form demo page |
 | ZCL_ARK_EXAMPLE_TABLE_PAGE | CLAS | Table demo page |
 | ZCL_ARK_EXAMPLE_CHART_PAGE | CLAS | Chart demo page (mixed chart + table content) |
 
-## Total: 31 ABAP objects (62 files including .xml metadata, plus 5 `package.devc.xml`)
+## Total: 33 ABAP objects

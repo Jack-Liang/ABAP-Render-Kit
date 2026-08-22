@@ -73,6 +73,15 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
       iv_div_id = 'chart_area'
       iv_height = 420 ).
 
+    " 优先使用随仓库分发的 MIME 资产 ZARK_ECHARTS_MIN_JS（离线可用）；
+    " 对象不存在时组件自动回退 CDN
+    TRY.
+        lo_chart->set_library_xdata(
+          zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' ) ).
+      CATCH zcx_ark_exception.
+        " MIME 资产未部署，保持 CDN
+    ENDTRY.
+
     lo_chart->set_title( 'Stacked Area Chart' ).
     lo_chart->set_toolbox( ).
     lo_chart->set_xaxis_categories(

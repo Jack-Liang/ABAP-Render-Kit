@@ -111,8 +111,8 @@ mo_html->add( lo_chart->render( ) ).   " just one chunk in the page flow
 
 Notes:
 
-- ECharts 6.1.0 is loaded from CDN by the first chart on the page; pass `iv_include_lib = abap_false` to any additional chart on the same page.
-- For offline systems, upload `echarts.min.js` to the MIME repository (SMW0) and inject it via `lo_chart->set_library_xdata( zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' ) )` — the component serves it through `cache_asset` with automatic CDN fallback.
+- ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `set_library_xdata( )` serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
+- To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
 - Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required.
 - See `ZCL_ARK_EXAMPLE_CHART_PAGE` for a full mixed-content example (reachable from the demo's home page via *Chart Example*).
 
@@ -144,6 +144,8 @@ src/
 │   ├── zcl_ark_html_toolbar      # Toolbar builder
 │   ├── zcl_ark_echarts           # ECharts chart component
 │   └── zcl_ark_template          # Text template with placeholders
+├── assets/            # Static assets (MIME objects)
+│   └── zark_echarts_min_js       # Apache ECharts 6.1.0 bundle
 └── examples/          # Demo applications
 ```
 

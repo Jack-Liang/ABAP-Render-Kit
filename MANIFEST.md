@@ -5,12 +5,13 @@
 ### Root
 - `.abapgit.xml` — abapGit configuration
 - `README.md` — Project documentation
+- `MANIFEST.md` — This file (object inventory)
 - `.gitignore` — Git ignore rules
 
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 
-### src/core/ (Core Engine — 15 objects)
+### src/core/ (Core Engine — 16 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
@@ -21,6 +22,7 @@
 | ZCL_ARK_HTML_PARTS | CLAS | HTML parts collection |
 | ZCL_ARK_HTML_VIEWER_GUI | CLAS | HTML viewer implementation |
 | ZCL_ARK_CONVERT | CLAS | Conversion utilities |
+| ZCL_ARK_JSON | CLAS | JSON serializer (standard sXML, zero deps) |
 | ZIF_ARK_HTML | INTF | HTML interface |
 | ZIF_ARK_GUI_RENDERABLE | INTF | Renderable interface |
 | ZIF_ARK_GUI_EVENT | INTF | Event interface |
@@ -37,19 +39,23 @@
 | ZIF_ARK_GUI_MODAL | INTF | Modal interface |
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
 
-### src/components/ (UI Components — 3 objects)
+### src/components/ (UI Components — 5 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCL_ARK_HTML_FORM | CLAS | Form component |
 | ZCL_ARK_HTML_TABLE | CLAS | Table component |
 | ZCL_ARK_HTML_TOOLBAR | CLAS | Toolbar component |
+| ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
+| ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 
-### src/examples/ (Examples — 4 objects)
+### src/examples/ (Examples — 6 objects)
 | Object | Type | Description |
 |--------|------|-------------|
+| ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
 | ZCL_ARK_EXAMPLE_APP | CLAS | Demo application |
 | ZCL_ARK_EXAMPLE_HELLO_PAGE | CLAS | Hello world page |
 | ZCL_ARK_EXAMPLE_FORM_PAGE | CLAS | Form demo page |
 | ZCL_ARK_EXAMPLE_TABLE_PAGE | CLAS | Table demo page |
+| ZCL_ARK_EXAMPLE_CHART_PAGE | CLAS | Chart demo page (mixed chart + table content) |
 
-## Total: 26 ABAP objects (52 files including .xml metadata)
+## Total: 31 ABAP objects (62 files including .xml metadata, plus 5 `package.devc.xml`)

@@ -27,7 +27,11 @@ CLASS lcl_sflight_page DEFINITION
     METHODS build_html REDEFINITION .
 
   PRIVATE SECTION.
+    " 收入带小数（paymentsum 为 CURR 13,2），add_series 的 it_data
+    " 接受任意数值行类型内表，p 内表经 MOVE 赋值不受构造器字面量限制
     TYPES:
+      ty_amount  TYPE p LENGTH 16 DECIMALS 2,
+      ty_amounts TYPE STANDARD TABLE OF ty_amount WITH DEFAULT KEY,
       BEGIN OF ty_carrier,
         carrid   TYPE sflight-carrid,
         carrname TYPE scarr-carrname,
@@ -37,7 +41,7 @@ CLASS lcl_sflight_page DEFINITION
       END OF ty_carrier,
       BEGIN OF ty_month,
         month   TYPE c LENGTH 6,
-        revenue TYPE i,
+        revenue TYPE ty_amount,
       END OF ty_month.
 
     DATA mt_carrier TYPE STANDARD TABLE OF ty_carrier WITH DEFAULT KEY .
@@ -142,7 +146,7 @@ CLASS lcl_sflight_page IMPLEMENTATION.
 
   METHOD build_revenue_bar.
     DATA lt_categories TYPE string_table.
-    DATA lt_revenue TYPE zcl_ark_echarts=>ty_values.
+    DATA lt_revenue TYPE ty_amounts.
 
     LOOP AT mt_carrier INTO DATA(ls_carrier).
       APPEND ls_carrier-carrname TO lt_categories.
@@ -169,7 +173,7 @@ CLASS lcl_sflight_page IMPLEMENTATION.
 
   METHOD build_monthly_line.
     DATA lt_categories TYPE string_table.
-    DATA lt_revenue TYPE zcl_ark_echarts=>ty_values.
+    DATA lt_revenue TYPE ty_amounts.
 
     LOOP AT mt_month INTO DATA(ls_month).
       APPEND ls_month-month TO lt_categories.
@@ -196,7 +200,7 @@ CLASS lcl_sflight_page IMPLEMENTATION.
     TYPES:
       BEGIN OF ty_name_value,
         name  TYPE string,
-        value TYPE i,
+        value TYPE ty_amount,
       END OF ty_name_value,
       tt_name_value TYPE STANDARD TABLE OF ty_name_value WITH DEFAULT KEY,
       BEGIN OF ty_title,

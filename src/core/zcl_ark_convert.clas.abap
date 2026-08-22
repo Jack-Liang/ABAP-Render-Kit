@@ -36,7 +36,8 @@ CLASS zcl_ark_convert IMPLEMENTATION.
 
     IF sy-subrc = 0.
       READ TABLE lt_params ASSIGNING <ls_param> WITH KEY name = 'filesize'.
-      IF sy-subrc = 0.
+      " 仅接受数字值，非数字内容跳过并走整行拼接回退（避免 char->i 隐式转换 dump）
+      IF sy-subrc = 0 AND <ls_param>-value CO '0123456789 '.
         lv_size = <ls_param>-value.
       ENDIF.
     ENDIF.

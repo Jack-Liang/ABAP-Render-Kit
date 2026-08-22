@@ -4,7 +4,10 @@ CLASS zcl_ark_echarts DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    " 单条系列的数据点类型
+    " 单条系列的数据点便捷类型（整型，支持 ( 120 ) 字面量写法）。
+    " 带小数的数据（金额等）请将 add_series 的 it_data 传自定义数值内表
+    " （p/f/decfloat 行类型均可）；ABAP 构造器表达式的字面量转换规则
+    " 只允许整数字面量赋给 i 行类型，故本类型保持 i
     TYPES ty_values TYPE STANDARD TABLE OF i WITH DEFAULT KEY .
 
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
@@ -35,7 +38,7 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS add_series
       IMPORTING
         !iv_name                TYPE string
-        !it_data                TYPE ty_values
+        !it_data                TYPE ANY TABLE   " 任意数值行类型内表（i/p/f/decfloat），小数直接支持
         !iv_type                TYPE string DEFAULT 'line'
         !iv_stack               TYPE string OPTIONAL
         !iv_area                TYPE abap_bool DEFAULT abap_false
@@ -56,13 +59,16 @@ CLASS zcl_ark_echarts DEFINITION
 
     " 通用模式：直接传入完整 option 的 ABAP 结构/内表（字段名用下划线命名，
     " 如 boundary_gap），经 /ui2/cl_json camelCase 序列化后整体替代声明式 option。
-    " /ui2/cl_json 为软依赖（动态调用），不可用时回退 zcl_ark_json（字段名大写）
+    " /ui2/cl_json 为软依赖（动态调用），不可用时回退 zcl_ark_json（字段名大写）。
+    " 注意：compress 会把"纯数字样式的字符串"（如标题 '2026'）序列化为 JSON 数字，
+    " 此类业务字符串需自行规避，或经 set_option_override 修正
     METHODS set_option
       IMPORTING !ig_option      TYPE any
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
 
     " 逃生舱口：原生 JSON 片段，渲染时对 option 做浅层合并（顶层键覆盖），
-    " 用于声明式 API 尚未覆盖的任意 ECharts 能力，如 dataZoom、markLine
+    " 用于声明式 API 尚未覆盖的任意 ECharts 能力，如 dataZoom、markLine。
+    " JSON 会原样嵌入页面脚本：只能传静态字面量，勿拼接数据库等不可信内容（脚本注入）
     METHODS set_option_override
       IMPORTING !iv_json        TYPE string
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
@@ -86,8 +92,8 @@ CLASS zcl_ark_echarts DEFINITION
       END OF ty_series .
 
     CLASS-DATA gv_instance_counter TYPE i .
-    CLASS-DATA gv_default_lib_xdata TYPE xstring .   " use_bundled_library 读入，会话级
-    CLASS-DATA gv_cached_lib_url TYPE string .       " cache_asset 换得的 URL，会话级
+    CLASS-DATA gv_default_lib_xdata TYPE xstring .              " use_bundled_library 读入，会话级
+    CLASS-DATA gv_default_lib_name TYPE wwwdatatab-objid .     " 已读入的 MIME 对象名
 
     DATA mv_div_id TYPE string .
     DATA mv_height TYPE i .
@@ -108,15 +114,20 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS serialize_option
       IMPORTING !ig_data       TYPE any
       RETURNING VALUE(rv_json) TYPE string .
+    METHODS escape_js
+      IMPORTING !iv_value         TYPE string
+      RETURNING VALUE(rv_escaped) TYPE string .
 ENDCLASS.
 
 
 CLASS zcl_ark_echarts IMPLEMENTATION.
 
   METHOD use_bundled_library.
-    " 会话级只读一次（1MB+ 的 WWWDATA_IMPORT 很贵）
-    IF gv_default_lib_xdata IS INITIAL.
+    " 会话级每个 MIME 对象只读一次（1MB+ 的 WWWDATA_IMPORT 很贵）；
+    " 换用不同的 iv_mime_name 时按对象名重新读取
+    IF gv_default_lib_xdata IS INITIAL OR gv_default_lib_name <> iv_mime_name.
       gv_default_lib_xdata = zcl_ark_convert=>mime_to_xstring( iv_mime_name ).
+      gv_default_lib_name   = iv_mime_name.
     ENDIF.
   ENDMETHOD.
 
@@ -197,12 +208,34 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 
+  METHOD escape_js.
+    " JS 单引号字符串字面量转义。标题/系列名等常直接来自数据库（客户名、物料描述），
+    " 未转义的反斜杠/引号/换行会产生非法脚本，导致整页所有图表一起失效。
+    " `</` 一并转义，避免值中的 </script> 提前截断宿主脚本块。
+    " CR/LF 从 cr_lf 属性截取：\u 转义与 cr/lf/minchar 属性在部分发行版不可用，
+    " 但 cr_lf 属性与 substring 函数各发行版均有
+    DATA(lv_crlf) = |{ cl_abap_char_utilities=>cr_lf }|.
+    DATA(lv_cr) = substring( val = lv_crlf off = 0 len = 1 ).
+    DATA(lv_lf) = substring( val = lv_crlf off = 1 len = 1 ).
+
+    rv_escaped = iv_value.
+
+    rv_escaped = replace( val = rv_escaped sub = `\` with = `\\` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = |{ lv_cr }{ lv_lf }| with = `\n` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = lv_cr with = `\r` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = lv_lf with = `\n` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = `"` with = `\"` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = `'` with = `\'` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = `</` with = `<\/` occ = 0 ).
+  ENDMETHOD.
+
   METHOD render.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
     " ECharts 库。同页多个图表时，仅第一个组件需要带上（iv_include_lib）
     " 资产优先级：实例级 set_library_xdata > 会话级 use_bundled_library > CDN
-    " cache_asset 换得的 URL 会话级缓存，避免每次渲染都上传 1MB+ 给前端控件
+    " 资产经 cache_asset 换成本地 URL；缓存挂在 GUI 实例上（同一 HTML 控件只上传
+    " 一次），控件销毁重建后随实例失效，不会残留失效 URL
     IF mv_include_lib = abap_true.
       DATA(lv_lib_url) = c_cdn_url.
 
@@ -212,20 +245,18 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       ENDIF.
 
       IF lv_xdata IS NOT INITIAL.
-        IF gv_cached_lib_url IS INITIAL.
-          TRY.
-              gv_cached_lib_url = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
-                iv_url     = c_lib_cache_name
-                iv_xdata   = lv_xdata
-                iv_type    = 'text'
-                iv_subtype = 'javascript' ).
-            CATCH zcx_ark_exception.
-              " 缓存失败时保持 CDN 回退
-          ENDTRY.
-        ENDIF.
+        TRY.
+            DATA(lv_asset_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+              iv_url     = c_lib_cache_name
+              iv_xdata   = lv_xdata
+              iv_type    = 'text'
+              iv_subtype = 'javascript' ).
+          CATCH zcx_ark_exception.
+            " 缓存失败时保持 CDN 回退
+        ENDTRY.
 
-        IF gv_cached_lib_url IS NOT INITIAL.
-          lv_lib_url = gv_cached_lib_url.
+        IF lv_asset_url IS NOT INITIAL.
+          lv_lib_url = lv_asset_url.
         ENDIF.
       ENDIF.
 
@@ -252,7 +283,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     lv_nl = cl_abap_char_utilities=>newline.
 
     IF mv_theme IS NOT INITIAL.
-      lv_theme_arg = |, '{ mv_theme }'|.
+      lv_theme_arg = |, '{ escape_js( mv_theme ) }'|.
     ENDIF.
 
     " set_option 通用模式整体替代声明式骨架
@@ -270,7 +301,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
     rv_js =
       |(function() \{|                                                        && lv_nl &&
-      |  var chartDom = document.getElementById('{ mv_div_id }');|            && lv_nl &&
+      |  var chartDom = document.getElementById('{ escape_js( mv_div_id ) }');|    && lv_nl &&
       |  if (!chartDom) \{ return; \}|                                        && lv_nl &&
       |  if (typeof echarts === 'undefined') \{|                              && lv_nl &&
       |    chartDom.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">ECharts 库加载失败：资产缺失或浏览器内核不受支持（SAP GUI HTML Viewer 为 IE 内核，可能需要 ECharts 5.x）。</div>';| && lv_nl &&
@@ -299,7 +330,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
     " 标题（可选）
     IF mv_title IS NOT INITIAL.
-      lv_title_line = |  title: \{ text: '{ mv_title }' \},| && lv_nl.
+      lv_title_line = |  title: \{ text: '{ escape_js( mv_title ) }' \},| && lv_nl.
     ENDIF.
 
     " 工具栏（可选）
@@ -318,7 +349,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       DATA(lv_options) = ``.
 
       IF <ls_series>-stack IS NOT INITIAL.
-        lv_options = lv_options && |, stack: '{ <ls_series>-stack }'|.
+        lv_options = lv_options && |, stack: '{ escape_js( <ls_series>-stack ) }'|.
       ENDIF.
       IF <ls_series>-area = abap_true.
         lv_options = lv_options && |, areaStyle: \{ \}|.
@@ -335,7 +366,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       ENDIF.
 
       lv_series_json = lv_series_json &&
-        |    \{ name: '{ <ls_series>-name }', type: '{ <ls_series>-type }'{ lv_options },| && lv_nl &&
+        |    \{ name: '{ escape_js( <ls_series>-name ) }', type: '{ escape_js( <ls_series>-type ) }'{ lv_options },| && lv_nl &&
         |      emphasis: \{ focus: 'series' \}, data: { <ls_series>-data_json } \}|.
     ENDLOOP.
 
@@ -364,3 +395,4 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+

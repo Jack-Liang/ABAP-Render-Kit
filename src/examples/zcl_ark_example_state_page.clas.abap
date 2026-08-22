@@ -45,16 +45,20 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
         kpi_cards = VALUE #(
           ( title = '总销售额' value = |{ 4286 * mv_factor } 万|
             delta_text = '▲ 12.4% 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-positive )
+            delta_semantic = zif_ark_gui_state=>c_semantic-positive
+            sparkline = VALUE #( ( `32` ) ( `38` ) ( `35` ) ( `42` ) ( `48` ) ( `45` ) ( `52` ) ) )
           ( title = '订单数' value = |{ 18532 * mv_factor }|
             delta_text = '▲ 6.8% 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-positive )
+            delta_semantic = zif_ark_gui_state=>c_semantic-positive
+            sparkline = VALUE #( ( `12` ) ( `14` ) ( `13` ) ( `15` ) ( `16` ) ( `17` ) ( `19` ) ) )
           ( title = '退货率' value = '2.1%'
             delta_text = '▼ 0.4pp 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-negative )
+            delta_semantic = zif_ark_gui_state=>c_semantic-negative
+            sparkline = VALUE #( ( `3.4` ) ( `3.2` ) ( `2.9` ) ( `2.7` ) ( `2.4` ) ( `2.3` ) ( `2.1` ) ) )
           ( title = '客户满意度' value = '94.6'
             delta_text = '▲ 1.2 环比'
-            delta_semantic = zif_ark_gui_state=>c_semantic-positive ) ) ) ).
+            delta_semantic = zif_ark_gui_state=>c_semantic-positive
+            sparkline = VALUE #( ( `90` ) ( `91` ) ( `92` ) ( `92.8` ) ( `93.5` ) ( `94` ) ( `94.6` ) ) ) ) ).
 
     " ---- 表格（语义色状态 + 行内链接动作）----
     ls_state-sections = VALUE #( BASE ls_state-sections

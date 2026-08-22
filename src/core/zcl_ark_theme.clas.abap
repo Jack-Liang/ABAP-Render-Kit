@@ -188,7 +188,8 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.ark-status--positive::before \{ background: var(--arkPositiveColor); \}\n| &&
       |.ark-status--negative::before \{ background: var(--arkNegativeColor); \}\n| &&
       |.ark-status--critical::before \{ background: var(--arkCriticalColor); \}\n| &&
-      |.ark-status--informative::before \{ background: var(--arkInformativeColor); \}\n\n|.
+      |.ark-status--informative::before \{ background: var(--arkInformativeColor); \}\n| &&
+      |.ark-num \{ text-align: right; font-variant-numeric: tabular-nums; \}\n\n|.
   ENDMETHOD.
 
 ENDCLASS.

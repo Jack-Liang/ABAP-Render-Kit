@@ -53,6 +53,7 @@ CLASS zcl_ark_state_page DEFINITION
     METHODS render_kpi_grid
       IMPORTING
         !is_section TYPE zif_ark_gui_state=>ty_section
+        !iv_index   TYPE i
       CHANGING
         !co_html    TYPE REF TO zcl_ark_html .
 
@@ -80,6 +81,13 @@ CLASS zcl_ark_state_page DEFINITION
         !is_cell      TYPE zif_ark_gui_state=>ty_table_cell
       RETURNING
         VALUE(rv_html) TYPE string .
+
+    "! Sparkline 线色：语义色映射到 Quartz 默认色值（canvas 取不到 CSS 变量，
+    "! 主题令牌改名/换值时此处需同步）
+    METHODS sparkline_color
+      IMPORTING
+        !iv_semantic   TYPE zif_ark_gui_state=>ty_semantic
+      RETURNING VALUE(rv_color) TYPE string .
 ENDCLASS.
 
 CLASS zcl_ark_state_page IMPLEMENTATION.
@@ -146,11 +154,23 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     render_toolbar( EXPORTING it_items = ms_state-toolbar CHANGING co_html = mo_html ).
 
-    " 图表节需要 ECharts 库：任一 chart 节存在时整页注入一次
-    LOOP AT ms_state-sections TRANSPORTING NO FIELDS
-         WHERE kind = zif_ark_gui_state=>c_section_kind-chart.
-      mo_html->add( zcl_ark_echarts=>include_library_script( ) ).
-      EXIT.
+    " ECharts 库：chart 节或带 sparkline 的 KPI 卡存在时整页注入一次
+    LOOP AT ms_state-sections INTO DATA(ls_lib_check).
+      DATA(lv_need_lib) = boolc(
+        ls_lib_check-kind = zif_ark_gui_state=>c_section_kind-chart ).
+      IF lv_need_lib = abap_false
+         AND ls_lib_check-kind = zif_ark_gui_state=>c_section_kind-kpi_grid.
+        LOOP AT ls_lib_check-kpi_cards INTO DATA(ls_card_check).
+          IF ls_card_check-sparkline IS NOT INITIAL.
+            lv_need_lib = abap_true.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+      IF lv_need_lib = abap_true.
+        mo_html->add( zcl_ark_echarts=>include_library_script( ) ).
+        EXIT.
+      ENDIF.
     ENDLOOP.
 
     DATA lv_index TYPE i.
@@ -210,7 +230,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     CASE is_section-kind.
       WHEN zif_ark_gui_state=>c_section_kind-kpi_grid.
-        render_kpi_grid( EXPORTING is_section = is_section CHANGING co_html = co_html ).
+        render_kpi_grid( EXPORTING is_section = is_section iv_index = iv_index
+                        CHANGING co_html = co_html ).
       WHEN zif_ark_gui_state=>c_section_kind-table.
         render_table( EXPORTING is_section = is_section CHANGING co_html = co_html ).
       WHEN zif_ark_gui_state=>c_section_kind-form.
@@ -224,6 +245,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_kpi_grid.
+    DATA lv_js TYPE string.
+
     co_html->add( |<div class="ark-kpi-grid">| ).
 
     LOOP AT is_section-kpi_cards INTO DATA(ls_card).
@@ -239,10 +262,37 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
           co_html->add( |<span class="ark-delta">{ ls_card-delta_text }</span>| ).
         ENDIF.
       ENDIF.
+
+      " 迷你趋势线：容器占位，脚本在网格闭合后集中初始化
+      IF ls_card-sparkline IS NOT INITIAL.
+        DATA(lv_id) = |ark_spark_{ iv_index }_{ sy-tabix }|.
+        co_html->div(
+          iv_id    = lv_id
+          iv_style = |width: 100%; height: 36px; margin-top: 8px;| ).
+
+        DATA(lv_data) = REDUCE #(
+          INIT s TYPE string
+          FOR lv_val IN ls_card-sparkline
+          NEXT s = COND #( WHEN s IS INITIAL THEN lv_val ELSE |{ s },{ lv_val }| ) ).
+
+        lv_js = lv_js &&
+          |var e=document.getElementById('{ lv_id }');| &&
+          |if(window.echarts&&e)\{echarts.init(e).setOption(\{| &&
+          |grid:\{left:0,right:0,top:2,bottom:2\},| &&
+          |xAxis:\{type:'category',show:false\},| &&
+          |yAxis:\{type:'value',show:false\},| &&
+          |series:[\{type:'line',data:[{ lv_data }],symbol:'none',smooth:true,| &&
+          |lineStyle:\{width:2,color:'{ sparkline_color( ls_card-delta_semantic ) }'\}\}]\});\};| .
+      ENDIF.
+
       co_html->add( |</div>| ).
     ENDLOOP.
 
     co_html->add( |</div>| ).
+
+    IF lv_js IS NOT INITIAL.
+      co_html->add_js( |(function()\{{ lv_js }\})();| ).
+    ENDIF.
   ENDMETHOD.
 
   METHOD render_table.
@@ -262,8 +312,15 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     LOOP AT is_section-rows INTO DATA(lt_row).
       co_html->add( |<tr>| ).
+      DATA lv_col TYPE i.
       LOOP AT lt_row INTO DATA(ls_cell).
-        co_html->add( |<td>{ render_cell( ls_cell ) }</td>| ).
+        lv_col = sy-tabix.
+        READ TABLE is_section-columns INTO DATA(ls_col) INDEX lv_col.
+        IF sy-subrc = 0 AND ls_col-align_right = abap_true.
+          co_html->add( |<td class="ark-num">{ render_cell( ls_cell ) }</td>| ).
+        ELSE.
+          co_html->add( |<td>{ render_cell( ls_cell ) }</td>| ).
+        ENDIF.
       ENDLOOP.
       co_html->add( |</tr>| ).
     ENDLOOP.
@@ -328,6 +385,21 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     ENDLOOP.
 
     co_html->add( |</form>| ).
+  ENDMETHOD.
+
+  METHOD sparkline_color.
+    CASE iv_semantic.
+      WHEN zif_ark_gui_state=>c_semantic-positive.
+        rv_color = '#107e3e'.
+      WHEN zif_ark_gui_state=>c_semantic-negative.
+        rv_color = '#bb0000'.
+      WHEN zif_ark_gui_state=>c_semantic-critical.
+        rv_color = '#e9730c'.
+      WHEN zif_ark_gui_state=>c_semantic-informative.
+        rv_color = '#0a6ed1'.
+      WHEN OTHERS.
+        rv_color = '#0070f2'.
+    ENDCASE.
   ENDMETHOD.
 
   METHOD render_chart.

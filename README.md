@@ -6,7 +6,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 
 > ⚠️ **Experimental Project**
 >
-> This is an **experimental** project. APIs, class names, and behavior may change without notice between releases. It is not affiliated with SAP or abapGit, and no warranty is provided.
+> This is an **experimental** project. APIs, class names, and behavior may change without notice between releases. While ARK is derived from abapGit's source code, it is an independent project — not officially endorsed by or maintained by the abapGit team or SAP. No warranty is provided.
 >
 > - Do **not** use in production systems without thorough testing.
 > - Expect breaking changes as the framework evolves.
@@ -19,6 +19,8 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Event System** — Sapevent-based communication between frontend and ABAP backend
 - **UI Components** — Form, Table, Toolbar, and more ready-to-use components
 - **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content
+- **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository
+- **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
 - **Theme Support** — CSS theming system
 - **Zero External Dependencies** — Runs entirely within SAP GUI using standard `CL_GUI_HTML_VIEWER`
 
@@ -109,8 +111,9 @@ mo_html->add( lo_chart->render( ) ).   " just one chunk in the page flow
 
 Notes:
 
-- ECharts is loaded from CDN by the first chart on the page; pass `iv_include_lib = abap_false` to any additional chart on the same page.
-- For offline systems, upload `echarts.min.js` to the MIME repository (SMW0) and serve it via `get_services( )->cache_asset( iv_xdata = ... )` instead.
+- ECharts 6.1.0 is loaded from CDN by the first chart on the page; pass `iv_include_lib = abap_false` to any additional chart on the same page.
+- For offline systems, upload `echarts.min.js` to the MIME repository (SMW0) and inject it via `lo_chart->set_library_xdata( zcl_ark_convert=>mime_to_xstring( 'ZARK_ECHARTS_MIN_JS' ) )` — the component serves it through `cache_asset` with automatic CDN fallback.
+- Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required.
 - See `ZCL_ARK_EXAMPLE_CHART_PAGE` for a full mixed-content example (reachable from the demo's home page via *Chart Example*).
 
 ## Installation
@@ -130,6 +133,7 @@ src/
 │   ├── zcl_ark_html_viewer_gui   # HTML viewer wrapper
 │   ├── zcl_ark_gui_event         # Event object
 │   ├── zcl_ark_convert           # Conversion utilities
+│   ├── zcl_ark_json              # JSON serializer (sXML based)
 │   └── interfaces...
 ├── framework/         # Tier 2: Page Framework
 │   ├── zcl_ark_gui_page          # Page base class
@@ -138,7 +142,8 @@ src/
 │   ├── zcl_ark_html_form         # Form builder
 │   ├── zcl_ark_html_table        # Table builder
 │   ├── zcl_ark_html_toolbar      # Toolbar builder
-│   └── zcl_ark_echarts           # ECharts chart component
+│   ├── zcl_ark_echarts           # ECharts chart component
+│   └── zcl_ark_template          # Text template with placeholders
 └── examples/          # Demo applications
 ```
 

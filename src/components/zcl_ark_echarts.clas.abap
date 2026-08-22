@@ -81,12 +81,6 @@ CLASS zcl_ark_echarts DEFINITION
       RETURNING VALUE(rv_js) TYPE string .
     METHODS build_option_js
       RETURNING VALUE(rv_js) TYPE string .
-    METHODS num_array_json
-      IMPORTING !it_data       TYPE ty_values
-      RETURNING VALUE(rv_json) TYPE string .
-    METHODS str_array_json
-      IMPORTING !it_values     TYPE string_table
-      RETURNING VALUE(rv_json) TYPE string .
 ENDCLASS.
 
 
@@ -112,7 +106,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD set_xaxis_categories.
-    mv_categories_json = str_array_json( it_categories ).
+    mv_categories_json = zcl_ark_json=>to_json( it_categories ).
     ro_self = me.
   ENDMETHOD.
 
@@ -125,7 +119,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ls_series-area      = iv_area.
     ls_series-smooth    = iv_smooth.
     ls_series-label     = iv_label.
-    ls_series-data_json = num_array_json( it_data ).
+    ls_series-data_json = zcl_ark_json=>to_json( it_data ).
 
     APPEND ls_series TO mt_series.
     ro_self = me.
@@ -223,7 +217,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     LOOP AT mt_series ASSIGNING <ls_series>.
       APPEND <ls_series>-name TO lt_legend.
     ENDLOOP.
-    lv_legend = str_array_json( lt_legend ).
+    lv_legend = zcl_ark_json=>to_json( lt_legend ).
 
     " 各系列
     LOOP AT mt_series ASSIGNING <ls_series>.
@@ -273,28 +267,6 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       lv_series_json                                                                && lv_nl &&
       |  ]|                                                                         && lv_nl &&
       |\}|.
-  ENDMETHOD.
-
-  METHOD num_array_json.
-    DATA lv_sep TYPE string.
-
-    LOOP AT it_data INTO DATA(lv_val).
-      rv_json = rv_json && lv_sep && |{ lv_val }|.
-      lv_sep = `, `.
-    ENDLOOP.
-
-    rv_json = `[ ` && rv_json && ` ]`.
-  ENDMETHOD.
-
-  METHOD str_array_json.
-    DATA lv_sep TYPE string.
-
-    LOOP AT it_values INTO DATA(lv_val).
-      rv_json = rv_json && lv_sep && `'` && lv_val && `'`.
-      lv_sep = `, `.
-    ENDLOOP.
-
-    rv_json = `[ ` && rv_json && ` ]`.
   ENDMETHOD.
 
 ENDCLASS.

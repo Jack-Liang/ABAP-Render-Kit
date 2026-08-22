@@ -26,49 +26,50 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 
 ## Quick Start
 
-```abap
-" 1. Create a page — inherit from zcl_ark_gui_page and redefine build_html
-CLASS zcl_my_page DEFINITION
-  INHERITING FROM zcl_ark_gui_page
-  CREATE PUBLIC .
+Create **one** report (SE38/ADT, e.g. `ZMY_ARK_APP`), paste this, activate, run — that's the whole setup:
 
+```abap
+REPORT zmy_ark_app.
+
+" --- Page: inherit zcl_ark_gui_page, redefine build_html + on_event ---
+CLASS lcl_hello_page DEFINITION INHERITING FROM zcl_ark_gui_page FINAL.
   PUBLIC SECTION.
     METHODS on_event REDEFINITION .
-
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
+  PRIVATE SECTION.
+    DATA mv_clicks TYPE i .
 ENDCLASS.
 
-CLASS zcl_my_page IMPLEMENTATION.
+CLASS lcl_hello_page IMPLEMENTATION.
   METHOD build_html.
-    " mo_html is inherited from zcl_ark_gui_component
-    mo_html->add( '<h1>Hello ARK!</h1>' ).
+    " mo_html is inherited; render( ) rebuilds it from scratch on every pass
+    mo_html->add( |<h1>Hello ARK!</h1>| ).
     mo_html->add_a( iv_txt = 'Click me' iv_act = 'my_action' ).
+    IF mv_clicks > 0.
+      mo_html->add( |<p>Clicked { mv_clicks }x — the sapevent round-trip works.</p>| ).
+    ENDIF.
     ri_html = mo_html.
   ENDMETHOD.
 
   METHOD on_event.
     CASE ii_event->mv_action.
       WHEN 'my_action'.
-        rs_result-state = 1.             " handled, stay on page
+        mv_clicks = mv_clicks + 1.
+        rs_result-state = 1.             " handled; the page re-renders
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).
     ENDCASE.
   ENDMETHOD.
 ENDCLASS.
-```
 
-```abap
-" 2. Launcher report — the HTML viewer needs a host screen (like abapGit)
-REPORT zmy_app.
-
-SELECTION-SCREEN BEGIN OF SCREEN 1001.   " dummy host screen
+" --- Launcher: the HTML viewer needs a host screen (like abapGit) ---
+SELECTION-SCREEN BEGIN OF SCREEN 1001.
 SELECTION-SCREEN END OF SCREEN 1001.
 
 START-OF-SELECTION.
   TRY.
-      DATA(lo_gui) = zcl_ark_gui=>create( ).
-      lo_gui->set_page( NEW zcl_my_page( ) ).
+      zcl_ark_gui=>create( )->set_page( NEW lcl_hello_page( ) ).
       CALL SELECTION-SCREEN 1001.
     CATCH zcx_ark_exception INTO DATA(lx_error).
       MESSAGE lx_error TYPE 'E'.
@@ -86,9 +87,11 @@ To navigate to another page from `on_event`, return it in the result:
 
 ```abap
 WHEN 'nav_detail'.
-  rs_result-page  = NEW zcl_my_detail_page( ).
+  rs_result-page  = NEW lcl_detail_page( ).
   rs_result-state = 1.
 ```
+
+**Beyond hello world** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, and chart examples, and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
 
 ## Charts (ECharts)
 

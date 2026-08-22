@@ -84,3 +84,4 @@ CLASS zcl_ark_template IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+

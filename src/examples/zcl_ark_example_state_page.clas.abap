@@ -78,7 +78,7 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
         ( label = '数量' align_right = abap_true )
         ( label = '状态' ) ) ).
 
-    DATA(lt_cells) = VALUE #(
+    DATA(lt_cells) = VALUE zif_ark_gui_state=>tt_table_cell( 
       ( value = '0080012345' action = 'cell_detail' )
       ( value = '华信科技' )
       ( value = '1,286,000' )

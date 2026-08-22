@@ -138,9 +138,13 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
       VALUE string_table( ( `Mon` ) ( `Tue` ) ( `Wed` ) ( `Thu` ) ( `Fri` ) ( `Sat` ) ( `Sun` ) ) ).
 
     lo_chart->add_series(
-      iv_name = 'Total'
-      iv_type = 'bar'
-      it_data = VALUE zcl_ark_echarts=>ty_values( ( 1630 ) ( 1810 ) ( 1795 ) ( 1890 ) ( 2250 ) ( 2550 ) ( 2580 ) ) ).
+      iv_name            = 'Total'
+      iv_type            = 'bar'
+      it_data            = VALUE zcl_ark_echarts=>ty_values(
+                                         ( 1630000 ) ( 1810000 ) ( 1795000 ) ( 1890000 )
+                                         ( 2250000 ) ( 2550000 ) ( 2580000 ) )
+      iv_label           = abap_true
+      iv_label_thousands = abap_true ).
 
     " 点击柱子 -> sapevent chart_drill -> on_event 读取参数
     lo_chart->set_on_click( 'chart_drill' ).

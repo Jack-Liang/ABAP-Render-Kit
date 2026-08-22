@@ -79,6 +79,8 @@ CLASS zcl_ark_echarts DEFINITION
         !iv_area                TYPE abap_bool DEFAULT abap_false
         !iv_smooth              TYPE abap_bool DEFAULT abap_false
         !iv_label               TYPE abap_bool DEFAULT abap_false
+        "! 配合 iv_label：数据标签千分位（1,630,000），金额类大数可读性
+        !iv_label_thousands     TYPE abap_bool DEFAULT abap_false
         !iv_color_by_data       TYPE abap_bool DEFAULT abap_false
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
 
@@ -163,6 +165,7 @@ CLASS zcl_ark_echarts DEFINITION
         area          TYPE abap_bool,
         smooth        TYPE abap_bool,
         label         TYPE abap_bool,
+        label_thousands TYPE abap_bool,
         color_by_data TYPE abap_bool,
         data_json     TYPE string,
       END OF ty_series .
@@ -257,14 +260,15 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   METHOD add_series.
     DATA ls_series TYPE ty_series.
 
-    ls_series-name          = iv_name.
-    ls_series-type          = iv_type.
-    ls_series-stack         = iv_stack.
-    ls_series-area          = iv_area.
-    ls_series-smooth        = iv_smooth.
-    ls_series-label         = iv_label.
-    ls_series-color_by_data = iv_color_by_data.
-    ls_series-data_json     = zcl_ark_json=>to_json( it_data ).
+    ls_series-name            = iv_name.
+    ls_series-type            = iv_type.
+    ls_series-stack           = iv_stack.
+    ls_series-area            = iv_area.
+    ls_series-smooth          = iv_smooth.
+    ls_series-label           = iv_label.
+    ls_series-label_thousands = iv_label_thousands.
+    ls_series-color_by_data   = iv_color_by_data.
+    ls_series-data_json       = zcl_ark_json=>to_json( it_data ).
 
     APPEND ls_series TO mt_series.
     ro_self = me.
@@ -662,7 +666,13 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
         lv_options = lv_options && `, smooth: true`.
       ENDIF.
       IF <ls_series>-label = abap_true.
-        lv_options = lv_options && |, label: \{ show: true, position: 'top' \}|.
+        IF <ls_series>-label_thousands = abap_true.
+          " 千分位标签（1,630,000）：toLocaleString 依赖 Edge/WebView2 基线
+          lv_options = lv_options &&
+            |, label: \{ show: true, position: 'top', formatter: function(p) \{ return p.value.toLocaleString(); \} \}|.
+        ELSE.
+          lv_options = lv_options && |, label: \{ show: true, position: 'top' \}|.
+        ENDIF.
       ENDIF.
       IF <ls_series>-color_by_data = abap_true.
         " 逐数据点从调色盘取色（bar/pie 每根柱/每块不同颜色）

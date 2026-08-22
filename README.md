@@ -18,7 +18,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Page Navigation** — Stack-based history with back/forward support
 - **Event System** — Sapevent-based communication between frontend and ABAP backend
 - **UI Components** — Form, Table, Toolbar, and more ready-to-use components
-- **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content
+- **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content; chart click events (drill-down) and GeoJSON maps (bundled China map) included
 - **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository
 - **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
 - **Theme Support** — Fiori Quartz design tokens via `zcl_ark_theme`; override any token with `set_token( )`
@@ -166,14 +166,48 @@ TYPES: BEGIN OF ty_pie_option,
 lo_chart->set_option( ls_pie_option ).
 ```
 
+**4. Chart click events** — drill into any chart element (bar, pie slice, map region):
+
+```abap
+lo_chart->set_on_click( 'chart_drill' ).
+
+" ... in the page's on_event:
+WHEN 'chart_drill'.
+  DATA(lv_name)   = ii_event->query( 'name' ).    " category / datum name
+  DATA(lv_series) = ii_event->query( 'series' ).  " series name
+  DATA(lv_value)  = ii_event->query( 'value' ).   " number (objects arrive as JSON string)
+  DATA(lv_idx)    = CONV i( ii_event->query( 'idx' ) ).
+```
+
+Query values are URL-decoded automatically (Chinese category names work). Single values are capped at 250 characters (percent-encoded Chinese ≈ 9 chars per character) — keep names short. On state pages, set `chart_click_action` on a chart section; its payload additionally carries `chart` (= section index) so multiple chart sections can share one action.
+
+**5. Maps (GeoJSON)** — China map ships with the repository as MIME object `ZARK_MAP_CHINA_JSON` (abapGit W3MI, DataV `100000_full` GeoJSON; use your own map data where licensing requires):
+
+```abap
+zcl_ark_echarts=>use_bundled_map( ).             " session-level load (once)
+
+lo_chart->set_map( 'china' ).                    " registers the map
+lo_chart->set_visual_map( iv_min = '0' iv_max = '1200' ).
+lo_chart->add_map_series(
+  iv_name = 'Sales'
+  it_data = VALUE zcl_ark_echarts=>tt_map_data(
+    ( name = '广东' value = 1180 )
+    ( name = '江苏' value = 1050 ) ) ).          " names must match GeoJSON features
+lo_chart->set_on_click( 'map_drill' ).           " click a province -> sapevent
+```
+
+Custom maps: upload any GeoJSON to SMW0 and load it with `use_bundled_map( iv_map_name = 'usa' iv_mime_name = 'Z_USA_JSON' )`, or pass the raw GeoJSON bytes directly: `set_map( iv_name = 'usa' iv_xdata = zcl_ark_convert=>mime_to_xstring( 'Z_USA_JSON' ) )`. The GeoJSON is served as a synchronous `window.ARK_MAPS` script through `cache_asset`; if the asset is missing the chart degrades to an empty map instead of a script error. State pages: set `chart_map` on a chart section and the map script is injected automatically.
+
 Notes:
 
 - ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `zcl_ark_echarts=>use_bundled_library( )` loads it once per session and serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
+- The China map GeoJSON ships as MIME object `ZARK_MAP_CHINA_JSON` the same way (`use_bundled_map( )`, no CDN fallback — a missing asset degrades to an empty map).
+- Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required. `add_series` accepts any internal table with a numeric row type — `zcl_ark_echarts=>ty_values` is the integer convenience type, declare your own `p`/`f` table for decimal values such as amounts. `iv_color_by_data = abap_true` colors each datum from the palette (one color per bar/pie slice). `iv_label = iv_label_thousands = abap_true` renders thousands-separated data labels (1,630,000).
 - To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
 - Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required. `add_series` accepts any internal table with a numeric row type — `zcl_ark_echarts=>ty_values` is the integer convenience type, declare your own `p`/`f` table for decimal values such as amounts. `iv_color_by_data = abap_true` colors each datum from the palette (one color per bar/pie slice).
 - The constructor takes `iv_height` (px) and optional `iv_width` (e.g. `'640px'`, `'50%'`; default full width, centered when narrower).
 - If the library fails to load, the chart container shows a visible error banner instead of failing silently.
-- See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content), report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme), and report `ZARK_SFLIGHT_DEMO` (database-driven dashboard on the classic SFLIGHT/SCARR flight model) for usage.
+- See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content, click drill-down), report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme, China map choropleth with province click), and report `ZARK_SFLIGHT_DEMO` (database-driven dashboard on the classic SFLIGHT/SCARR flight model) for usage.
 
 ## Templates
 
@@ -232,7 +266,8 @@ src/
 │   ├── zcl_ark_echarts           # ECharts chart component
 │   └── zcl_ark_template          # Text template with placeholders
 ├── assets/            # Static assets (MIME objects)
-│   └── zark_echarts_min_js       # Apache ECharts 6.1.0 bundle
+│   ├── zark_echarts_min_js       # Apache ECharts 6.1.0 bundle
+│   └── zark_map_china_json      # China map GeoJSON (DataV 100000_full)
 └── examples/          # Demo applications
 ```
 

@@ -211,19 +211,17 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   METHOD escape_js.
     " JS 单引号字符串字面量转义。标题/系列名等常直接来自数据库（客户名、物料描述），
     " 未转义的反斜杠/引号/换行会产生非法脚本，导致整页所有图表一起失效。
-    " `</` 一并转义，避免值中的 </script> 提前截断宿主脚本块
+    " `</` 一并转义，避免值中的 </script> 提前截断宿主脚本块。
+    " CR/LF 经 UCCP 按码点构造：部分发行版 cl_abap_char_utilities 无 cr/lf 属性
+    DATA(lv_cr) = cl_abap_conv_in_ce=>uccp( '000D' ).
+    DATA(lv_lf) = cl_abap_conv_in_ce=>uccp( '000A' ).
+
     rv_escaped = iv_value.
 
     rv_escaped = replace( val = rv_escaped sub = `\` with = `\\` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped
-                          sub = |{ cl_abap_char_utilities=>cr_lf }|
-                          with = `\n` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped
-                          sub = |{ cl_abap_char_utilities=>cr }|
-                          with = `\r` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped
-                          sub = |{ cl_abap_char_utilities=>lf }|
-                          with = `\n` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = |{ lv_cr }{ lv_lf }| with = `\n` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = lv_cr with = `\r` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = lv_lf with = `\n` occ = 0 ).
     rv_escaped = replace( val = rv_escaped sub = `"` with = `\"` occ = 0 ).
     rv_escaped = replace( val = rv_escaped sub = `'` with = `\'` occ = 0 ).
     rv_escaped = replace( val = rv_escaped sub = `</` with = `<\/` occ = 0 ).

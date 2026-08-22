@@ -4,8 +4,9 @@ CLASS zcl_ark_echarts DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    " 单条系列的数据点类型。f 兼容金额等小数值，整数字面量可隐式转换
-    TYPES ty_values TYPE STANDARD TABLE OF f WITH DEFAULT KEY .
+    " 单条系列的数据点类型。p(16,6)：兼容金额等小数，整数字面量可直接使用
+    " （f 行类型不接受整数字面量，VALUE 构造器会报类型不兼容）
+    TYPES ty_values TYPE STANDARD TABLE OF p LENGTH 16 DECIMALS 6 WITH DEFAULT KEY .
 
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
     CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .

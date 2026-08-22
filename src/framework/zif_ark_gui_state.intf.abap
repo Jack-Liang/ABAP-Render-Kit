@@ -84,9 +84,15 @@ INTERFACE zif_ark_gui_state
       "! Render as a clickable link firing 'action'
       action      TYPE string,
     END OF ty_table_cell,
-    tt_table_cell  TYPE STANDARD TABLE OF ty_table_cell WITH EMPTY KEY,
-    tt_table_row   TYPE STANDARD TABLE OF tt_table_cell WITH EMPTY KEY,
-    ttt_table_body TYPE STANDARD TABLE OF tt_table_row WITH EMPTY KEY .
+    tt_table_cell TYPE STANDARD TABLE OF ty_table_cell WITH EMPTY KEY .
+
+  "! 表格行：结构含单元格内表，而非"行类型为内表"的表套表 ——
+  "! 后者的内联构造在低版本解析器上无法书写（行必须用表体语法）
+  TYPES:
+    BEGIN OF ty_table_row,
+      cells TYPE tt_table_cell,
+    END OF ty_table_row,
+    tt_table_rows TYPE STANDARD TABLE OF ty_table_row WITH EMPTY KEY .
 
   TYPES:
     BEGIN OF ty_form_field,
@@ -110,7 +116,7 @@ INTERFACE zif_ark_gui_state
       form_action TYPE string,
       kpi_cards TYPE tt_kpi_card,
       columns   TYPE tt_table_column,
-      rows      TYPE ttt_table_body,
+      rows      TYPE tt_table_rows,
       form_fields TYPE tt_form_field,
       "! For chart sections: complete ECharts option serialized as JSON.
       "! Reuse zcl_ark_echarts option building and pass its JSON here.

@@ -64,7 +64,7 @@ CLASS zcl_ark_state_page DEFINITION
       IMPORTING
         !is_section  TYPE zif_ark_gui_state=>ty_section
         !iv_sec      TYPE i
-      RETURNING VALUE(rt_rows) TYPE zif_ark_gui_state=>ttt_table_body .
+      RETURNING VALUE(rt_rows) TYPE zif_ark_gui_state=>tt_table_rows .
 
     METHODS is_numeric
       IMPORTING !iv_value       TYPE string
@@ -393,10 +393,10 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     co_html->add( |</tr></thead>| ).
     co_html->add( |<tbody>| ).
 
-    LOOP AT lt_rows INTO DATA(lt_row).
+    LOOP AT lt_rows INTO DATA(ls_row).
       co_html->add( |<tr>| ).
       DATA lv_col TYPE i.
-      LOOP AT lt_row INTO DATA(ls_cell).
+      LOOP AT ls_row-cells INTO DATA(ls_cell).
         lv_col = sy-tabix.
         READ TABLE is_section-columns INTO DATA(ls_col) INDEX lv_col.
         IF sy-subrc = 0 AND ls_col-align_right = abap_true.
@@ -476,25 +476,25 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       DATA(lv_flt) = to_lower( ls_ui-filter ).
       DATA(lt_keep) = rt_rows.
       CLEAR rt_rows.
-      LOOP AT lt_keep INTO DATA(lt_row).
+      LOOP AT lt_keep INTO DATA(ls_row).
         DATA(lv_match) = abap_false.
-        LOOP AT lt_row INTO DATA(ls_cell).
+        LOOP AT ls_row-cells INTO DATA(ls_cell).
           IF to_lower( ls_cell-value ) CS lv_flt.
             lv_match = abap_true.
             EXIT.
           ENDIF.
         ENDLOOP.
         IF lv_match = abap_true.
-          APPEND lt_row TO rt_rows.
+          APPEND ls_row TO rt_rows.
         ENDIF.
       ENDLOOP.
     ENDIF.
 
     " 排序：全列数字则按数值比较，否则按文本；方向翻转用倒序循环
     IF ls_ui-sort_col > 0.
-      READ TABLE rt_rows INTO DATA(lt_first) INDEX 1.
+      READ TABLE rt_rows INTO DATA(ls_first_row) INDEX 1.
       IF sy-subrc = 0.
-        READ TABLE lt_first INTO DATA(ls_first_cell) INDEX ls_ui-sort_col.
+        READ TABLE ls_first_row-cells INTO DATA(ls_first_cell) INDEX ls_ui-sort_col.
         DATA(lv_numeric) = is_numeric( ls_first_cell-value ).
       ENDIF.
 
@@ -506,15 +506,15 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         END OF ty_sort_row.
       DATA lt_sort TYPE STANDARD TABLE OF ty_sort_row WITH EMPTY KEY.
 
-      LOOP AT rt_rows INTO DATA(lt_r).
-        READ TABLE lt_r INTO DATA(ls_c) INDEX ls_ui-sort_col.
+      LOOP AT rt_rows INTO DATA(ls_r).
+        READ TABLE ls_r-cells INTO DATA(ls_c) INDEX ls_ui-sort_col.
         " 千分位逗号剥离后按数值赋键（1,286,000 -> 1286000）
         DATA(lv_keynum) = replace( val = ls_c-value sub = `,` with = `` occ = 0 ).
         APPEND VALUE ty_sort_row(
           key_num = COND decfloat16( WHEN lv_numeric = abap_true
                                      THEN lv_keynum ELSE 0 )
           key_txt = to_lower( ls_c-value )
-          cells   = lt_r ) TO lt_sort.
+          cells   = ls_r-cells ) TO lt_sort.
       ENDLOOP.
 
       IF lv_numeric = abap_true.
@@ -557,9 +557,9 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     APPEND lv_header TO lt_csv.
 
     LOOP AT transform_rows( is_section = is_section iv_sec = iv_sec )
-         INTO DATA(lt_row).
+         INTO DATA(ls_row).
       DATA(lv_line) = ``.
-      LOOP AT lt_row INTO DATA(ls_cell).
+      LOOP AT ls_row-cells INTO DATA(ls_cell).
         DATA(lv_val) = ls_cell-value.
         " 含分隔符/引号/换行的值按 CSV 规则加引号转义
         IF lv_val CA '; "'.

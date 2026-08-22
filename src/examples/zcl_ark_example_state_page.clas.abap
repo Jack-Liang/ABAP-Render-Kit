@@ -16,10 +16,9 @@ CLASS zcl_ark_example_state_page DEFINITION
 
     METHODS build_state .
 
-    "! 追加一行到表格节（嵌套内表无法内联构造，逐行 APPEND）。
-    "! 参数即行类型（单元格表），调用方 VALUE #( ( value = ... ) ... )
+    "! 追加一行到表格节：参数为该行的单元格表
     METHODS add_row
-      IMPORTING !cells TYPE zif_ark_gui_state=>tt_table_row .
+      IMPORTING !cells TYPE zif_ark_gui_state=>tt_table_cell .
 ENDCLASS.
 
 CLASS zcl_ark_example_state_page IMPLEMENTATION.
@@ -79,54 +78,54 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
         ( label = '数量' align_right = abap_true )
         ( label = '状态' ) ) ).
 
-    DATA(lt_row) = VALUE zif_ark_gui_state=>tt_table_row(
+    DATA(lt_cells) = VALUE #(
       ( value = '0080012345' action = 'cell_detail' )
       ( value = '华信科技' )
       ( value = '1,286,000' )
       ( value = '120' )
       ( value = '已完成' semantic = zif_ark_gui_state=>c_semantic-positive )
       ).
-    add_row( lt_row ).
-    lt_row = VALUE zif_ark_gui_state=>tt_table_row(
+    add_row( lt_cells ).
+    lt_cells = VALUE #(
       ( value = '0080012346' action = 'cell_detail' )
       ( value = '南方物流集团' )
       ( value = '862,400' )
       ( value = '58' )
       ( value = '待审批' semantic = zif_ark_gui_state=>c_semantic-critical )
       ).
-    add_row( lt_row ).
-    lt_row = VALUE zif_ark_gui_state=>tt_table_row(
+    add_row( lt_cells ).
+    lt_cells = VALUE #(
       ( value = '0080012347' action = 'cell_detail' )
       ( value = '北方重工' )
       ( value = '2,045,900' )
       ( value = '12' )
       ( value = '已发货' semantic = zif_ark_gui_state=>c_semantic-positive )
       ).
-    add_row( lt_row ).
-    lt_row = VALUE zif_ark_gui_state=>tt_table_row(
+    add_row( lt_cells ).
+    lt_cells = VALUE #(
       ( value = '0080012348' action = 'cell_detail' )
       ( value = '东海商贸' )
       ( value = '95,700' )
       ( value = '640' )
       ( value = '被拒绝' semantic = zif_ark_gui_state=>c_semantic-negative )
       ).
-    add_row( lt_row ).
-    lt_row = VALUE zif_ark_gui_state=>tt_table_row(
+    add_row( lt_cells ).
+    lt_cells = VALUE #(
       ( value = '0080012349' action = 'cell_detail' )
       ( value = '西部能源' )
       ( value = '530,200' )
       ( value = '35' )
       ( value = '处理中' semantic = zif_ark_gui_state=>c_semantic-neutral )
       ).
-    add_row( lt_row ).
-    lt_row = VALUE zif_ark_gui_state=>tt_table_row(
+    add_row( lt_cells ).
+    lt_cells = VALUE #(
       ( value = '0080012350' action = 'cell_detail' )
       ( value = '华信科技' )
       ( value = '742,300' )
       ( value = '210' )
       ( value = '已完成' semantic = zif_ark_gui_state=>c_semantic-positive )
       ).
-    add_row( lt_row ).
+    add_row( lt_cells ).
 
     APPEND ms_table TO ls_state-sections.
 
@@ -160,7 +159,7 @@ CLASS zcl_ark_example_state_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD add_row.
-    APPEND cells TO ms_table-rows.
+    APPEND VALUE #( cells = cells ) TO ms_table-rows.
   ENDMETHOD.
 
   METHOD on_event.

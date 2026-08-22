@@ -47,7 +47,7 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 
 ## 4. 分阶段路线
 
-1. **宿主验证（已开发，待 a4h + Edge 实测）**：入口 `ZARK_EXAMPLE` → 主页卡片 *UI5 Host Verification*（`zcl_ark_example_ui5_page`）。页面内自带验证报告面板（可一键复制回传），覆盖：① UI5/ECharts CDN 可达性与耗时；② sap.m/f 渲染（ShellBar/Toolbar）；③ sapevent 桥三条路径（隐藏 iframe GET / 主框架 GET / 表单 POST）+ 连发 10 次 + 全量 state 就地更新，均带往返毫秒数；④ 资源双取缓存探测 + 启动资源统计 + 启动耗时（跨次运行对比）。
+1. **宿主验证（代码就绪，实测并入最后统一验证）**：入口 `ZARK_EXAMPLE` → 主页卡片 *UI5 Host Verification*（`zcl_ark_example_ui5_page`）。页面内自带验证报告面板（可一键复制回传），覆盖：① UI5/ECharts CDN 可达性与耗时；② sap.m/f 渲染（ShellBar/Toolbar）；③ sapevent 桥三条路径（隐藏 iframe GET / 主框架 GET / 表单 POST）+ 连发 10 次 + 全量 state 就地更新，均带往返毫秒数；④ 资源双取缓存探测 + 启动资源统计 + 启动耗时（跨次运行对比）。
    - 桥机制（本阶段落地）：主页面 JS 发 `SAPEVENT:` URL（前缀自动探测：`file:///` / `sap-cust://sap-place-holder/` / 裸）→ ABAP `on_event` 处理 → `push_to_frame` 把内嵌新 state JSON 的小文档 `show_url( in_frame = 'ark_bridge' )` 进隐藏桥帧 → 桥帧脚本 `postMessage` 回主页面 → UI5 常驻不重载。
    - 框架新增（向后兼容）：`ty_handling_result-keep_view`（处理了但禁止整页重渲染）、`zif_ark_gui_services~push_to_frame`、`zif_ark_html_viewer~show_url` 的 `iv_frame` 参数。任一验证项不过需调整方案（本地 self-contained 资源先行）。
 2. **UI5 启动壳**：固定 HTML（bootstrap + require + JSONModel + 事件桥），作为框架资产分发。
@@ -64,7 +64,7 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 | `zcl_ark_state_page`（A 路线渲染） | 已验证 | 保留共存；其 API 形态是 UI5 基类的参照 |
 | `zcl_ark_theme` + ALV 三件套 | 已验证 | 保留给非 UI5 页面 |
 | ECharts 集成（MIME 离线 + CDN 回退） | 生产可用 | 原样复用 |
-| demo（本地，gitignored）：ui5-spike / ui5-showcase / ui5-codediff / probe1-5 | 已验证 | 宿主验证的搬运素材 |
+| demo（入库，见 `demo/README.md`）：ui5-spike / ui5-showcase / ui5-export / ui5-codediff / probe1-6 | 已验证（浏览器侧） | 宿主验证的搬运素材 |
 
 ## 6. 硬代价与已知坑（血泪，必读）
 
@@ -93,7 +93,8 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 ## 7. 约定
 
 - 分支：本阶段开发在 **`feat/ui5-integration`**；
-- `demo/` 已 gitignore（本地验证素材不入库）；`docs/` 入库；
+- `demo/` 与 `docs/` 均入库（实验项目决策可追溯，验证素材是方案 B 论证链物证）；
+- 验证节奏（2026-08-22 起）：**最后统一验证** —— 开发连续推进阶段①-③，每步只做本地验证（`node --check` + 浏览器实测）；a4h + Edge 宿主实测（四项判定）由用户在收尾时一次性执行；
 - 提交信息中文，格式 `类型(范围): 摘要`；
 - SAP 侧同步靠用户 abapGit pull，之后用 MCP ATC 复检 + 激活验证；
 - UI5 页面基类 API 对齐 `zcl_ark_state_page`（业务侧迁移成本最小化）。

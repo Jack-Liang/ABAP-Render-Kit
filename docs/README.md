@@ -27,18 +27,11 @@
 | §4.5 示例迁移 + 扩展能力 | [`demo/ui5-export.html`](../demo/ui5-export.html) |
 | §6.2 前端硬代价 + §6.3 探测页模式 | [`demo/probes/01-06`](../demo/probes/README.md) |
 
-## ⚠️ 文档勘误：`demo/` gitignore 状态
+## ~~文档勘误：`demo/` gitignore 状态~~（已订正）
 
-`ui5-integration-plan.md` 中有两处与现状不符的过时陈述：
-
-- **第 67 行**："demo（本地，gitignored）：ui5-spike / ui5-showcase / ui5-codediff / probe1-5"
-- **第 94 行**："`demo/` 已 gitignore（本地验证素材不入库）；`docs/` 入库"
-
-**现实**：`.gitignore` 未列入 `demo/`，本仓库的 `demo/` 与 `docs/` 均纳入版本管理。原 plan 文档写于"计划 gitignore 但未执行"的状态，与最终落地不一致。
+`ui5-integration-plan.md` 原第 67 行与第 94 行曾声称 "`demo/` 已 gitignore"，与现实不符，**已于 2026-08-22 订正**：现表述为 `demo/` 与 `docs/` 均入库。
 
 **为何保留 `demo/` 入库**：ARK 已在 README 声明为**实验项目**，实验项目的核心价值之一是决策可追溯。`demo/` 下的浏览器验证素材是方案 B 落地论证链的物证，删除或本地化会让未来贡献者无法复现"为什么走 UI5 路线"的论证依据。
-
-建议后续会话编辑 `ui5-integration-plan.md` 第 67 行与第 94 行，将"gitignored"改为"入库"以与现实一致。
 
 ## 敏感信息
 

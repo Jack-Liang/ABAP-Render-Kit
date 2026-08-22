@@ -22,11 +22,11 @@ CLASS zcl_ark_gui_event IMPLEMENTATION.
       SPLIT iv_getdata AT '&' INTO TABLE lt_parts.
       LOOP AT lt_parts INTO lv_part.
         DATA lv_name TYPE c LENGTH 30.
-        DATA lv_value TYPE c LENGTH 250.
+        DATA lv_value TYPE string.
         SPLIT lv_part AT '=' INTO lv_name lv_value.
         " 值统一 URL 解码：query 值可能来自前端 encodeURIComponent
         " （图表点击回传的中文类目名等）；对纯 ASCII 是恒等变换。
-        " 截断发生在解码前的 250 字符（percent 编码的中文约 9 字符/字）
+        " 解码后超过 250 字符在写入 mt_query 时截断（value 组件为 c250）
         APPEND VALUE #( name = lv_name value = zcl_ark_convert=>url_decode( lv_value ) ) TO mt_query.
       ENDLOOP.
     ENDIF.

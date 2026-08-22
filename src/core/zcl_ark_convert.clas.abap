@@ -115,15 +115,15 @@ CLASS zcl_ark_convert IMPLEMENTATION.
         TRY.
             DATA(lv_hex) = CONV xstring(
               |X{ to_upper( substring( val = rv_decoded off = lv_pos + 1 len = 2 ) ) }| ).
-            CONCATENATE lv_x lv_hex IN BYTE MODE INTO lv_x.
+            CONCATENATE lv_x lv_hex INTO lv_x IN BYTE MODE.
             lv_pos = lv_pos + 3.
             CONTINUE.
           CATCH cx_root.
             " 非法 % 序列按普通字符处理
           ENDTRY.
         ENDIF.
-      CONCATENATE lv_x cl_abap_codepage=>convert_to( substring( val = rv_decoded off = lv_pos len = 1 ) )
-        IN BYTE MODE INTO lv_x.
+      DATA(lv_byte) = cl_abap_codepage=>convert_to( substring( val = rv_decoded off = lv_pos len = 1 ) ).
+      CONCATENATE lv_x lv_byte INTO lv_x IN BYTE MODE.
       lv_pos = lv_pos + 1.
     ENDWHILE.
 

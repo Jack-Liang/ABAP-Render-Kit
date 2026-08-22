@@ -208,10 +208,10 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS serialize_option
       IMPORTING !ig_data       TYPE any
       RETURNING VALUE(rv_json) TYPE string .
-    METHODS escape_js
+    CLASS-METHODS escape_js
       IMPORTING !iv_value         TYPE string
       RETURNING VALUE(rv_escaped) TYPE string .
-    METHODS wrap_map_js
+    CLASS-METHODS wrap_map_js
       IMPORTING !iv_map_name     TYPE string
                 !iv_geojson      TYPE string
       RETURNING VALUE(rv_js)     TYPE string .

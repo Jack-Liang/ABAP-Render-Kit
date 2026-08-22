@@ -48,7 +48,7 @@
 | ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 
-### src/examples/ (Examples — 8 objects)
+### src/examples/ (Examples — 9 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
@@ -59,5 +59,6 @@
 | ZCL_ARK_EXAMPLE_FORM_PAGE | CLAS | Form demo page |
 | ZCL_ARK_EXAMPLE_TABLE_PAGE | CLAS | Table demo page |
 | ZCL_ARK_EXAMPLE_CHART_PAGE | CLAS | Chart demo page (mixed chart + table content) |
+| ZCL_ARK_EXAMPLE_BROWSER_PAGE | CLAS | HTML viewer engine probe page (IE / Edge) |
 
-## Total: 33 ABAP objects
+## Total: 34 ABAP objects

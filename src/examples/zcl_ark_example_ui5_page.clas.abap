@@ -173,10 +173,17 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
     DATA lv_json TYPE string.
     lv_json = zcl_ark_json=>to_json( is_state ).
 
+    " 金丝雀：响应文档若被 show_url 送进主框架（FRAME 参数未命中 ark_bridge），
+    " 直接把白屏变成可见的红字诊断；正常落帧则 postMessage 回主页面
     get_services( )->push_to_frame(
       iv_frame = 'ark_bridge'
-      iv_text  = `<script>try { parent.postMessage({__ark_state: 1, payload: ` && lv_json &&
-                 `}, '*'); } catch (e) { }</script>` ).
+      iv_text  = `<script>try {` &&
+                 ` if (window.parent === window) {` &&
+                 `   document.body.innerHTML = '<pre style="color:#b00;font:13px monospace">` &&
+                 `ARK 桥诊断: 响应文档落入主框架 - show_url 的 FRAME 参数未命中 ark_bridge 帧</pre>';` &&
+                 ` } else { parent.postMessage({__ark_state: 1, payload: ` && lv_json &&
+                 `}, '*'); }` &&
+                 ` } catch (e) { }</script>` ).
   ENDMETHOD.
 
 
@@ -296,11 +303,22 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `  try { document.execCommand("copy"); toast("报告已复制"); } catch (e) { errlog("复制失败: " + e.message); }` &&
       `}` &&
       `function arkPrefix() {` &&
-      `  var a = document.getElementById("ark_probe");` &&
-      `  var h = (a && a.href) ? String(a.href) : "";` &&
-      `  if (h.indexOf("file:///SAPEVENT:") === 0) { return "file:///"; }` &&
-      `  if (h.indexOf("sap-cust") === 0) { return "sap-cust://sap-place-holder/"; }` &&
+      `  var h = "", a = document.getElementById("ark_probe");` &&
+      `  if (a && a.href) { h = String(a.href); }` &&
+      `  var i = h.toLowerCase().indexOf("sapevent:");` &&
+      `  if (i > 0) {` &&
+      `    var head = h.substring(0, i);` &&
+      `    if (head.charAt(head.length - 1) === "/") { return head; }` &&
+      `  }` &&
+      `  var base = String(location.href);` &&
+      `  if (/^file:/i.test(base)) { return "file:///"; }` &&
+      `  if (/^sap-cust/i.test(base)) { return "sap-cust://sap-place-holder/"; }` &&
       `  return "";` &&
+      `}` &&
+      `function arkReady(action) {` &&
+      `  if (arkPrefix()) { return true; }` &&
+      `  toast("已跳过 " + action + "：未探测到 sapevent 前缀（主框架保护）");` &&
+      `  return false;` &&
       `}` &&
       `function arkUrl(action, params) {` &&
       `  var u = arkPrefix() + "SAPEVENT:" + action, k, qs = [];` &&
@@ -309,15 +327,18 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `}` &&
       `function nextSeq() { ARK.seq += 1; ARK.t0[ARK.seq] = now(); return ARK.seq; }` &&
       `function fireIframe(action, params) {` &&
+      `  if (!arkReady(action)) { return -1; }` &&
       `  params = params || {}; params.seq = nextSeq();` &&
       `  window.frames["ark_bridge"].location.href = arkUrl(action, params);` &&
       `  return params.seq;` &&
       `}` &&
       `function fireMain(action, params) {` &&
+      `  if (!arkReady(action)) { return; }` &&
       `  params = params || {}; params.seq = nextSeq();` &&
       `  location.href = arkUrl(action, params);` &&
       `}` &&
       `function firePost(action, fields) {` &&
+      `  if (!arkReady(action)) { return; }` &&
       `  fields = fields || {};` &&
       `  var f = document.getElementById("ark_form");` &&
       `  f.action = arkPrefix() + "SAPEVENT:" + action;` &&
@@ -398,6 +419,7 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `    <tr><td>① UI5 CDN</td><td id="r_st_cdn_ui5">…</td><td id="r_dt_cdn_ui5">探测中</td></tr>` &&
       `    <tr><td>① ECharts CDN</td><td id="r_st_cdn_echarts">…</td><td id="r_dt_cdn_echarts">探测中</td></tr>` &&
       `    <tr><td>② sap.m/f 渲染</td><td id="r_st_ui5_render">…</td><td id="r_dt_ui5_render">探测中</td></tr>` &&
+      `    <tr><td>③ sapevent 前缀</td><td id="r_st_bridge_prefix">…</td><td id="r_dt_bridge_prefix">探测中</td></tr>` &&
       `    <tr><td>③ 桥 · iframe GET</td><td id="r_st_bridge_a">…</td><td id="r_dt_bridge_a">未测</td></tr>` &&
       `    <tr><td>③ 桥 · 主框架 GET</td><td id="r_st_bridge_b">…</td><td id="r_dt_bridge_b">未测</td></tr>` &&
       `    <tr><td>③ 桥 · 表单 POST</td><td id="r_st_bridge_c">…</td><td id="r_dt_bridge_c">未测</td></tr>` &&
@@ -407,7 +429,9 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `    <tr><td>④ 启动资源统计</td><td id="r_st_cache_res">…</td><td id="r_dt_cache_res">未测</td></tr>` &&
       `    <tr><td>④ 启动耗时</td><td id="r_st_boot_ms">…</td><td id="r_dt_boot_ms">探测中</td></tr>` &&
       `  </table>` &&
-      `  <button class="rpt-btn" onclick="autoRun()">重跑自动测试</button>` &&
+      `  <button class="rpt-btn" onclick="autoRun()">重跑自动测试(仅安全项)</button>` &&
+      `  <button class="rpt-btn" onclick="testB()">测:主框架 GET</button>` &&
+      `  <button class="rpt-btn" onclick="testC()">测:表单 POST</button>` &&
       `  <button class="rpt-btn" onclick="burst()">连发 ×10</button>` &&
       `  <button class="rpt-btn" onclick="fireIframe('ui5_refresh')">刷新数据（桥）</button>` &&
       `  <button class="rpt-btn" onclick="copyReport()">复制报告</button>` &&
@@ -590,15 +614,33 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
     " ===== 脚本 3：UI5 控件 + 自动测试调度 =====
     mo_html->add(
       `<script>` &&
+      `function testA() {` &&
+      `  rpt("bridge_a", "INFO", "发送中…");` &&
+      `  fireIframe("ui5_ping", { path: "iframe" });` &&
+      `  armTimeout("bridge_a", function () { return ARK.stat.iframe.length > 0; }, "iframe GET");` &&
+      `}` &&
+      `function testB() {` &&
+      `  rpt("bridge_b", "INFO", "发送中…（若页面消失即为该项触发白屏）");` &&
+      `  fireMain("ui5_ping", { path: "main" });` &&
+      `  armTimeout("bridge_b", function () { return ARK.stat.main.length > 0; }, "主框架 GET");` &&
+      `}` &&
+      `function testC() {` &&
+      `  rpt("bridge_c", "INFO", "发送中…");` &&
+      `  firePost("ui5_post", { kind: "post" });` &&
+      `  armTimeout("bridge_c", function () { return ARK.stat.post.length > 0; }, "表单 POST");` &&
+      `}` &&
       `function autoRun() {` &&
       `  try {` &&
-      `    rpt("bridge_a", "INFO", "发送中…"); rpt("bridge_b", "INFO", "发送中…"); rpt("bridge_c", "INFO", "发送中…");` &&
-      `    fireIframe("ui5_ping", { path: "iframe" });` &&
-      `    armTimeout("bridge_a", function () { return ARK.stat.iframe.length > 0; }, "iframe GET");` &&
-      `    fireMain("ui5_ping", { path: "main" });` &&
-      `    armTimeout("bridge_b", function () { return ARK.stat.main.length > 0; }, "主框架 GET");` &&
-      `    firePost("ui5_post", { kind: "post" });` &&
-      `    armTimeout("bridge_c", function () { return ARK.stat.post.length > 0; }, "表单 POST");` &&
+      `    var pfx = arkPrefix();` &&
+      `    rpt("bridge_prefix", pfx ? "INFO" : "FAIL",` &&
+      `      "前缀 = " + (pfx || "(空)") + " · 探测锚点 href = " +` &&
+      `      String((document.getElementById("ark_probe") || {}).href || "?") +` &&
+      `      " · 页面 href = " + String(location.href).substring(0, 50));` &&
+      `    if (!pfx) {` &&
+      `      rpt("bridge_a", "SKIP", "无前缀，自动触发已跳过（防白屏），请回报上方探测值");` &&
+      `    } else {` &&
+      `      testA();` &&
+      `    }` &&
       `    cacheProbe();` &&
       `  } catch (ex) { errlog("autoRun: " + ex.message); }` &&
       `}` &&
@@ -630,7 +672,7 @@ CLASS zcl_ark_example_ui5_page IMPLEMENTATION.
       `      var verdict = (d2 < 50 || d2 < d1 * 0.2) ? "PASS" : "WARN";` &&
       `      rpt("cache", verdict, "同资源二次获取 " + d1 + " ms → " + d2 + " ms" +` &&
       `        (verdict === "PASS" ? "（缓存命中）" : "（疑似未缓存，关注跨次启动耗时）"));` &&
-      `    }, function () { rpt("cache", "FAIL", "第二次 fetch 网络失败"); });` &&
+      `    }, function () { rpt("cache", "FAIL", "第二次 fetch 网络失败（首次 " + d1 + " ms 成功）- 疑被页面导航中断"); });` &&
       `  }, function () { rpt("cache", "FAIL", "fetch 不可达：CDN 出网或协议受限"); });` &&
       `}` &&
       `function cacheResReport() {` &&

@@ -619,7 +619,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     DATA lv_x TYPE xstring.
     DATA lv_pos TYPE i VALUE 0.
-    DATA lv_len TYPE i VALUE strlen( rv_decoded ).
+    DATA lv_len TYPE i.
+    lv_len = strlen( rv_decoded ).
 
     WHILE lv_pos < lv_len.
       IF substring( val = rv_decoded off = lv_pos len = 1 ) = '%'

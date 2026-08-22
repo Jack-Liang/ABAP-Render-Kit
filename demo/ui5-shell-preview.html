@@ -139,17 +139,39 @@ html, body { margin: 0; background: #f0f0f0;
     return out;
   }
 
+  // 宿主实证（6a7404c）：iframe location.href 触发帧导航会被拦截（白屏
+  // 元凶），sapevent 触发一律走锚点 click —— 桥帧内建隐藏锚点点击 /
+  // 主框架文档内建隐藏锚点点击（已验证拦截路径）
+  function arkFire(url) {
+    var fdoc = window.frames["ark_bridge"].document;
+    var a = fdoc.getElementById("ark_fire_a");
+    if (!a) { a = fdoc.createElement("a"); a.id = "ark_fire_a"; fdoc.body.appendChild(a); }
+    a.setAttribute("href", url);
+    a.click();
+  }
+  function arkFireMain(url) {
+    var a = document.getElementById("ark_main_anchor");
+    if (!a) {
+      a = document.createElement("a");
+      a.id = "ark_main_anchor";
+      a.style.display = "none";
+      document.body.appendChild(a);
+    }
+    a.setAttribute("href", url);
+    a.click();
+  }
+
   window.ark = {
-    // 桥事件（隐藏 iframe GET）：ABAP 侧回推新 state，主页面常驻不重载
+    // 桥事件（隐藏 iframe 经锚点点击）：ABAP 侧回推新 state，主页面常驻不重载
     state: function (action, params) {
       var p = {}, k;
       for (k in (params || {})) { p[k] = params[k]; }
       p.__ark = "1";
-      window.frames["ark_bridge"].location.href = arkUrl(action, p);
+      arkFire(arkUrl(action, p));
     },
-    // 主框架导航：页面跳转（整页重渲染），桥事件的反面路径
+    // 主框架导航：页面跳转（整页重渲染），同样走锚点点击
     nav: function (action, params) {
-      location.href = arkUrl(action, params);
+      arkFireMain(arkUrl(action, params));
     },
     // 表单经桥 POST：target=ark_bridge，响应同样 postMessage 回来
     formGo: function (f, action) {

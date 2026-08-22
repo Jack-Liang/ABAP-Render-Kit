@@ -451,7 +451,18 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
   METHOD include_library_script.
     " 与 render( ) 内的库逻辑同源：仅处理会话级缺省资产（实例级
-    " set_library_xdata 的覆盖路径只在 render( ) 里生效）
+    " set_library_xdata 的覆盖路径只在 render( ) 里生效）。
+    " 宿主实证（2026-08-22）：WebView2 内 jsdelivr CDN 不可达，未启用
+    " MIME 资产的页面图表静默缺席 —— 此处自动尝试随仓库分发的资产
+    " （会话级只读一次 SMW0），缺资产/读失败回退 CDN
+    IF gv_default_lib_xdata IS INITIAL.
+      TRY.
+          use_bundled_library( ).
+        CATCH zcx_ark_exception.
+          " 资产未上传：保持 CDN 路径
+      ENDTRY.
+    ENDIF.
+
     DATA lv_lib_url TYPE string VALUE c_cdn_url.
 
     IF gv_default_lib_xdata IS NOT INITIAL.

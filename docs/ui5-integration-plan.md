@@ -81,6 +81,8 @@ UI5 启动壳（固定 HTML/JS，随框架分发）
 - **语法检查必须过真实系统**：abapGit 激活不报语法错，运行时才 dump。用 MCP 的 ATC（`abap_atc_run`→`abap_atc_get_result`）闭环。
 
 ### 6.2 前端（浏览器/CDN）
+- **宿主实证（6a7404c + 本轮）**：WebView2 内 `iframe.location.href` / `location.href` 触发 sapevent 会被帧导航拦截（白屏元凶），**sapevent 触发一律走隐藏锚点 `click()`**（桥帧内锚点 `ark_fire_a` / 主框架锚点 `ark_main_anchor`）；`push_to_frame`（show_url FRAME）可能抛异常，**必须吞掉**——异常冒泡触发框架兜底 render() → 页面重 boot → 白屏循环；
+- **jsdelivr CDN 在宿主内不可达**（UI5 的 openui5.org 可达不代表 jsdelivr 可达）：未启用 MIME 资产的页面图表**静默缺席**。`include_library_script` 已改为自动尝试随仓库分发的 MIME 资产（会话级一次），缺资产回退 CDN；图表页不再需要显式 `use_bundled_library( )`；
 - UI5 CDN 域名是 **`sdk.openui5.org`**（`.com` 不可达；`openui5.hana.ondemand.com` 301 到 .org）；
 - async bootstrap 下用 **`sap.ui.require`**，不要 `sap.ui.define`（后者在本环境报跨域 "Script error." 静默失败）；
 - `sap.m.Page` 的 content 是 0..n 聚合，用 `addContent` 不是 `setContent`；

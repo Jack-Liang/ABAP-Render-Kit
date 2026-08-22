@@ -157,17 +157,38 @@ CLASS zcl_ark_ui5_shell IMPLEMENTATION.
       APPEND `    }` TO lt_js.
       APPEND `    return out;` TO lt_js.
       APPEND `  }` TO lt_js.
+      APPEND `  // 宿主实证（6a7404c）：iframe location.href 触发帧导航会被拦截（白屏` TO lt_js.
+      APPEND `  // 元凶），sapevent 触发一律走锚点 click —— 桥帧内建隐藏锚点点击 /` TO lt_js.
+      APPEND `  // 主框架文档内建隐藏锚点点击（已验证拦截路径）` TO lt_js.
+      APPEND `  function arkFire(url) {` TO lt_js.
+      APPEND `    var fdoc = window.frames["ark_bridge"].document;` TO lt_js.
+      APPEND `    var a = fdoc.getElementById("ark_fire_a");` TO lt_js.
+      APPEND `    if (!a) { a = fdoc.createElement("a"); a.id = "ark_fire_a"; fdoc.body.appendChild(a); }` TO lt_js.
+      APPEND `    a.setAttribute("href", url);` TO lt_js.
+      APPEND `    a.click();` TO lt_js.
+      APPEND `  }` TO lt_js.
+      APPEND `  function arkFireMain(url) {` TO lt_js.
+      APPEND `    var a = document.getElementById("ark_main_anchor");` TO lt_js.
+      APPEND `    if (!a) {` TO lt_js.
+      APPEND `      a = document.createElement("a");` TO lt_js.
+      APPEND `      a.id = "ark_main_anchor";` TO lt_js.
+      APPEND `      a.style.display = "none";` TO lt_js.
+      APPEND `      document.body.appendChild(a);` TO lt_js.
+      APPEND `    }` TO lt_js.
+      APPEND `    a.setAttribute("href", url);` TO lt_js.
+      APPEND `    a.click();` TO lt_js.
+      APPEND `  }` TO lt_js.
       APPEND `  window.ark = {` TO lt_js.
-      APPEND `    // 桥事件（隐藏 iframe GET）：ABAP 侧回推新 state，主页面常驻不重载` TO lt_js.
+      APPEND `    // 桥事件（隐藏 iframe 经锚点点击）：ABAP 侧回推新 state，主页面常驻不重载` TO lt_js.
       APPEND `    state: function (action, params) {` TO lt_js.
       APPEND `      var p = {}, k;` TO lt_js.
       APPEND `      for (k in (params || {})) { p[k] = params[k]; }` TO lt_js.
       APPEND `      p.__ark = "1";` TO lt_js.
-      APPEND `      window.frames["ark_bridge"].location.href = arkUrl(action, p);` TO lt_js.
+      APPEND `      arkFire(arkUrl(action, p));` TO lt_js.
       APPEND `    },` TO lt_js.
-      APPEND `    // 主框架导航：页面跳转（整页重渲染），桥事件的反面路径` TO lt_js.
+      APPEND `    // 主框架导航：页面跳转（整页重渲染），同样走锚点点击` TO lt_js.
       APPEND `    nav: function (action, params) {` TO lt_js.
-      APPEND `      location.href = arkUrl(action, params);` TO lt_js.
+      APPEND `      arkFireMain(arkUrl(action, params));` TO lt_js.
       APPEND `    },` TO lt_js.
       APPEND `    // 表单经桥 POST：target=ark_bridge，响应同样 postMessage 回来` TO lt_js.
       APPEND `    formGo: function (f, action) {` TO lt_js.

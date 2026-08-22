@@ -167,13 +167,20 @@ CLASS zcl_ark_ui5_page IMPLEMENTATION.
     lv_json = replace( val = lv_json sub = `</` with = `<\/` occ = 0 ).
 
     " 金丝雀：响应文档若落入主框架（FRAME 未命中 ark_bridge），只改标题
-    " 留痕，不破坏页面 —— 正常落帧则 postMessage 回主页面
-    get_services( )->push_to_frame(
-      iv_frame = zcl_ark_ui5_shell=>c_bridge_frame
-      iv_text  = `<script>try{if(window.parent===window){` &&
-                 `document.title='ARK: bridge frame miss';}else{` &&
-                 `parent.postMessage({__ark_state:1,payload: ` && lv_json &&
-                 `},'*');}}catch(e){}</script>` ).
+    " 留痕，不破坏页面 —— 正常落帧则 postMessage 回主页面。
+    " 推帧异常必须吞掉（宿主实证 6a7404c）：异常冒泡会触发框架兜底
+    " render() 整页重载 → 页面重 boot → 再触发 → 白屏循环；吞掉后
+    " 保持 keep_view 语义，前端表现为该项超时，页面存活可继续交互
+    TRY.
+        get_services( )->push_to_frame(
+          iv_frame = zcl_ark_ui5_shell=>c_bridge_frame
+          iv_text  = `<script>try{if(window.parent===window){` &&
+                     `document.title='ARK: bridge frame miss';}else{` &&
+                     `parent.postMessage({__ark_state:1,payload: ` && lv_json &&
+                     `},'*');}}catch(e){}</script>` ).
+      CATCH zcx_ark_exception.
+        " 推帧失败（FRAME 参数在该内核不可用等）：保持 keep_view，不重渲染
+    ENDTRY.
   ENDMETHOD.
 
 

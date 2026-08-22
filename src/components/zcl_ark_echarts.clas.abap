@@ -54,6 +54,19 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING !iv_xdata       TYPE xstring
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
 
+    " 通用模式：直接传入完整 option 的 ABAP 结构/内表（字段名用下划线命名，
+    " 如 boundary_gap），经 /ui2/cl_json camelCase 序列化后整体替代声明式 option。
+    " /ui2/cl_json 为软依赖（动态调用），不可用时回退 zcl_ark_json（字段名大写）
+    METHODS set_option
+      IMPORTING !ig_option      TYPE any
+      RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
+
+    " 逃生舱口：原生 JSON 片段，渲染时对 option 做浅层合并（顶层键覆盖），
+    " 用于声明式 API 尚未覆盖的任意 ECharts 能力，如 dataZoom、markLine
+    METHODS set_option_override
+      IMPORTING !iv_json        TYPE string
+      RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
+
     " 渲染为 HTML 片段（div + 初始化脚本），可与其他内容混排：
     "   mo_html->add( lo_chart->render( ) ).
     METHODS render
@@ -83,6 +96,8 @@ CLASS zcl_ark_echarts DEFINITION
     DATA mv_title TYPE string .
     DATA mv_save_as_image TYPE abap_bool .
     DATA mv_library_xdata TYPE xstring .
+    DATA mv_option_json TYPE string .
+    DATA mv_option_override TYPE string .
     DATA mv_categories_json TYPE string .
     DATA mt_series TYPE STANDARD TABLE OF ty_series WITH DEFAULT KEY .
 
@@ -90,6 +105,9 @@ CLASS zcl_ark_echarts DEFINITION
       RETURNING VALUE(rv_js) TYPE string .
     METHODS build_option_js
       RETURNING VALUE(rv_js) TYPE string .
+    METHODS serialize_option
+      IMPORTING !ig_data       TYPE any
+      RETURNING VALUE(rv_json) TYPE string .
 ENDCLASS.
 
 
@@ -151,6 +169,33 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ro_self = me.
   ENDMETHOD.
 
+  METHOD set_option.
+    mv_option_json = serialize_option( ig_option ).
+    ro_self = me.
+  ENDMETHOD.
+
+  METHOD set_option_override.
+    mv_option_override = iv_json.
+    ro_self = me.
+  ENDMETHOD.
+
+  METHOD serialize_option.
+    " /ui2/cl_json 软依赖：动态调用，类不存在时回退 zcl_ark_json。
+    " pretty_name = 2 对应 /ui2/cl_json=>pretty_mode-camel_case，
+    " 下划线字段名转 camelCase（boundary_gap -> boundaryGap）
+    TRY.
+        CALL METHOD ('/UI2/CL_JSON')=>serialize
+          EXPORTING
+            data        = ig_data
+            compress    = abap_true
+            pretty_name = 2
+          RECEIVING
+            r_json      = rv_json.
+      CATCH cx_sy_dyn_call_error.
+        rv_json = zcl_ark_json=>to_json( ig_data ).
+    ENDTRY.
+  ENDMETHOD.
+
   METHOD render.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
@@ -200,11 +245,26 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   METHOD build_init_js.
     DATA lv_theme_arg TYPE string.
     DATA lv_nl TYPE string.
+    DATA lv_base_option TYPE string.
+    DATA lv_override_js TYPE string.
 
     lv_nl = cl_abap_char_utilities=>newline.
 
     IF mv_theme IS NOT INITIAL.
       lv_theme_arg = |, '{ mv_theme }'|.
+    ENDIF.
+
+    " set_option 通用模式整体替代声明式骨架
+    lv_base_option = mv_option_json.
+    IF lv_base_option IS INITIAL.
+      lv_base_option = build_option_js( ).
+    ENDIF.
+
+    " 逃生舱口：浅层合并（顶层键覆盖）
+    IF mv_option_override IS NOT INITIAL.
+      lv_override_js =
+        |  var optionOverride = | && mv_option_override && |;| && lv_nl &&
+        |  for (var k in optionOverride) \{ if (optionOverride.hasOwnProperty(k)) \{ option[k] = optionOverride[k]; \} \}| && lv_nl.
     ENDIF.
 
     rv_js =
@@ -216,7 +276,8 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       |    return;|                                                           && lv_nl &&
       |  \}|                                                                  && lv_nl &&
       |  var myChart = echarts.init(chartDom{ lv_theme_arg });|               && lv_nl &&
-      |  var option = | && build_option_js( ) && |;|                          && lv_nl &&
+      |  var option = | && lv_base_option && |;|                              && lv_nl &&
+      lv_override_js                                                          &&
       |  myChart.setOption(option);|                                          && lv_nl &&
       |  window.addEventListener('resize', function() \{ myChart.resize(); \});| && lv_nl &&
       |\})();|.

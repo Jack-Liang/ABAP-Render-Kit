@@ -114,7 +114,8 @@ Notes:
 - ECharts 6.1.0 ships with the repository as MIME object `ZARK_ECHARTS_MIN_JS` (abapGit W3MI, see `src/assets/`), so charts work offline out of the box; `set_library_xdata( )` serves it through `cache_asset` with automatic CDN fallback. Pass `iv_include_lib = abap_false` to any additional chart on the same page.
 - To use a different ECharts version, replace the file in `src/assets/zark_echarts_min_js.w3mi.data.js` or point `c_cdn_url` at another CDN build.
 - Series data and categories are serialized with `zcl_ark_json=>to_json( )`; pass plain ABAP internal tables, no string building required.
-- See `ZCL_ARK_EXAMPLE_CHART_PAGE` for a full mixed-content example (reachable from the demo's home page via *Chart Example*).
+- Beyond the declarative API: `set_option( ig_option )` accepts any ABAP structure as a complete ECharts option (serialized via `/ui2/cl_json` in camelCase mode — soft dependency, dynamic call with fallback), and `set_option_override( iv_json )` shallow-merges raw JSON on top of the generated option for anything the API does not cover yet (dataZoom, markLine, visualMap, ...).
+- See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content) and report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme) for usage.
 
 ## Installation
 

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ARK × UI5 — 代码分栏对比</title>
+<script id="sap-ui-bootstrap"
+        src="https://sdk.openui5.org/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-libs="sap.m"
+        data-sap-ui-compatVersion="edge"
+        data-sap-ui-async="true"></script>
+<style>
+  html, body { height: 100%; margin: 0; background: #f0f0f0;
+    font-family: "72", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .diff-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 0 32px 24px; }
+  .pane { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px;
+    overflow: hidden; }
+  .pane-title { font-size: 13px; font-weight: 500; color: #1d2d3e;
+    padding: 8px 14px; border-bottom: 1px solid #e5e5e5; background: #fafafa; }
+  .pane-title small { color: #6a6d70; font-weight: 400; margin-left: 8px; }
+  .code { font: 12.5px/1.65 Consolas, Menlo, monospace; overflow: auto;
+    max-height: 640px; }
+  .ln { display: grid; grid-template-columns: 44px 1fr; }
+  .ln > span:first-child { text-align: right; padding-right: 10px;
+    color: #9aa0a6; user-select: none; background: #fafafa;
+    border-right: 1px solid #eee; }
+  .ln > span:last-child { padding-left: 10px; white-space: pre; }
+  .ln.same > span:last-child { color: #333; }
+  .ln.add  { background: #e6f4ea; }
+  .ln.add > span:last-child::before { content: "+"; color: #107e3e; margin-right: 6px; }
+  .ln.del  { background: #fdecea; }
+  .ln.del > span:last-child::before { content: "-"; color: #bb0000; margin-right: 6px; }
+  .ln.gap  { background: #f5f6f7; color: #9aa0a6; text-align: center;
+    font-style: italic; padding: 2px 0; font-size: 11px; }
+  .stats { padding: 0 32px 12px; font-size: 13px; color: #6a6d70; }
+  .stats b.add { color: #107e3e; } .stats b.del { color: #bb0000; }
+</style>
+</head>
+<body class="sapUiBody">
+<div id="ui5-toolbar" style="padding: 16px 32px 8px;"></div>
+<div class="stats" id="stats"></div>
+<div class="diff-wrap">
+  <div class="pane"><div class="pane-title" id="title-l"></div>
+    <div class="code" id="code-l"></div></div>
+  <div class="pane"><div class="pane-title" id="title-r"></div>
+    <div class="code" id="code-r"></div></div>
+</div>
+<div id="errlog" style="font:12px monospace;color:#b00;padding:8px;white-space:pre-wrap"></div>
+<script>
+  window.onerror = function (m, src, l) {
+    var d = document.createElement("div");
+    d.textContent = "JS ERROR: " + m + " @" + (src || "") + ":" + l;
+    document.getElementById("errlog").appendChild(d);
+    return false;
+  };
+</script>
+<script>
+// ===== 对比数据：项目真实案例 =====
+var PAIRS = [
+  {
+    name: "build_html_document 旧 → 新",
+    l: { title: "旧版", sub: "硬编码样式", code: [
+      'METHOD build_html_document.',
+      '  rv_html = |<!DOCTYPE html>\\n| &&',
+      '            |<html>\\n| &&',
+      '            |<head>\\n| &&',
+      '            |<style type="text/css">\\n| &&',
+      '            |body \\{ font-family: Arial; \\}\\n| &&',
+      '            |table \\{ border-collapse: collapse; \\}\\n| &&',
+      '            |th \\{ background-color: #f2f2f2; \\}\\n| &&',
+      '            |.toolbar \\{ background-color: #f0f0f0; \\}\\n| &&',
+      '            |</style>\\n| &&',
+      '            |</head>\\n| &&',
+      '            |<body>\\n| &&',
+      '            |{ iv_content }\\n| &&',
+      '            |</body>\\n| &&',
+      '            |</html>|.',
+      'ENDMETHOD.' ] },
+    r: { title: "新版", sub: "zcl_ark_theme 注入", code: [
+      'METHOD build_html_document.',
+      '  " 默认样式来自主题（Fiori Quartz Light 设计令牌）；',
+      '  " 页面可在 render 前用 set_token( ) 覆盖任意令牌',
+      '  rv_html = |<!DOCTYPE html>\\n| &&',
+      '            |<html>\\n| &&',
+      '            |<head>\\n| &&',
+      '            |<style type="text/css">\\n| &&',
+      '            zcl_ark_theme=>get_instance( )->get_css( ) &&',
+      '            |\\n</style>\\n| &&',
+      '            |</head>\\n| &&',
+      '            |<body>\\n| &&',
+      '            |{ iv_content }\\n| &&',
+      '            |</body>\\n| &&',
+      '            |</html>|.',
+      'ENDMETHOD.' ] }
+  },
+  {
+    name: "表格 rows 嵌套内表写法",
+    l: { title: "不可行", sub: "7.57 解析器拒绝", code: [
+      '" 行类型是内表的表套表：',
+      'TYPES tt_table_row TYPE STANDARD TABLE OF tt_table_cell.',
+      'TYPES ttt_body TYPE STANDARD TABLE OF tt_table_row.',
+      '',
+      '" 行必须用表体语法，组件语法必然报错：',
+      'rows = VALUE #(',
+      '  ( ( value = \'008...\' )   " <- Unable to interpret "("',
+      '    ( value = \'华信科技\' )',
+      '    ( value = \'1,286,000\' ) )',
+      '  ( VALUE tt_table_row(     " <- table row expected',
+      '      ( value = \'008...\' ) ) ).' ] },
+    r: { title: "可行", sub: "行 = 含 cells 内表的结构", code: [
+      '" 行是结构，组件是内表 —— 与 sparkline 同构：',
+      'BEGIN OF ty_table_row,',
+      '  cells TYPE tt_table_cell,',
+      'END OF ty_table_row.',
+      'TYPES tt_table_rows TYPE STANDARD TABLE OF ty_table_row.',
+      '',
+      '" 常规组件语法即可：',
+      'APPEND VALUE #( cells = VALUE #(',
+      '    ( value = \'0080012345\' action = \'cell_detail\' )',
+      '    ( value = \'华信科技\' )',
+      '    ( value = \'1,286,000\' ) ) )',
+      '  TO ls_section-rows.' ] }
+  }
+];
+
+// ===== 行级 LCS diff =====
+function diffLines(a, b) {
+  var n = a.length, m = b.length;
+  var dp = [];
+  for (var i = 0; i <= n; i++) { dp.push(new Array(m + 1).fill(0)); }
+  for (var i = n - 1; i >= 0; i--) {
+    for (var j = m - 1; j >= 0; j--) {
+      dp[i][j] = (a[i] === b[j]) ? dp[i+1][j+1] + 1
+                                 : Math.max(dp[i+1][j], dp[i][j+1]);
+    }
+  }
+  var ops = [];
+  var i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { ops.push({ t: "same", l: a[i], lnL: i+1, lnR: j+1 }); i++; j++; }
+    else if (dp[i+1][j] >= dp[i][j+1]) { ops.push({ t: "del", l: a[i], lnL: i+1 }); i++; }
+    else { ops.push({ t: "add", l: b[j], lnR: j+1 }); j++; }
+  }
+  while (i < n) { ops.push({ t: "del", l: a[i], lnL: i+1 }); i++; }
+  while (j < m) { ops.push({ t: "add", l: b[j], lnR: j+1 }); j++; }
+  return ops;
+}
+
+// ===== 渲染 =====
+var onlyDiff = false, swapped = false, pairIdx = 0;
+
+function render() {
+  var pair = PAIRS[pairIdx];
+  var left = swapped ? pair.r : pair.l;
+  var right = swapped ? pair.l : pair.r;
+  // 交换后 diff 方向对调：del 出现在右侧来源
+  var a = left.code, b = right.code;
+  var ops = diffLines(a, b);
+
+  document.getElementById("title-l").innerHTML =
+    left.title + "<small>" + left.sub + "</small>";
+  document.getElementById("title-r").innerHTML =
+    right.title + "<small>" + right.sub + "</small>";
+
+  var cl = document.getElementById("code-l");
+  var cr = document.getElementById("code-r");
+  cl.innerHTML = ""; cr.innerHTML = "";
+
+  function line(container, text, cls, ln) {
+    var row = document.createElement("div");
+    row.className = "ln " + cls;
+    var no = document.createElement("span");
+    no.textContent = ln || "";
+    var tx = document.createElement("span");
+    tx.textContent = text;
+    row.appendChild(no); row.appendChild(tx);
+    container.appendChild(row);
+  }
+  function gap(container, count) {
+    var g = document.createElement("div");
+    g.className = "ln gap";
+    g.textContent = "⋯ " + count + " 行相同 ⋯";
+    container.appendChild(g);
+  }
+
+  var nAdd = 0, nDel = 0, hideRun = 0;
+  ops.forEach(function (op) {
+    if (op.t === "same") { hideRun++; return; }
+    if (onlyDiff && hideRun > 3) { gap(cl, hideRun); gap(cr, hideRun); }
+    hideRun = 0;
+    if (op.t === "add") { nAdd++; line(cr, op.l, "add", op.lnR); }
+    else { nDel++; line(cl, op.l, "del", op.lnL); }
+  });
+  if (onlyDiff && hideRun > 3) { gap(cl, hideRun); gap(cr, hideRun); }
+
+  var stats = document.getElementById("stats");
+  stats.innerHTML = "";
+  var s = document.createElement("span");
+  s.textContent = "对比结果：";
+  var b1 = document.createElement("b"); b1.className = "add";
+  b1.textContent = "+" + nAdd;
+  var b2 = document.createElement("b"); b2.className = "del";
+  b2.textContent = " -" + nDel;
+  var s2 = document.createElement("span");
+  s2.textContent = "（" + pair.name + "）";
+  stats.appendChild(s); stats.appendChild(b1);
+  stats.appendChild(b2); stats.appendChild(s2);
+}
+render();
+
+// ===== UI5 工具栏 =====
+sap.ui.require([
+  "sap/m/Toolbar", "sap/m/ToolbarSpacer", "sap/m/SegmentedButton",
+  "sap/m/SegmentedButtonItem", "sap/m/ToggleButton", "sap/m/Button",
+  "sap/m/Text", "sap/m/MessageToast"
+], function (Toolbar, ToolbarSpacer, SegmentedButton, SegmentedButtonItem,
+             ToggleButton, Button, Text, MessageToast) {
+  "use strict";
+  try {
+
+  var oSeg = new SegmentedButton({
+    selectedKey: "p0",
+    items: PAIRS.map(function (p, i) {
+      return new SegmentedButtonItem({ key: "p" + i, text: p.name });
+    }),
+    selectionChange: function (oEvt) {
+      pairIdx = oEvt.getParameter("item").getKey() === "p0" ? 0 : 1;
+      render();
+    }
+  });
+
+  new Toolbar({
+    design: "Solid",
+    content: [
+      oSeg,
+      new ToggleButton({ text: "仅差异", pressed: false, type: "Emphasized",
+        press: function (oEvt) {
+          onlyDiff = oEvt.getParameter("pressed");
+          render();
+        } }),
+      new Button({ text: "交换左右", icon: "sap-icon://switch",
+        press: function () { swapped = !swapped; render();
+          MessageToast.show("已交换（真实实现可触发 sapevent:swap）"); } }),
+      new ToolbarSpacer(),
+      new Text({ text: "diff 在前端 LCS 计算；数据对应 ty_page_state 的映射产物" })
+        .addStyleClass("kpi-title")
+    ]
+  }).placeAt("ui5-toolbar");
+
+  } catch (ex) {
+    var d = document.createElement("div");
+    d.textContent = "CAUGHT: " + ex.message;
+    document.getElementById("errlog").appendChild(d);
+  }
+});
+</script>
+</body>
+</html>

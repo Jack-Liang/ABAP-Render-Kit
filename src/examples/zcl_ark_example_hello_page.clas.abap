@@ -45,10 +45,10 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
 
     mo_html->add( |<h2 style="margin-bottom: 8px;">In-App Pages</h2>| ).
     add_card( iv_title  = 'Form Builder'
-              iv_desc   = 'Input fields, dropdowns and a submit round-trip via sapevent'
+              iv_desc   = 'Typed form fields -> UI5 shell; bridge POST round-trip (Edge only)'
               iv_action = 'nav_form' ).
     add_card( iv_title  = 'Table Builder'
-              iv_desc   = 'Column/row/cell API with styles and actions'
+              iv_desc   = 'Declarative sap.m table: semantic states, row actions via bridge (Edge only)'
               iv_action = 'nav_table' ).
     add_card( iv_title  = 'Charts'
               iv_desc   = 'ECharts mixed with plain HTML on one page'
@@ -56,9 +56,15 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     add_card( iv_title  = 'State Page (Declarative)'
               iv_desc   = 'Typed page state -> Fiori-style UI, no HTML in your ABAP code'
               iv_action = 'nav_state' ).
+    add_card( iv_title  = 'UI5 State Page (Declarative)'
+              iv_desc   = 'Same state via UI5 shell: sap.m controls + sapevent bridge (Edge only)'
+              iv_action = 'nav_ui5_state' ).
     add_card( iv_title  = 'Browser Info'
               iv_desc   = 'Detect the HTML viewer engine: IE (MSHTML) or Edge (Chromium)'
               iv_action = 'nav_browser' ).
+    add_card( iv_title  = 'UI5 Host Verification'
+              iv_desc   = 'Plan B probe: CDN / sap.m / sapevent bridge / caching (Edge only)'
+              iv_action = 'nav_ui5' ).
 
     mo_html->add( |<h2 style="margin-bottom: 8px;">Standalone Reports</h2>| ).
     add_card( iv_title  = 'ECharts Demo'
@@ -109,8 +115,14 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
       WHEN 'nav_state'.
         rs_result-page = NEW zcl_ark_example_state_page( ).
         rs_result-state = 1.
+      WHEN 'nav_ui5_state'.
+        rs_result-page = NEW zcl_ark_example_ui5_state_page( ).
+        rs_result-state = 1.
       WHEN 'nav_browser'.
         rs_result-page = NEW zcl_ark_example_browser_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_ui5'.
+        rs_result-page = NEW zcl_ark_example_ui5_page( ).
         rs_result-state = 1.
       WHEN 'run_echarts_demo'.
         run_demo_report( 'ZARK_ECHARTS_DEMO' ).

@@ -749,6 +749,9 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       lv_map_js &&
       |c.setOption({ lv_option });| &&
       lv_click_js &&
+      |\} else if (el) \{| &&
+      |  el.innerHTML = '<span style="color:#b00;font-size:13px">| &&
+      |ECharts 库未加载（CDN/MIME 均不可达）— 图表缺席</span>';| &&
       |\}| &&
       |\})();| ).
   ENDMETHOD.

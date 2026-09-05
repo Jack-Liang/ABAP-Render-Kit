@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!-- three.js 组件纯前端预览/探针：不开 SAP 验证 zcl_ark_three_view 的初始化脚本。
+     库直接引用仓库内 SMW0 资产源文件（UMD 构建），arkEmit 用导出报表同款 mock。
+     打开方式：浏览器直接打开本文件；控制台应见无报错、两个画布各自旋转、
+     点击画布打印 ARKEVENT。 -->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>ARK three.js preview</title>
+<style>
+  body { font-family: sans-serif; background: #f8fafc; margin: 16px; }
+  .view { width: 100%; height: 380px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; }
+  h2 { margin: 16px 0 8px; font-size: 15px; }
+</style>
+</head>
+<body>
+<h1>ARK three.js 组件预览（无 SAP）</h1>
+<h2>Torus Knot（ark_three_1）</h2>
+<div class="view" id="three_knot"></div>
+<h2>Sphere（ark_three_2）</h2>
+<div class="view" id="three_sphere"></div>
+
+<!-- 与 zcl_ark_js_library=>include( 'three' ) 等价：MIME 资产源文件即 UMD 库 -->
+<script src="../src/assets/zark_three_min_js.w3mi.data.js"></script>
+
+<!-- 与 zcl_ark_js_bridge=>script( ) 同源，arkEmit 内部换成 mock 记录 -->
+<script type="text/javascript">
+if (!window.arkEmit) {
+window.arkEmit = function(action, params) {
+  if (!window.__arkLog) { window.__arkLog = []; }
+  window.__arkLog.push({ action: action, q: params });
+  console.log('ARKEVENT', action, params);
+};
+}
+</script>
+
+<!-- 与 zcl_ark_three_view=>zif_ark_gui_renderable~render 输出的初始化脚本逐行同源 -->
+<script type="text/javascript">
+function arkThreeInit(divId, ctorJs, color) {
+  (function() {
+    var el = document.getElementById(divId);
+    if (!el) { return; }
+    if (typeof THREE === 'undefined') {
+      el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">three.js 库加载失败</div>';
+      return;
+    }
+    var renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch (e) {
+      el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">WebGL 不可用</div>';
+      return;
+    }
+    renderer.setSize(el.clientWidth, el.clientHeight);
+    el.appendChild(renderer.domElement);
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 100);
+    camera.position.set(0, 1.2, 4);
+    camera.lookAt(0, 0, 0);
+    var mesh = new THREE.Mesh(ctorJs, new THREE.MeshStandardMaterial({ color: color }));
+    scene.add(mesh);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9);
+    key.position.set(3, 5, 4);
+    scene.add(key);
+    (function animate() {
+      requestAnimationFrame(animate);
+      mesh.rotation.x += 0.006;
+      mesh.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    })();
+    window.addEventListener('resize', function() {
+      renderer.setSize(el.clientWidth, el.clientHeight);
+      camera.aspect = el.clientWidth / el.clientHeight;
+      camera.updateProjectionMatrix();
+    });
+    renderer.domElement.addEventListener('click', function(ev) {
+      arkEmit('three_pick', { x: ev.offsetX, y: ev.offsetY, id: divId });
+    });
+  })();
+}
+arkThreeInit('three_knot', new THREE.TorusKnotGeometry(0.9, 0.28, 160, 24), '#0070f2');
+arkThreeInit('three_sphere', new THREE.SphereGeometry(1, 48, 32), '#107e3e');
+</script>
+</body>
+</html>

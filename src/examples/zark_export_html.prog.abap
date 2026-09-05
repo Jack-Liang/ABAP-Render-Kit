@@ -43,6 +43,7 @@ FORM do_export.
     WHEN 'CHART'.   lv_cls = 'ZCL_ARK_EXAMPLE_CHART_PAGE'.
     WHEN 'DATA'.    lv_cls = 'ZCL_ARK_EXAMPLE_DATA_PAGE'.
     WHEN 'BROWSER'. lv_cls = 'ZCL_ARK_EXAMPLE_BROWSER_PAGE'.
+    WHEN 'THREE'.   lv_cls = 'ZCL_ARK_EXAMPLE_THREE_PAGE'.
     WHEN OTHERS.
       zcx_ark_exception=>raise( |unknown page: { p_page }| ).
   ENDCASE.
@@ -94,6 +95,19 @@ FORM export_assets CHANGING cv_dir TYPE string.
       PERFORM download_xstring USING lv_lib_xstr lv_lib_path.
     CATCH zcx_ark_exception.
       MESSAGE 'MIME ZARK_ECHARTS_MIN_JS not found, echarts falls back to CDN' TYPE 'S'.
+  ENDTRY.
+
+  " three.js 本体（zcl_ark_three_view 的库依赖；注册相对 URL 后页面
+  " script 指向同目录 ark_three.min.js）
+  TRY.
+      DATA(lv_three_xstr) = zcl_ark_convert=>mime_to_xstring( 'ZARK_THREE_MIN_JS' ).
+      zcl_ark_js_library=>register(
+        iv_name = zcl_ark_three_view=>c_lib_name
+        iv_url  = 'ark_three.min.js' ).
+      DATA(lv_three_path) = |{ cv_dir }{ lv_sep }ark_three.min.js|.
+      PERFORM download_xstring USING lv_three_xstr lv_three_path.
+    CATCH zcx_ark_exception.
+      MESSAGE 'MIME ZARK_THREE_MIN_JS not found, three.js falls back to CDN' TYPE 'S'.
   ENDTRY.
 
   " 中国地图（use_bundled_map 的 xdata 走 gt_map_asset，但注册名解析在

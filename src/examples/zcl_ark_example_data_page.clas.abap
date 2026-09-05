@@ -79,8 +79,11 @@ CLASS zcl_ark_example_data_page IMPLEMENTATION.
     DATA lt_flights TYPE tt_flight.
     DATA lt_tags TYPE string_table.
     DATA lt_pax TYPE string_table.
+    " add_table 是 zcl_ark_html 具体类方法（不在 zif_ark_html 接口里），
+    " 局部构建用具体类引用，收尾再赋给接口返回值
+    DATA lo_html TYPE REF TO zcl_ark_html.
 
-    ri_html = zcl_ark_html=>create( ).
+    lo_html = zcl_ark_html=>create( ).
 
     " 任意内表 -> 表格：RTTI 出列（DDIC 中文/英文列头、数值右对齐、
     " 日期按用户格式、深层内表列显示行数），返回的构建器仍可继续定制。
@@ -106,18 +109,20 @@ CLASS zcl_ark_example_data_page IMPLEMENTATION.
                             price = '0' currency = 'SGD' )
            TO lt_flights.
 
-    ri_html->add( |<h2 style="margin-bottom: 8px;">Internal table &rarr; RTTI table</h2>| ).
-    ri_html->add_table( zcl_ark_html_table=>from_any_table( lt_flights
-                                  )->zif_ark_gui_renderable~render( ) ).
+    lo_html->add( |<h2 style="margin-bottom: 8px;">Internal table &rarr; RTTI table</h2>| ).
+    lo_html->add_table( zcl_ark_html_table=>from_any_table( lt_flights
+                                )->zif_ark_gui_renderable~render( ) ).
 
     " 基本类型行类型：单列 TABLE_LINE 回退
     APPEND `abap` TO lt_tags.
     APPEND `html` TO lt_tags.
     APPEND `echarts` TO lt_tags.
 
-    ri_html->add( |<h2 style="margin-bottom: 8px;">Elementary line &rarr; TABLE_LINE</h2>| ).
-    ri_html->add_table( zcl_ark_html_table=>from_any_table( lt_tags
-                                  )->zif_ark_gui_renderable~render( ) ).
+    lo_html->add( |<h2 style="margin-bottom: 8px;">Elementary line &rarr; TABLE_LINE</h2>| ).
+    lo_html->add_table( zcl_ark_html_table=>from_any_table( lt_tags
+                                )->zif_ark_gui_renderable~render( ) ).
+
+    ri_html = lo_html.
   ENDMETHOD.
 
 

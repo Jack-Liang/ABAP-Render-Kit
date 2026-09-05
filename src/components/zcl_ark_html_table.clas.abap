@@ -64,6 +64,10 @@ CLASS zcl_ark_html_table DEFINITION
       BEGIN OF ty_column, header TYPE string, width TYPE string,
       END OF ty_column .
     TYPES tt_component TYPE cl_abap_structdescr=>component_table .
+    " type_kind 属性的值域（cl_abap_typedescr=>typekind_* 常量为 C(1)）；
+    " 不直接用 cl_abap_typedescr=>typekind 命名类型：其来源是 ABAPTYPE
+    " 类型组，经类名寻址在各发行版上不可靠
+    TYPES ty_typekind TYPE c LENGTH 1 .
     TYPES:
       BEGIN OF ty_cell, value TYPE string, html TYPE REF TO zif_ark_html, style TYPE string,
       END OF ty_cell .
@@ -96,7 +100,7 @@ CLASS zcl_ark_html_table DEFINITION
     "! Elementary value as display string; initial date/time -> empty
     METHODS format_elem_value
       IMPORTING
-        !iv_type_kind TYPE cl_abap_typedescr=>typekind
+        !iv_type_kind TYPE ty_typekind
         !ig_value TYPE any
       RETURNING VALUE(rv_text) TYPE string .
 ENDCLASS.

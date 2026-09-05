@@ -14,7 +14,7 @@ REPORT zark_export_html.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-t01.
 PARAMETERS p_page TYPE char20 DEFAULT 'CHART' OBLIGATORY.
-PARAMETERS p_path TYPE string DEFAULT 'ark_export.html' LOWER CASE.
+PARAMETERS p_path TYPE string DEFAULT 'C:/temp/ark_export.html' LOWER CASE.
 SELECTION-SCREEN END OF BLOCK b1.
 
 START-OF-SELECTION.
@@ -29,6 +29,11 @@ FORM main.
 ENDFORM.
 
 FORM do_export.
+  " gui_download 要求前端绝对路径：相对路径直接 dataprovider 错误
+  IF find( val = p_path sub = `/` ) < 0 AND find( val = p_path sub = `\` ) < 0.
+    zcx_ark_exception=>raise( |p_path 需为绝对路径（如 C:/temp/ark_export.html），当前: { p_path }| ).
+  ENDIF.
+
   " 1) 页面对象（参数无关，直接实例化）
   DATA lv_cls TYPE string.
   CASE p_page.
@@ -112,20 +117,25 @@ FORM export_assets CHANGING cv_dir TYPE string.
 ENDFORM.
 
 FORM download_string USING iv_str TYPE string iv_path TYPE string.
-  TYPES ty_c200 TYPE c LENGTH 200.
-  DATA lt_tab TYPE STANDARD TABLE OF ty_c200.
+  " BIN 字节流写入（UTF-8 精确落盘，绕开 ASC 代码页转换的 DP 兼容问题）
+  TYPES ty_x200 TYPE x LENGTH 200.
+  DATA lt_tab TYPE STANDARD TABLE OF ty_x200.
   DATA lv_size TYPE i.
-  zcl_ark_convert=>string_to_tab(
-    EXPORTING iv_str = iv_str
+  zcl_ark_convert=>xstring_to_bintab(
+    EXPORTING iv_xstr = zcl_ark_convert=>string_to_xstring( iv_str )
     IMPORTING ev_size = lv_size
-              et_tab  = lt_tab ).
-  cl_gui_frontend_services=>gui_download(
-    EXPORTING
-      filename = iv_path
-      filetype = 'ASC'
-      trunc_trailing_blanks = abap_true
-    CHANGING
-      data_tab = lt_tab ).
+              et_bintab = lt_tab ).
+  TRY.
+      cl_gui_frontend_services=>gui_download(
+        EXPORTING
+          filename = iv_path
+          filetype = 'BIN'
+          bin_filesize = lv_size
+        CHANGING
+          data_tab = lt_tab ).
+    CATCH cx_root INTO DATA(lo_err).
+      zcx_ark_exception=>raise( |gui_download 失败({ iv_path }): { lo_err->get_text( ) }| ).
+  ENDTRY.
 ENDFORM.
 
 FORM download_xstring USING iv_xstr TYPE xstring iv_path TYPE string.
@@ -136,11 +146,15 @@ FORM download_xstring USING iv_xstr TYPE xstring iv_path TYPE string.
     EXPORTING iv_xstr = iv_xstr
     IMPORTING ev_size = lv_size
               et_bintab = lt_tab ).
-  cl_gui_frontend_services=>gui_download(
-    EXPORTING
-      filename = iv_path
-      filetype = 'BIN'
-      bin_filesize = lv_size
-    CHANGING
-      data_tab = lt_tab ).
+  TRY.
+      cl_gui_frontend_services=>gui_download(
+        EXPORTING
+          filename = iv_path
+          filetype = 'BIN'
+          bin_filesize = lv_size
+        CHANGING
+          data_tab = lt_tab ).
+    CATCH cx_root INTO DATA(lo_err).
+      zcx_ark_exception=>raise( |gui_download 失败({ iv_path }): { lo_err->get_text( ) }| ).
+  ENDTRY.
 ENDFORM.

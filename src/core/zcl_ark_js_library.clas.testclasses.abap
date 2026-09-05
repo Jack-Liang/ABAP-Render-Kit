@@ -1,3 +1,16 @@
+CLASS lcl_test_widget IMPLEMENTATION.
+  METHOD set_assets.
+    mv_assets = it_assets.
+  ENDMETHOD.
+  METHOD zif_ark_js_widget~get_assets.
+    rt_assets = mv_assets.
+  ENDMETHOD.
+  METHOD zif_ark_gui_renderable~render.
+    ri_html = zcl_ark_html=>create( ).
+    ri_html->add( `widget` ).
+  ENDMETHOD.
+ENDCLASS.
+
 CLASS ltcl_js_library DEFINITION FINAL FOR TESTING
   DURATION SHORT
   RISK LEVEL HARMLESS.

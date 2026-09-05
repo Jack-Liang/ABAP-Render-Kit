@@ -8,16 +8,3 @@ CLASS lcl_test_widget DEFINITION FINAL CREATE PUBLIC.
     DATA mv_assets TYPE string_table.
     METHODS set_assets IMPORTING it_assets TYPE string_table.
 ENDCLASS.
-
-CLASS lcl_test_widget IMPLEMENTATION.
-  METHOD set_assets.
-    mv_assets = it_assets.
-  ENDMETHOD.
-  METHOD zif_ark_js_widget~get_assets.
-    rt_assets = mv_assets.
-  ENDMETHOD.
-  METHOD zif_ark_gui_renderable~render.
-    ri_html = zcl_ark_html=>create( ).
-    ri_html->add( `widget` ).
-  ENDMETHOD.
-ENDCLASS.

@@ -8,6 +8,10 @@
 - `MANIFEST.md` — This file (object inventory)
 - `.gitignore` — Git ignore rules
 
+### tools/
+- `make_w3mi.mjs` — convert a local JS/JSON/CSS file into an abapGit W3MI asset pair (see docs/js-extensions.md)
+- `gen_ui5_shell.mjs` — generate zcl_ark_ui5_shell from the UI5 shell preview page
+
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 

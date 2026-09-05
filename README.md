@@ -27,6 +27,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
 - **Theme Support** — Fiori Quartz design tokens via `zcl_ark_theme`; override any token with `set_token( )`
 - **Declarative State Pages** — fill a typed `ty_page_state` (`zif_ark_gui_state`) and let `zcl_ark_state_page` render a Fiori-style page; no HTML in your ABAP code
+- **Extensible JS Pipeline** — see [docs/js-extensions.md](docs/js-extensions.md): upload any JS (three.js, ...) as a W3MI asset, register it, and ship your own widget components
 - **Zero External Dependencies** — Runs entirely within SAP GUI using standard `CL_GUI_HTML_VIEWER`
 
 ## Quick Start

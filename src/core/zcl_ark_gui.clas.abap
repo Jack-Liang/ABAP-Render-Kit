@@ -29,6 +29,13 @@ CLASS zcl_ark_gui DEFINITION
     METHODS set_focus RAISING zcx_ark_exception .
     METHODS free .
 
+    "! 构建当前页面的完整 HTML 文档字符串（不触碰 GUI 控件）。
+    "! 供无头导出/自动化测试使用：拿到 HTML 后走 mock arkEmit 在
+    "! 普通浏览器里做黑盒验证
+    METHODS render_page
+      RETURNING VALUE(rv_html) TYPE string
+      RAISING zcx_ark_exception .
+
     METHODS on_event
       FOR EVENT sapevent OF zif_ark_html_viewer
       IMPORTING action frame getdata postdata query_table .
@@ -57,10 +64,6 @@ CLASS zcl_ark_gui DEFINITION
     DATA mt_asset_cache TYPE tt_asset_cache .
     " 匿名资产文件名序号：sy-index 在非循环上下文恒为 0，同秒多资产会重名互覆
     DATA mv_asset_seq TYPE i .
-
-    METHODS render_page
-      RETURNING VALUE(rv_html) TYPE string
-      RAISING zcx_ark_exception .
 
     METHODS build_html_document
       IMPORTING !iv_content TYPE string

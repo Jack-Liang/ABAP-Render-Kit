@@ -68,7 +68,8 @@ CLASS ltcl_html IMPLEMENTATION.
 
   METHOD add_css_js.
     DATA(lo_html) = zcl_ark_html=>create( ).
-    lo_html->add_css( `body{}` )->add_js( `var x;` ).
+    lo_html->add_css( `body{}` ).
+    lo_html->add_js( `var x;` ).
     DATA(lv_html) = lo_html->render( ).
     cl_abap_unit_assert=>assert_true( xsdbool( lv_html CS `<style type="text/css">body{}</style>` ) ).
     cl_abap_unit_assert=>assert_true( xsdbool( lv_html CS `<script type="text/javascript">var x;</script>` ) ).

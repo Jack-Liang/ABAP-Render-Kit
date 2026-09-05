@@ -1,24 +1,3 @@
-" 测试用本地 widget：声明两个依赖，其一未注册
-CLASS lcl_test_widget DEFINITION FINAL CREATE PUBLIC.
-  PUBLIC SECTION.
-    INTERFACES zif_ark_js_widget.
-    DATA mv_assets TYPE string_table.
-    METHODS set_assets IMPORTING it_assets TYPE string_table.
-ENDCLASS.
-
-CLASS lcl_test_widget IMPLEMENTATION.
-  METHOD set_assets.
-    mv_assets = it_assets.
-  ENDMETHOD.
-  METHOD zif_ark_js_widget~get_assets.
-    rt_assets = mv_assets.
-  ENDMETHOD.
-  METHOD zif_ark_js_widget~zif_ark_gui_renderable~render.
-    ri_html = zcl_ark_html=>create( ).
-    ri_html->add( `widget` ).
-  ENDMETHOD.
-ENDCLASS.
-
 CLASS ltcl_js_library DEFINITION FINAL FOR TESTING
   DURATION SHORT
   RISK LEVEL HARMLESS.
@@ -43,7 +22,8 @@ CLASS ltcl_js_library IMPLEMENTATION.
 
   METHOD register_requires_name.
     TRY.
-        zcl_ark_js_library=>register( iv_inline = `x` ).
+        zcl_ark_js_library=>register( iv_name   = ``
+                                      iv_inline = `x` ).
         cl_abap_unit_assert=>fail( 'empty name should raise' ).
       CATCH zcx_ark_exception.
         RETURN.
@@ -64,16 +44,16 @@ CLASS ltcl_js_library IMPLEMENTATION.
                                   iv_inline = `window.t_a = 1;` ).
     cl_abap_unit_assert=>assert_equals(
       exp  = `<script type="text/javascript">window.t_a = 1;</script>`
-      act  = zcl_ark_js_library=>include( `t_inline_a` ) ).
+      act  = zcl_ark_js_library=>include( iv_name = `t_inline_a` ) ).
     " 同页幂等
-    cl_abap_unit_assert=>assert_initial( zcl_ark_js_library=>include( `t_inline_a` ) ).
+    cl_abap_unit_assert=>assert_initial( zcl_ark_js_library=>include( iv_name = `t_inline_a` ) ).
     " 重置后重新注入
     zcl_ark_js_library=>reset_page_scope( ).
-    cl_abap_unit_assert=>assert_not_initial( zcl_ark_js_library=>include( `t_inline_a` ) ).
+    cl_abap_unit_assert=>assert_not_initial( zcl_ark_js_library=>include( iv_name = `t_inline_a` ) ).
   ENDMETHOD.
 
   METHOD include_unknown_returns_empty.
-    cl_abap_unit_assert=>assert_initial( zcl_ark_js_library=>include( `t_never_registered` ) ).
+    cl_abap_unit_assert=>assert_initial( zcl_ark_js_library=>include( iv_name = `t_never_registered` ) ).
   ENDMETHOD.
 
   METHOD include_for_widget.

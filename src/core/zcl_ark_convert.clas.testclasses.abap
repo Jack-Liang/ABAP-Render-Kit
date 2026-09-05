@@ -23,7 +23,7 @@ CLASS ltcl_convert IMPLEMENTATION.
     " 反斜杠先行、单双引号、CRLF 折叠为 \n、</script> 防截断
     DATA(lv_cr_lf) = cl_abap_char_utilities=>cr_lf.
     cl_abap_unit_assert=>assert_equals(
-      exp  = `a\'b\"c\\d\n</e>`
+      exp  = `a\'b\"c\\d\n<\/e>`
       act  = zcl_ark_convert=>escape_js( |a'b"c\\d{ lv_cr_lf }</e>| ) ).
   ENDMETHOD.
 

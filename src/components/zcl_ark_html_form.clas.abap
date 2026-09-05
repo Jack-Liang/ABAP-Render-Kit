@@ -115,7 +115,7 @@ CLASS zcl_ark_html_form IMPLEMENTATION.
     mo_html->add(
       |<input type="{ zcl_ark_convert=>escape_html( iv_type ) }"| &&
       | name="{ zcl_ark_convert=>escape_html( iv_name ) }"| &&
-      | value="{ zcl_ark_convert=>escape_html( iv_value ) }"{ lv_readonly}>| ).
+      | value="{ zcl_ark_convert=>escape_html( iv_value ) }"{ lv_readonly }>| ).
     mo_html->add( |</div>| ).
     ri_self = me.
   ENDMETHOD.

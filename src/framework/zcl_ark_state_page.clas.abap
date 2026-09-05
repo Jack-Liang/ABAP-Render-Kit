@@ -553,16 +553,18 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         SORT lt_sort BY key_txt ASCENDING.
       ENDIF.
       IF ls_ui-sort_dir = -1.
-        " 无自定义比较器，倒序重建
+        " 倒序重建：BY -1 负步长在不同版本兼容性存疑，用下标逆序 APPEND
         DATA lt_desc LIKE lt_sort.
-        LOOP AT lt_sort INTO DATA(ls_s) FROM lines( lt_sort ) BY -1.
-          APPEND ls_s TO lt_desc.
-        ENDLOOP.
+        DATA(lv_idx) = lines( lt_sort ).
+        WHILE lv_idx > 0.
+          APPEND lt_sort[ lv_idx ] TO lt_desc.
+          lv_idx = lv_idx - 1.
+        ENDWHILE.
         lt_sort = lt_desc.
       ENDIF.
 
       CLEAR rt_rows.
-      LOOP AT lt_sort INTO ls_s.
+      LOOP AT lt_sort INTO DATA(ls_s).
         APPEND VALUE #( cells = ls_s-cells ) TO rt_rows.
       ENDLOOP.
     ENDIF.

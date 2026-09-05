@@ -13,13 +13,6 @@ CLASS zcl_ark_three_view DEFINITION
     CONSTANTS c_bundled_mime_name TYPE wwwdatatab-objid VALUE 'ZARK_THREE_MIN_JS' .
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js' .
 
-    TYPES:
-      BEGIN OF ty_enum_geometry,
-        box        TYPE string VALUE 'box',
-        sphere     TYPE string VALUE 'sphere',
-        torus_knot TYPE string VALUE 'torus_knot',
-      END OF ty_enum_geometry .
-
     METHODS constructor
       IMPORTING
         !iv_div_id TYPE string OPTIONAL

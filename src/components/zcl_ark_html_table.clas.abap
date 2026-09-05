@@ -90,15 +90,18 @@ CLASS zcl_ark_html_table DEFINITION
       RAISING zcx_ark_exception .
 
     "! Flatten a structure's components; .INCLUDE components contribute
-    "! their nested components instead of appearing as one deep column
-    METHODS collect_components
+    "! their nested components instead of appearing as one deep column.
+    "! Static: called from the static from_any_table( ) and touching no
+    "! instance state
+    CLASS-METHODS collect_components
       IMPORTING
         !io_struct TYPE REF TO cl_abap_structdescr
       CHANGING
         !ct_comp TYPE tt_component .
 
-    "! Elementary value as display string; initial date/time -> empty
-    METHODS format_elem_value
+    "! Elementary value as display string; initial date/time -> empty.
+    "! Static: called from the static from_any_table( )
+    CLASS-METHODS format_elem_value
       IMPORTING
         !iv_type_kind TYPE ty_typekind
         !ig_value TYPE any

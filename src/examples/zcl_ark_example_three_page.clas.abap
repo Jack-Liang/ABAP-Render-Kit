@@ -37,8 +37,10 @@ CLASS zcl_ark_example_three_page IMPLEMENTATION.
 
     mo_html->add(
       |<p style="color: #57606a;">| &&
-      |three.js r149（UMD 构建）经 SMW0 资产注入。需 Edge 内核（WebView2/Chromium）| &&
-      |+ WebGL 硬件加速；IE 内核下会显示降级提示。</p>| ).
+      |three.js r149（UMD 构建）经 SMW0 资产注入。WebGL 仅 Windows SAP GUI 的| &&
+      |Edge/WebView2 内核支持；SAP GUI for Java（JavaFX WebView，无 WebGL）与 IE 内核| &&
+      |下显示降级提示 —— Java GUI 环境请用 ZARK_EXPORT_HTML（PAGE=THREE）导出后在| &&
+      |外部浏览器查看。</p>| ).
 
     mo_html->add( |<h2>Torus Knot</h2>| ).
     DATA(lo_knot) = NEW zcl_ark_three_view(

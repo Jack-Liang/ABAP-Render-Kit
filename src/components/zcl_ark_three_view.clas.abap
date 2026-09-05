@@ -152,11 +152,16 @@ CLASS zcl_ark_three_view IMPLEMENTATION.
       |return;| &&
       |\}| &&
       |var renderer;| &&
+      |var isJavaGui = navigator.userAgent.indexOf('JavaFX') >= 0;| &&
       |try \{| &&
       |renderer = new THREE.WebGLRenderer(\{ antialias: true, alpha: true \});| &&
       |\} catch (e) \{| &&
-      |el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">| &&
-      |WebGL 不可用（IE 内核/无 GPU/RDP 远程会话均会导致）: ' + (e && e.message ? e.message : e) +| &&
+      |el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">' +| &&
+      |(isJavaGui ?| &&
+      |'SAP GUI for Java 的 JavaFX WebView 不支持 WebGL —— 3D 视图无法在 GUI 内渲染。'| &&
+      |'替代路径：SE38 ZARK_EXPORT_HTML（PAGE=THREE）导出后在外部浏览器打开。'| &&
+      |'（Windows SAP GUI + Edge/WebView2 内核可原生支持）'| &&
+      |': WebGL 不可用（IE 内核/无 GPU/RDP 远程会话均会导致）: ' + (e && e.message ? e.message : e)) +| &&
       |'<br>kernel: ' + navigator.userAgent + '</div>';| &&
       |return;| &&
       |\}| &&

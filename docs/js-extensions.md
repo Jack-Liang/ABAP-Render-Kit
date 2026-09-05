@@ -32,6 +32,11 @@ git add src/assets/zark_three_min_js.w3mi.* && git push
 # 目标系统 abapGit pull 即部署到 SMW0
 ```
 
+> **内核能力边界**：WebGL 只在 Windows SAP GUI 的 Edge/WebView2 内核可用。
+> SAP GUI for Java 的 HTML viewer 是 JavaFX WebView（WebKit），**无 WebGL** ——
+> three.js 这类 3D 库在 GUI 内渲染不了（ECharts 等纯 Canvas 2D 库不受影响）。
+> Java GUI 的验证路径：`ZARK_EXPORT_HTML`（PAGE=THREE）导出三件套后在外部浏览器打开。
+>
 ⚠️ 必须用 **UMD/全局构建**（`three.min.js`），ES module 的 `import` 在
 SAP GUI HTML Viewer 的 `file:///` 环境下不可靠。ECharts 用的是同一机制
 （`ZARK_ECHARTS_MIN_JS`），可对照。

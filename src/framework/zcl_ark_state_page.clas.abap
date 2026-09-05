@@ -350,8 +350,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
           INIT s TYPE string
           FOR lv_val IN ls_card-sparkline
           NEXT s = COND #( WHEN s IS INITIAL
-                           THEN zcl_ark_echarts=>escape_js( lv_val )
-                           ELSE |{ s },{ zcl_ark_echarts=>escape_js( lv_val ) }| ) ).
+                           THEN zcl_ark_convert=>escape_js( lv_val )
+                           ELSE |{ s },{ zcl_ark_convert=>escape_js( lv_val ) }| ) ).
 
         lv_js = lv_js &&
           |var e=document.getElementById('{ lv_id }');| &&
@@ -762,7 +762,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     " 地图注册：chart_map 对应资产已由 build_html 注入（守卫缺失时退化为空地图）
     DATA lv_map_js TYPE string.
     IF is_section-chart_map IS NOT INITIAL.
-      DATA(lv_map_esc) = zcl_ark_echarts=>escape_js( is_section-chart_map ).
+      DATA(lv_map_esc) = zcl_ark_convert=>escape_js( is_section-chart_map ).
       lv_map_js =
         |var m = window.ARK_MAPS && window.ARK_MAPS['{ lv_map_esc }'];| &&
         |if (m) \{ echarts.registerMap('{ lv_map_esc }', m); \}| .
@@ -771,27 +771,25 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     " 图表元素点击 → sapevent，参数同 zcl_ark_echarts=>set_on_click，
     " 额外带 chart=节序号区分多个图表节。action 来自应用 state，
     " 信任级别与 toolbar action 一致。
-    " Chromium 内核需探测 URL 前缀（同 zcl_ark_echarts / abapGit #6339）
+    " 前缀探测/参数编码收敛在公共桥 zcl_ark_js_bridge（arkEmit）
     DATA lv_click_js TYPE string.
     IF is_section-chart_click_action IS NOT INITIAL.
       lv_click_js =
         |c.on('click', function(p) \{| &&
         |var v = p.value;| &&
         |if (v && typeof v === 'object') \{ v = JSON.stringify(v); \}| &&
-        |var arkPrefix = '';| &&
-        |if (document.querySelector('a[href*="file:///SAPEVENT:"]')) \{| &&
-        |  arkPrefix = 'file:///';| &&
-        |\} else if (document.querySelector('a[href^="sap-cust"]')) \{| &&
-        |  arkPrefix = 'sap-cust://sap-place-holder/';| &&
-        |\}| &&
-        |location.href = arkPrefix + 'SAPEVENT:{ zcl_ark_echarts=>escape_js( is_section-chart_click_action ) }'| &&
-        |  + '?name=' + encodeURIComponent(p.name \|\| '')| &&
-        |  + '&series=' + encodeURIComponent(p.seriesName \|\| '')| &&
-        |  + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| &&
-        |  + '&idx=' + (p.dataIndex === undefined ? -1 : p.dataIndex)| &&
-        |  + '&chart={ iv_index }';| &&
+        zcl_ark_js_bridge=>emit_js(
+          iv_action    = is_section-chart_click_action
+          iv_params_js = |name: p.name \|\| '',| &&
+                         |series: p.seriesName \|\| '',| &&
+                         |value: v === undefined ? '' : String(v),| &&
+                         |idx: p.dataIndex === undefined ? -1 : p.dataIndex,| &&
+                         |chart: { iv_index }| ) && |;| &&
         |\});| .
     ENDIF.
+
+    " 公共事件桥先行注入（同页幂等，点击回传的 arkEmit 依赖它）
+    co_html->add( zcl_ark_js_bridge=>script( ) ).
 
     co_html->add_js(
       |(function() \{| &&

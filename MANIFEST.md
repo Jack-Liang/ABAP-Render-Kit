@@ -11,7 +11,7 @@
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 
-### src/core/ (Core Engine — 16 objects)
+### src/core/ (Core Engine — 18 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
@@ -21,7 +21,9 @@
 | ZCL_ARK_HTML_PARTS | CLAS | HTML parts collection |
 | ZCL_ARK_HTML_VIEWER_GUI | CLAS | HTML viewer implementation |
 | ZCL_ARK_THEME | CLAS | Theme: Fiori design tokens + default CSS |
-| ZCL_ARK_CONVERT | CLAS | Conversion utilities |
+| ZCL_ARK_CONVERT | CLAS | Conversion utilities (+ escape_js) |
+| ZCL_ARK_JS_LIBRARY | CLAS | JS library registry: MIME/URL/xdata/inline sources, page-scope idempotent include |
+| ZCL_ARK_JS_BRIDGE | CLAS | JS-ABAP event bridge: window.arkEmit(action, params) → sapevent |
 | ZCL_ARK_JSON | CLAS | JSON serializer (standard sXML, zero deps) |
 | ZIF_ARK_HTML | INTF | HTML interface |
 | ZIF_ARK_GUI_RENDERABLE | INTF | Renderable interface |

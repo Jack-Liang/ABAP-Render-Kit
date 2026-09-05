@@ -10,7 +10,12 @@ CLASS zcl_ark_convert DEFINITION PUBLIC FINAL CREATE PRIVATE .
     CLASS-METHODS url_decode IMPORTING !iv_encoded TYPE string
                              RETURNING VALUE(rv_decoded) TYPE string .
     CLASS-METHODS escape_html IMPORTING !iv_text TYPE string
-                             RETURNING VALUE(rv_text) TYPE string .
+                              RETURNING VALUE(rv_text) TYPE string .
+    "! JS 字符串字面量转义（反斜杠/引号/换行/</script>）。
+    "! 值常直接来自数据库（客户名、物料描述），未转义的反斜杠/引号/换行
+    "! 会产生非法脚本，导致整页脚本一起失效
+    CLASS-METHODS escape_js IMPORTING !iv_value TYPE string
+                            RETURNING VALUE(rv_escaped) TYPE string .
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
@@ -202,5 +207,24 @@ CLASS zcl_ark_convert IMPLEMENTATION.
     rv_text = replace( val = rv_text sub = `>` with = `&gt;` occ = 0 ).
     rv_text = replace( val = rv_text sub = `"` with = `&quot;` occ = 0 ).
     rv_text = replace( val = rv_text sub = `'` with = `&#39;` occ = 0 ).
+  ENDMETHOD.
+  METHOD escape_js.
+    " JS 单引号字符串字面量转义。`</` 一并转义，避免值中的 </script>
+    " 提前截断宿主脚本块。
+    " CR/LF 从 cr_lf 属性截取：\u 转义与 cr/lf/minchar 属性在部分发行版
+    " 不可用，但 cr_lf 属性与 substring 函数各发行版均有
+    DATA(lv_crlf) = |{ cl_abap_char_utilities=>cr_lf }|.
+    DATA(lv_cr) = substring( val = lv_crlf off = 0 len = 1 ).
+    DATA(lv_lf) = substring( val = lv_crlf off = 1 len = 1 ).
+
+    rv_escaped = iv_value.
+
+    rv_escaped = replace( val = rv_escaped sub = `\` with = `\\` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = |{ lv_cr }{ lv_lf }| with = `\n` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = lv_cr with = `\r` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = lv_lf with = `\n` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = `"` with = `\"` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = `'` with = `\'` occ = 0 ).
+    rv_escaped = replace( val = rv_escaped sub = `</` with = `<\/` occ = 0 ).
   ENDMETHOD.
 ENDCLASS.

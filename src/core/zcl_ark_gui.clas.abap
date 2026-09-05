@@ -148,6 +148,10 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   METHOD render.
     DATA lv_html TYPE string.
 
+    " 页面作用域去重集（js_library / js_bridge 的同页幂等注入）每次整页
+    " 渲染前重置：页面 HTML 全量重建，注入标记必须随之失效
+    zcl_ark_js_library=>reset_page_scope( ).
+
     TRY.
         lv_html = render_page( ).
       CATCH zcx_ark_exception INTO DATA(lx_error).

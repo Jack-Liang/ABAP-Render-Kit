@@ -13,6 +13,8 @@ CLASS zcl_ark_echarts DEFINITION
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
     CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .
     CONSTANTS c_bundled_mime_name TYPE wwwdatatab-objid VALUE 'ZARK_ECHARTS_MIN_JS' .
+    " zcl_ark_js_library 注册名
+    CONSTANTS c_lib_name TYPE string VALUE 'echarts' .
     CONSTANTS c_china_map_name TYPE string VALUE 'china' .
     CONSTANTS c_bundled_china_map TYPE wwwdatatab-objid VALUE 'ZARK_MAP_CHINA_JSON' .
 
@@ -319,14 +321,15 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(lv_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
-          iv_url     = |ark_map_{ iv_map_name }.js|
-          iv_xdata   = ls_map-xdata
-          iv_type    = 'text'
-          iv_subtype = 'javascript' ).
-        IF lv_url IS NOT INITIAL.
-          rv_html = |<script src="{ lv_url }"></script>|.
+        " 会话级地图资产走注册器（与库注入同一管道）；cache_asset 的
+        " 实例级去重由注册器复用
+        DATA(lv_map_reg_name) = |ark_map_{ iv_map_name }|.
+        IF zcl_ark_js_library=>is_registered( lv_map_reg_name ) = abap_false.
+          zcl_ark_js_library=>register(
+            iv_name  = lv_map_reg_name
+            iv_xdata = ls_map-xdata ).
         ENDIF.
+        rv_html = zcl_ark_js_library=>include( lv_map_reg_name ).
       CATCH zcx_ark_exception.
         " 缓存失败返回空串；初始化脚本里的 registerMap 守卫使图表退化为空地图
     ENDTRY.
@@ -432,58 +435,41 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD escape_js.
-    " JS 单引号字符串字面量转义。标题/系列名等常直接来自数据库（客户名、物料描述），
-    " 未转义的反斜杠/引号/换行会产生非法脚本，导致整页所有图表一起失效。
-    " `</` 一并转义，避免值中的 </script> 提前截断宿主脚本块。
-    " CR/LF 从 cr_lf 属性截取：\u 转义与 cr/lf/minchar 属性在部分发行版不可用，
-    " 但 cr_lf 属性与 substring 函数各发行版均有
-    DATA(lv_crlf) = |{ cl_abap_char_utilities=>cr_lf }|.
-    DATA(lv_cr) = substring( val = lv_crlf off = 0 len = 1 ).
-    DATA(lv_lf) = substring( val = lv_crlf off = 1 len = 1 ).
-
-    rv_escaped = iv_value.
-
-    rv_escaped = replace( val = rv_escaped sub = `\` with = `\\` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped sub = |{ lv_cr }{ lv_lf }| with = `\n` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped sub = lv_cr with = `\r` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped sub = lv_lf with = `\n` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped sub = `"` with = `\"` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped sub = `'` with = `\'` occ = 0 ).
-    rv_escaped = replace( val = rv_escaped sub = `</` with = `<\/` occ = 0 ).
+    " 兼容别名：实现收敛在 zcl_ark_convert=>escape_js（core 层），桥等
+    " 基础设施也需要该转义，避免组件层被 core 反向依赖
+    rv_escaped = zcl_ark_convert=>escape_js( iv_value ).
   ENDMETHOD.
 
   METHOD include_library_script.
-    " 与 render( ) 内的库逻辑同源：仅处理会话级缺省资产（实例级
-    " set_library_xdata 的覆盖路径只在 render( ) 里生效）。
+    " 库注入统一走 zcl_ark_js_library 注册器（同页幂等、会话级 MIME 缓存、
+    " cache_asset 换本地 URL 均由注册器负责）。
     " 宿主实证（2026-08-22）：WebView2 内 jsdelivr CDN 不可达，未启用
-    " MIME 资产的页面图表静默缺席 —— 此处自动尝试随仓库分发的资产
-    " （会话级只读一次 SMW0），缺资产/读失败回退 CDN
-    IF gv_default_lib_xdata IS INITIAL.
+    " MIME 资产的页面图表静默缺席 —— 首次调用时自动尝试随仓库分发的
+    " 资产 ZARK_ECHARTS_MIN_JS，缺资产/读失败回退注册 CDN 地址
+    IF gv_default_lib_xdata IS NOT INITIAL.
+      " use_bundled_library( iv_mime ) 会话级路径：每次覆盖注册，
+      " 保证中途换 MIME 资产立即生效（register 同名即覆盖）
+      zcl_ark_js_library=>register(
+        iv_name  = c_lib_name
+        iv_xdata = gv_default_lib_xdata ).
+    ELSEIF zcl_ark_js_library=>is_registered( c_lib_name ) = abap_false.
       TRY.
-          use_bundled_library( ).
+          zcl_ark_js_library=>register(
+            iv_name = c_lib_name
+            iv_mime = c_bundled_mime_name ).
         CATCH zcx_ark_exception.
           " 资产未上传：保持 CDN 路径
+          zcl_ark_js_library=>register(
+            iv_name = c_lib_name
+            iv_url  = c_cdn_url ).
       ENDTRY.
     ENDIF.
 
-    DATA lv_lib_url TYPE string VALUE c_cdn_url.
-
-    IF gv_default_lib_xdata IS NOT INITIAL.
-      TRY.
-          DATA(lv_asset_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
-            iv_url     = c_lib_cache_name
-            iv_xdata   = gv_default_lib_xdata
-            iv_type    = 'text'
-            iv_subtype = 'javascript' ).
-          IF lv_asset_url IS NOT INITIAL.
-            lv_lib_url = lv_asset_url.
-          ENDIF.
-        CATCH zcx_ark_exception.
-          " 缓存失败时保持 CDN 回退
-      ENDTRY.
+    rv_html = zcl_ark_js_library=>include( c_lib_name ).
+    IF rv_html IS INITIAL.
+      " 注册器解析失败（如无 GUI 实例）退回 CDN 标签，行为与旧实现一致
+      rv_html = |<script src="{ c_cdn_url }"></script>|.
     ENDIF.
-
-    rv_html = |<script src="{ lv_lib_url }"></script>|.
   ENDMETHOD.
 
   METHOD render.
@@ -553,6 +539,9 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
       iv_id    = mv_div_id
       iv_style = |width: { lv_width }; height: { mv_height }px; margin: 0 auto;| ).
 
+    " 公共事件桥先行注入（同页幂等，初始化脚本里的 arkEmit 依赖它）
+    lo_html->add( zcl_ark_js_bridge=>script( ) ).
+
     " 初始化脚本（IIFE 包裹，不污染全局作用域）
     lo_html->add_js( build_init_js( ) ).
 
@@ -585,26 +574,19 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
         |  for (var k in optionOverride) \{ if (optionOverride.hasOwnProperty(k)) \{ option[k] = optionOverride[k]; \} \}| && lv_nl.
     ENDIF.
 
-    " 图表元素点击 → sapevent。Chromium 内核（SAP GUI 7.70 PL13+/8.00，
-    " SAP Note 3355910）不拦截 JS 发起的裸 sapevent: 导航：页面内
-    " <a href="sapevent:.."> 会被内核解析为 file:///SAPEVENT:.. 再由控件
-    " 拦截，故先探测前缀再拼 URL（同 abapGit getSapeventPrefix 方案）
+    " 图表元素点击 → sapevent，经公共桥 window.arkEmit（前缀探测/参数
+    " 编码收敛在 zcl_ark_js_bridge，桥脚本由 render( ) 先行注入）
     IF mv_on_click IS NOT INITIAL.
       lv_click_js =
         |  myChart.on('click', function(p) \{|                                    && lv_nl &&
         |    var v = p.value;|                                                    && lv_nl &&
         |    if (v && typeof v === 'object') \{ v = JSON.stringify(v); \}|        && lv_nl &&
-        |    var arkPrefix = '';|                                                 && lv_nl &&
-        |    if (document.querySelector('a[href*="file:///SAPEVENT:"]')) \{|      && lv_nl &&
-        |      arkPrefix = 'file:///';|                                           && lv_nl &&
-        |    \} else if (document.querySelector('a[href^="sap-cust"]')) \{|       && lv_nl &&
-        |      arkPrefix = 'sap-cust://sap-place-holder/';|                       && lv_nl &&
-        |    \}|                                                                  && lv_nl &&
-        |    location.href = arkPrefix + 'SAPEVENT:{ escape_js( mv_on_click ) }'| && lv_nl &&
-        |      + '?name=' + encodeURIComponent(p.name \|\| '')|                   && lv_nl &&
-        |      + '&series=' + encodeURIComponent(p.seriesName \|\| '')|           && lv_nl &&
-        |      + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| && lv_nl &&
-        |      + '&idx=' + (p.dataIndex === undefined ? -1 : p.dataIndex);|       && lv_nl &&
+        |    | && zcl_ark_js_bridge=>emit_js(
+              iv_action    = mv_on_click
+              iv_params_js = |name: p.name \|\| '',| &&
+                             |series: p.seriesName \|\| '',| &&
+                             |value: v === undefined ? '' : String(v),| &&
+                             |idx: p.dataIndex === undefined ? -1 : p.dataIndex| ) && |;| && lv_nl &&
         |  \});|                                                                 && lv_nl.
     ENDIF.
 

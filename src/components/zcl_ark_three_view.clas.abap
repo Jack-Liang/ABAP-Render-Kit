@@ -147,7 +147,8 @@ CLASS zcl_ark_three_view IMPLEMENTATION.
       |if (!el) \{ return; \}| &&
       |if (typeof THREE === 'undefined') \{| &&
       |el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">| &&
-      |three.js 库加载失败：MIME 资产未部署且 CDN 不可达</div>';| &&
+      |three.js 库脚本未执行（SMW0 缺 ZARK_THREE_MIN_JS 时已回退 CDN 且不可达，| &&
+      |或脚本加载报错）。kernel: ' + navigator.userAgent + '</div>';| &&
       |return;| &&
       |\}| &&
       |var renderer;| &&
@@ -155,7 +156,8 @@ CLASS zcl_ark_three_view IMPLEMENTATION.
       |renderer = new THREE.WebGLRenderer(\{ antialias: true, alpha: true \});| &&
       |\} catch (e) \{| &&
       |el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">| &&
-      |WebGL 不可用（IE 内核或不支持硬件加速）</div>';| &&
+      |WebGL 不可用（IE 内核/无 GPU/RDP 远程会话均会导致）: ' + (e && e.message ? e.message : e) +| &&
+      |'<br>kernel: ' + navigator.userAgent + '</div>';| &&
       |return;| &&
       |\}| &&
       |renderer.setSize(el.clientWidth, el.clientHeight);| &&

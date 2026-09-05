@@ -128,7 +128,10 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
     ENDIF.
 
     IF iv_url IS SUPPLIED.
-      ASSERT strlen( iv_url ) <= 250.
+      IF strlen( iv_url ) > 250.
+        " 控件 URL 字段为 c250：超长抛可捕获异常而非 ASSERT dump
+        zcx_ark_exception=>raise( |URL too long for load_data: { strlen( iv_url ) } chars| ).
+      ENDIF.
       lv_url = iv_url.
     ENDIF.
 

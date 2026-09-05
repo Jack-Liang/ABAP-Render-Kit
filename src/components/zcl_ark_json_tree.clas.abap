@@ -146,7 +146,7 @@ CLASS zcl_ark_json_tree IMPLEMENTATION.
       WHEN 'object' OR 'array'.
 
         DATA(lv_is_array) = xsdbool( lv_elem = 'array' ).
-        DATA lv_children TYPE string.
+        DATA lt_children TYPE string_table.
         DATA lv_count    TYPE i.
 
         DO.
@@ -164,9 +164,12 @@ CLASS zcl_ark_json_tree IMPLEMENTATION.
                                       THEN |{ lv_count - 1 }|
                                       ELSE '' ).
 
-          lv_children = lv_children && parse_node( ii_reader = ii_reader
-                                                   iv_index  = lv_idx ).
+          APPEND parse_node( ii_reader = ii_reader
+                             iv_index  = lv_idx ) TO lt_children.
         ENDDO.
+
+        " 先收集后拼接：逐层 && 在长数组上是 O(n²) 拷贝
+        DATA(lv_children) = concat_lines_of( table = lt_children ).
 
         IF lv_count = 0.
           " 空对象/数组内联字面量即可，折叠节点徒增噪音。

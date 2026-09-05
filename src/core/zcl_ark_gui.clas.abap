@@ -55,6 +55,8 @@ CLASS zcl_ark_gui DEFINITION
       END OF ty_asset_cache,
       tt_asset_cache TYPE HASHED TABLE OF ty_asset_cache WITH UNIQUE KEY url .
     DATA mt_asset_cache TYPE tt_asset_cache .
+    " 匿名资产文件名序号：sy-index 在非循环上下文恒为 0，同秒多资产会重名互覆
+    DATA mv_asset_seq TYPE i .
 
     METHODS render_page
       RETURNING VALUE(rv_html) TYPE string
@@ -149,7 +151,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     TRY.
         lv_html = render_page( ).
       CATCH zcx_ark_exception INTO DATA(lx_error).
-        lv_html = |<html><body><h1>Error</h1><p>{ lx_error->get_text( ) }</p></body></html>|.
+        lv_html = |<html><body><h1>Error</h1><p>{ zcl_ark_convert=>escape_html( lx_error->get_text( ) ) }</p></body></html>|.
     ENDTRY.
 
     IF mo_html_viewer IS INITIAL.
@@ -337,7 +339,8 @@ CLASS zcl_ark_gui IMPLEMENTATION.
         RETURN.
       ENDIF.
     ELSE.
-      lv_url = |ark_asset_{ cl_abap_context_info=>get_system_time( ) }_{ sy-index }.txt|.
+      mv_asset_seq = mv_asset_seq + 1.
+      lv_url = |ark_asset_{ cl_abap_context_info=>get_system_time( ) }_{ mv_asset_seq }.txt|.
     ENDIF.
 
     TYPES ty_c200 TYPE c LENGTH 200.

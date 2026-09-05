@@ -11,14 +11,13 @@
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 
-### src/core/ (Core Engine — 17 objects)
+### src/core/ (Core Engine — 16 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
 | ZCL_ARK_HTML | CLAS | HTML builder engine |
 | ZCL_ARK_GUI | CLAS | GUI controller |
 | ZCL_ARK_GUI_EVENT | CLAS | Event object |
-| ZCL_ARK_GUI_UTILS | CLAS | GUI utilities |
 | ZCL_ARK_HTML_PARTS | CLAS | HTML parts collection |
 | ZCL_ARK_HTML_VIEWER_GUI | CLAS | HTML viewer implementation |
 | ZCL_ARK_THEME | CLAS | Theme: Fiori design tokens + default CSS |

@@ -134,6 +134,17 @@ CLASS zcl_ark_state_page DEFINITION
       IMPORTING
         !iv_semantic   TYPE zif_ark_gui_state=>ty_semantic
       RETURNING VALUE(rv_color) TYPE string .
+
+    "! 事件参数/单元格值的安全整数转换：非数字输入返回 0 而非 dump
+    CLASS-METHODS to_int
+      IMPORTING !iv_value       TYPE string
+      RETURNING VALUE(rv_int)   TYPE i .
+
+    "! 排序键的安全数值转换：is_numeric 的 CO 校验拦不住 '1.2.3' 等，
+    "! 非法值返回 0
+    CLASS-METHODS to_num
+      IMPORTING !iv_value       TYPE string
+      RETURNING VALUE(rv_num)   TYPE decfloat16 .
 ENDCLASS.
 
 CLASS zcl_ark_state_page IMPLEMENTATION.
@@ -192,10 +203,10 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     " 的 .ark-* / 组件类，本类不写任何内联颜色
     IF ms_state-title IS NOT INITIAL.
       set_title( ms_state-title ).
-      mo_html->add( |<h1 class="ark-page-title">{ ms_state-title }</h1>| ).
+      mo_html->add( |<h1 class="ark-page-title">{ zcl_ark_convert=>escape_html( ms_state-title ) }</h1>| ).
     ENDIF.
     IF ms_state-subtitle IS NOT INITIAL.
-      mo_html->add( |<p class="ark-page-subtitle">{ ms_state-subtitle }</p>| ).
+      mo_html->add( |<p class="ark-page-subtitle">{ zcl_ark_convert=>escape_html( ms_state-subtitle ) }</p>| ).
     ENDIF.
 
     render_toolbar( EXPORTING it_items = ms_state-toolbar CHANGING co_html = mo_html ).
@@ -253,6 +264,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     co_html->add( |<div class="toolbar">| ).
 
     LOOP AT it_items INTO DATA(ls_item).
+      DATA(lv_label) = zcl_ark_convert=>escape_html( ls_item-label ).
       CASE ls_item-kind.
         WHEN zif_ark_gui_state=>c_toolbar_kind-button.
           DATA(lv_class) = 'toolbar-button'.
@@ -260,19 +272,20 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
             lv_class = lv_class && | toolbar-button--emphasized|.
           ENDIF.
           IF ls_item-enabled = abap_false.
-            co_html->add( |<span class="toolbar-button disabled">{ ls_item-label }</span> | ).
+            co_html->add( |<span class="toolbar-button disabled">{ lv_label }</span> | ).
           ELSE.
             DATA(lv_params) = COND #(
-              WHEN ls_item-parameters IS NOT INITIAL THEN |?{ ls_item-parameters }| ).
+              WHEN ls_item-parameters IS NOT INITIAL
+              THEN |?{ zcl_ark_convert=>escape_html( ls_item-parameters ) }| ).
             co_html->add(
-              |<a class="{ lv_class }" href="sapevent:{ ls_item-action }{ lv_params }">| &&
-              |{ ls_item-label }</a> | ).
+              |<a class="{ lv_class }" href="sapevent:{ zcl_ark_convert=>escape_html( ls_item-action ) }{ lv_params }">| &&
+              |{ lv_label }</a> | ).
           ENDIF.
         WHEN zif_ark_gui_state=>c_toolbar_kind-link.
           co_html->add(
-            |<a class="toolbar-link" href="sapevent:{ ls_item-action }">{ ls_item-label }</a> | ).
+            |<a class="toolbar-link" href="sapevent:{ zcl_ark_convert=>escape_html( ls_item-action ) }">{ lv_label }</a> | ).
         WHEN zif_ark_gui_state=>c_toolbar_kind-text.
-          co_html->add( |<span class="toolbar-text">{ ls_item-label }</span> | ).
+          co_html->add( |<span class="toolbar-text">{ lv_label }</span> | ).
         WHEN zif_ark_gui_state=>c_toolbar_kind-separator.
           co_html->add( |<span class="separator"></span> | ).
       ENDCASE.
@@ -285,7 +298,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     co_html->add( |<div class="ark-card">| ).
 
     IF is_section-title IS NOT INITIAL.
-      co_html->add( |<h2 class="ark-card-title">{ is_section-title }</h2>| ).
+      co_html->add( |<h2 class="ark-card-title">{ zcl_ark_convert=>escape_html( is_section-title ) }</h2>| ).
     ENDIF.
 
     render_toolbar( EXPORTING it_items = is_section-toolbar CHANGING co_html = co_html ).
@@ -314,15 +327,15 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     LOOP AT is_section-kpi_cards INTO DATA(ls_card).
       co_html->add( |<div class="ark-kpi">| ).
-      co_html->add( |<div class="ark-kpi-title">{ ls_card-title }</div>| ).
-      co_html->add( |<div class="ark-kpi-value">{ ls_card-value }</div>| ).
+      co_html->add( |<div class="ark-kpi-title">{ zcl_ark_convert=>escape_html( ls_card-title ) }</div>| ).
+      co_html->add( |<div class="ark-kpi-value">{ zcl_ark_convert=>escape_html( ls_card-value ) }</div>| ).
       IF ls_card-delta_text IS NOT INITIAL.
-        DATA(lv_semantic) = ls_card-delta_semantic.
+        DATA(lv_semantic) = zcl_ark_convert=>escape_html( ls_card-delta_semantic ).
         IF lv_semantic IS NOT INITIAL.
           co_html->add(
-            |<span class="ark-delta ark-delta--{ lv_semantic }">{ ls_card-delta_text }</span>| ).
+            |<span class="ark-delta ark-delta--{ lv_semantic }">{ zcl_ark_convert=>escape_html( ls_card-delta_text ) }</span>| ).
         ELSE.
-          co_html->add( |<span class="ark-delta">{ ls_card-delta_text }</span>| ).
+          co_html->add( |<span class="ark-delta">{ zcl_ark_convert=>escape_html( ls_card-delta_text ) }</span>| ).
         ENDIF.
       ENDIF.
 
@@ -336,7 +349,9 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         DATA(lv_data) = REDUCE #(
           INIT s TYPE string
           FOR lv_val IN ls_card-sparkline
-          NEXT s = COND #( WHEN s IS INITIAL THEN lv_val ELSE |{ s },{ lv_val }| ) ).
+          NEXT s = COND #( WHEN s IS INITIAL
+                           THEN zcl_ark_echarts=>escape_js( lv_val )
+                           ELSE |{ s },{ zcl_ark_echarts=>escape_js( lv_val ) }| ) ).
 
         lv_js = lv_js &&
           |var e=document.getElementById('{ lv_id }');| &&
@@ -365,7 +380,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     co_html->add( |<form class="ark-filterbar" method="post" | &&
                   |action="sapevent:ark_filter">| ).
     co_html->add( |<input type="hidden" name="sec" value="{ iv_index }">| ).
-    co_html->add( |<input type="text" name="flt" value="{ ls_ui-filter }" | &&
+    co_html->add( |<input type="text" name="flt" value="{ zcl_ark_convert=>escape_html( ls_ui-filter ) }" | &&
                   |placeholder="任意列包含…">| ).
     co_html->add( |<button type="submit" class="toolbar-button">筛选</button>| ).
     co_html->add( |<a class="toolbar-link" | &&
@@ -378,6 +393,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     co_html->add( |<thead><tr>| ).
 
     LOOP AT is_section-columns INTO DATA(ls_column).
+      DATA(lv_label) = zcl_ark_convert=>escape_html( ls_column-label ).
       DATA(lv_style) = COND #(
         WHEN ls_column-align_right = abap_true THEN | style="text-align: right;"| ).
 
@@ -394,9 +410,9 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         co_html->add(
           |<th{ lv_style }><a class="ark-sort" | &&
           |href="sapevent:ark_sort?sec={ iv_index }&col={ sy-tabix }">| &&
-          |{ ls_column-label }{ lv_arrow }</a></th>| ).
+          |{ lv_label }{ lv_arrow }</a></th>| ).
       ELSE.
-        co_html->add( |<th{ lv_style }>{ ls_column-label }</th>| ).
+        co_html->add( |<th{ lv_style }>{ lv_label }</th>| ).
       ENDIF.
     ENDLOOP.
 
@@ -428,8 +444,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
   METHOD on_event.
     CASE ii_event->mv_action.
       WHEN 'ark_sort'.
-        DATA(lv_sec) = CONV i( ii_event->query( 'sec' ) ).
-        DATA(lv_col) = CONV i( ii_event->query( 'col' ) ).
+        DATA(lv_sec) = to_int( ii_event->query( 'sec' ) ).
+        DATA(lv_col) = to_int( ii_event->query( 'col' ) ).
         READ TABLE mt_tbl_ui ASSIGNING FIELD-SYMBOL(<ls_ui>) WITH KEY sec = lv_sec.
         IF sy-subrc <> 0.
           APPEND VALUE ty_tbl_ui( sec = lv_sec ) TO mt_tbl_ui
@@ -446,7 +462,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         rs_result-state = 1.
 
       WHEN 'ark_filter'.
-        lv_sec = CONV i( parse_post_value( iv_name = 'sec' it_postdata = ii_event->mt_postdata ) ).
+        lv_sec = to_int( parse_post_value( iv_name = 'sec' it_postdata = ii_event->mt_postdata ) ).
         DATA(lv_flt) = parse_post_value( iv_name = 'flt' it_postdata = ii_event->mt_postdata ).
         READ TABLE mt_tbl_ui ASSIGNING <ls_ui> WITH KEY sec = lv_sec.
         IF sy-subrc <> 0.
@@ -458,8 +474,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       WHEN 'ark_download'.
         TRY.
             download_csv(
-              is_section = ms_state-sections[ CONV i( ii_event->query( 'sec' ) ) ]
-              iv_sec     = CONV i( ii_event->query( 'sec' ) ) ).
+              is_section = ms_state-sections[ to_int( ii_event->query( 'sec' ) ) ]
+              iv_sec     = to_int( ii_event->query( 'sec' ) ) ).
           CATCH cx_sy_itab_line_not_found.
             " 节序号失效（业务重建 state）：忽略下载
         ENDTRY.
@@ -502,11 +518,15 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     " 排序：全列数字则按数值比较，否则按文本；方向翻转用倒序循环
     IF ls_ui-sort_col > 0.
-      READ TABLE rt_rows INTO DATA(ls_first_row) INDEX 1.
-      IF sy-subrc = 0.
-        READ TABLE ls_first_row-cells INTO DATA(ls_first_cell) INDEX ls_ui-sort_col.
-        DATA(lv_numeric) = is_numeric( ls_first_cell-value ).
-      ENDIF.
+      " 数值列判定扫描整列首个非空值：仅看第一行会在首行为空时误判为文本列
+      DATA lv_numeric TYPE abap_bool.
+      LOOP AT rt_rows INTO DATA(ls_probe).
+        READ TABLE ls_probe-cells INTO DATA(ls_probe_cell) INDEX ls_ui-sort_col.
+        IF sy-subrc = 0 AND ls_probe_cell-value IS NOT INITIAL.
+          lv_numeric = is_numeric( ls_probe_cell-value ).
+          EXIT.
+        ENDIF.
+      ENDLOOP.
 
       TYPES:
         BEGIN OF ty_sort_row,
@@ -522,7 +542,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         DATA(lv_keynum) = replace( val = ls_c-value sub = `,` with = `` occ = 0 ).
         APPEND VALUE ty_sort_row(
           key_num = COND decfloat16( WHEN lv_numeric = abap_true
-                                     THEN lv_keynum ELSE 0 )
+                                     THEN to_num( lv_keynum ) ELSE 0 )
           key_txt = to_lower( ls_c-value )
           cells   = ls_r-cells ) TO lt_sort.
       ENDLOOP.
@@ -535,7 +555,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       IF ls_ui-sort_dir = -1.
         " 无自定义比较器，倒序重建
         DATA lt_desc LIKE lt_sort.
-        LOOP AT lt_sort INTO DATA(ls_s) FROM lines( lt_sort ).
+        LOOP AT lt_sort INTO DATA(ls_s) FROM lines( lt_sort ) BY -1.
           APPEND ls_s TO lt_desc.
         ENDLOOP.
         lt_sort = lt_desc.
@@ -552,6 +572,22 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     " 仅含数字/千分位逗号/小数点/负号/加号/空白视为数值（用于排序比较）
     rv_isnum = boolc( iv_value IS NOT INITIAL
                       AND iv_value CO '0123456789.,-+ ' ).
+  ENDMETHOD.
+
+  METHOD to_int.
+    TRY.
+        rv_int = CONV i( iv_value ).
+      CATCH cx_sy_conversion_no_number cx_sy_conversion_overflow.
+        rv_int = 0.
+    ENDTRY.
+  ENDMETHOD.
+
+  METHOD to_num.
+    TRY.
+        rv_num = CONV decfloat16( iv_value ).
+      CATCH cx_sy_conversion_no_number cx_sy_conversion_overflow.
+        rv_num = 0.
+    ENDTRY.
   ENDMETHOD.
 
   METHOD download_csv.
@@ -572,7 +608,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       LOOP AT ls_row-cells INTO DATA(ls_cell).
         DATA(lv_val) = ls_cell-value.
         " 含分隔符/引号/换行的值按 CSV 规则加引号转义
-        IF lv_val CA '; "'.
+        IF lv_val CA '; "' OR lv_val CA cl_abap_char_utilities=>cr_lf.
           lv_val = |"{ replace( val = lv_val sub = `"` with = `""` occ = 0 ) }"|.
         ENDIF.
         IF lv_line IS INITIAL.
@@ -587,52 +623,59 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     DATA lv_path TYPE string.
     DATA lv_filename TYPE string.
     DATA lv_fullpath TYPE string.
-    cl_gui_frontend_services=>file_save_dialog(
-      EXPORTING
-        default_extension   = 'csv'
-        default_file_name   = 'ark_export'
-        file_filter         = 'CSV 文件 (*.csv)|*.csv|所有文件|*.*'
-      CHANGING
-        filename            = lv_filename
-        path                = lv_path
-        fullpath            = lv_fullpath ).
-    IF lv_fullpath IS INITIAL.
-      RETURN.  " 用户取消
-    ENDIF.
+    TRY.
+        cl_gui_frontend_services=>file_save_dialog(
+          EXPORTING
+            default_extension   = 'csv'
+            default_file_name   = 'ark_export'
+            file_filter         = 'CSV 文件 (*.csv)|*.csv|所有文件|*.*'
+          CHANGING
+            filename            = lv_filename
+            path                = lv_path
+            fullpath            = lv_fullpath ).
+        IF lv_fullpath IS INITIAL.
+          RETURN.  " 用户取消
+        ENDIF.
 
-    cl_gui_frontend_services=>gui_download(
-      EXPORTING
-        filename                = lv_fullpath
-        filetype                = 'DAT'
-        codepage                = '4110'
-        write_bom               = abap_true
-      CHANGING
-        data_tab                = lt_csv ).
+        cl_gui_frontend_services=>gui_download(
+          EXPORTING
+            filename                = lv_fullpath
+            filetype                = 'DAT'
+            codepage                = '4110'
+            write_bom               = abap_true
+          CHANGING
+            data_tab                = lt_csv ).
+      CATCH cx_root INTO DATA(lx_fs).
+        zcx_ark_exception=>raise( |CSV 下载失败: { lx_fs->get_text( ) }| ).
+    ENDTRY.
   ENDMETHOD.
 
   METHOD parse_post_value.
-    " postdata 形如 name=value&name2=value2，取指定字段并做 URL 解码
-    LOOP AT it_postdata INTO DATA(lv_line).
-      FIND REGEX |(^\|&)({ iv_name })=(.*)$| IN lv_line
-        SUBMATCHES DATA(lv_val).
-      IF sy-subrc = 0.
-        rv_value = zcl_ark_convert=>url_decode( lv_val ).
-        RETURN.
-      ENDIF.
-    ENDLOOP.
+    " postdata 形如 name=value&name2=value2，取指定字段并做 URL 解码。
+    " 先拼成完整 body 再匹配：postdata 按固定长度分片，名值对可能被切到两片
+    DATA(lv_body) = REDUCE #(
+      INIT s TYPE string
+      FOR lv_part IN it_postdata
+      NEXT s = s && lv_part ).
+    FIND REGEX |(^\|&)({ iv_name })=(.*)$| IN lv_body
+      SUBMATCHES DATA(lv_val).
+    IF sy-subrc = 0.
+      rv_value = zcl_ark_convert=>url_decode( lv_val ).
+    ENDIF.
   ENDMETHOD.
 
   METHOD render_cell.
+    DATA(lv_value) = zcl_ark_convert=>escape_html( is_cell-value ).
     IF is_cell-action IS NOT INITIAL.
-      rv_html = |<a href="sapevent:{ is_cell-action }">{ is_cell-value }</a>|.
+      rv_html = |<a href="sapevent:{ zcl_ark_convert=>escape_html( is_cell-action ) }">{ lv_value }</a>|.
       IF is_cell-semantic IS NOT INITIAL.
-        rv_html = |<span class="ark-status ark-status--{ is_cell-semantic }"></span>{ rv_html }|.
+        rv_html = |<span class="ark-status ark-status--{ zcl_ark_convert=>escape_html( is_cell-semantic ) }"></span>{ rv_html }|.
       ENDIF.
     ELSEIF is_cell-semantic IS NOT INITIAL.
-      rv_html = |<span class="ark-status ark-status--{ is_cell-semantic }">| &&
-                |{ is_cell-value }</span>|.
+      rv_html = |<span class="ark-status ark-status--{ zcl_ark_convert=>escape_html( is_cell-semantic ) }">| &&
+                |{ lv_value }</span>|.
     ELSE.
-      rv_html = is_cell-value.
+      rv_html = lv_value.
     ENDIF.
   ENDMETHOD.
 
@@ -640,39 +683,45 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     IF is_section-form_action IS INITIAL.
       co_html->add( |<form method="post">| ).
     ELSE.
-      co_html->add( |<form method="post" action="sapevent:{ is_section-form_action }">| ).
+      co_html->add(
+        |<form method="post" action="sapevent:{ zcl_ark_convert=>escape_html( is_section-form_action ) }">| ).
     ENDIF.
 
     LOOP AT is_section-form_fields INTO DATA(ls_field).
+      DATA(lv_label) = zcl_ark_convert=>escape_html( ls_field-label ).
+      DATA(lv_name)  = zcl_ark_convert=>escape_html( ls_field-name ).
+      DATA(lv_value) = zcl_ark_convert=>escape_html( ls_field-value ).
+      DATA(lv_type)  = zcl_ark_convert=>escape_html( ls_field-input_type ).
       co_html->add( |<div class="form-row">| ).
-      co_html->add( |<span class="form-label">{ ls_field-label }</span>| ).
+      co_html->add( |<span class="form-label">{ lv_label }</span>| ).
 
       CASE ls_field-input_type.
         WHEN 'select'.
-          co_html->add( |<select name="{ ls_field-name }">| ).
+          co_html->add( |<select name="{ lv_name }">| ).
           LOOP AT ls_field-options INTO DATA(lv_option).
+            DATA(lv_opt) = zcl_ark_convert=>escape_html( lv_option ).
             IF lv_option = ls_field-value.
-              co_html->add( |<option selected>{ lv_option }</option>| ).
+              co_html->add( |<option selected>{ lv_opt }</option>| ).
             ELSE.
-              co_html->add( |<option>{ lv_option }</option>| ).
+              co_html->add( |<option>{ lv_opt }</option>| ).
             ENDIF.
           ENDLOOP.
           co_html->add( |</select>| ).
         WHEN 'textarea'.
           co_html->add(
-            |<textarea name="{ ls_field-name }" rows="4">{ ls_field-value }</textarea>| ).
+            |<textarea name="{ lv_name }" rows="4">{ lv_value }</textarea>| ).
         WHEN 'checkbox'.
           IF ls_field-value = 'X'.
-            co_html->add( |<input type="checkbox" name="{ ls_field-name }" checked>| ).
+            co_html->add( |<input type="checkbox" name="{ lv_name }" checked>| ).
           ELSE.
-            co_html->add( |<input type="checkbox" name="{ ls_field-name }">| ).
+            co_html->add( |<input type="checkbox" name="{ lv_name }">| ).
           ENDIF.
         WHEN 'hidden'.
-          co_html->add( |<input type="hidden" name="{ ls_field-name }" | &&
-                        |value="{ ls_field-value }">| ).
+          co_html->add( |<input type="hidden" name="{ lv_name }" | &&
+                        |value="{ lv_value }">| ).
         WHEN OTHERS.
-          co_html->add( |<input type="{ ls_field-input_type }" name="{ ls_field-name }" | &&
-                        |value="{ ls_field-value }">| ).
+          co_html->add( |<input type="{ lv_type }" name="{ lv_name }" | &&
+                        |value="{ lv_value }">| ).
       ENDCASE.
 
       co_html->add( |</div>| ).
@@ -711,9 +760,10 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     " 地图注册：chart_map 对应资产已由 build_html 注入（守卫缺失时退化为空地图）
     DATA lv_map_js TYPE string.
     IF is_section-chart_map IS NOT INITIAL.
+      DATA(lv_map_esc) = zcl_ark_echarts=>escape_js( is_section-chart_map ).
       lv_map_js =
-        |var m = window.ARK_MAPS && window.ARK_MAPS['{ is_section-chart_map }'];| &&
-        |if (m) \{ echarts.registerMap('{ is_section-chart_map }', m); \}| .
+        |var m = window.ARK_MAPS && window.ARK_MAPS['{ lv_map_esc }'];| &&
+        |if (m) \{ echarts.registerMap('{ lv_map_esc }', m); \}| .
     ENDIF.
 
     " 图表元素点击 → sapevent，参数同 zcl_ark_echarts=>set_on_click，
@@ -732,12 +782,12 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         |\} else if (document.querySelector('a[href^="sap-cust"]')) \{| &&
         |  arkPrefix = 'sap-cust://sap-place-holder/';| &&
         |\}| &&
-        |location.href = arkPrefix + 'SAPEVENT:{ is_section-chart_click_action }'| &&
+        |location.href = arkPrefix + 'SAPEVENT:{ zcl_ark_echarts=>escape_js( is_section-chart_click_action ) }'| &&
         |  + '?name=' + encodeURIComponent(p.name \|\| '')| &&
         |  + '&series=' + encodeURIComponent(p.seriesName \|\| '')| &&
         |  + '&value=' + encodeURIComponent(v === undefined ? '' : String(v))| &&
         |  + '&idx=' + (p.dataIndex === undefined ? -1 : p.dataIndex)| &&
-        |  + '&chart={ iv_index };| &&
+        |  + '&chart={ iv_index }';| &&
         |\});| .
     ENDIF.
 

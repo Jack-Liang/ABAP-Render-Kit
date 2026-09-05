@@ -100,6 +100,8 @@ CLASS zcl_ark_html IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " RTTI 判型（上游 abapGit 同款）：describe_by_data 是类型缓存查找，
+    " 开销可接受；勿改成 ?= 判型 —— 文本 chunk 每次都会抛捕获异常，更慢
     IF cl_abap_typedescr=>describe_by_data( ig_chunk )->type_kind = cl_abap_typedescr=>typekind_oref.
       ls_chunk-html ?= ig_chunk.
       ls_chunk-is_text = abap_false.

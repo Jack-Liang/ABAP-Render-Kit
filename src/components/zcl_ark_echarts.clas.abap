@@ -154,6 +154,12 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS render
       RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
 
+    " JS 字符串字面量转义（反斜杠/引号/换行/</script> 等）。
+    " 公开给 state_page 等需要把值嵌入 <script> 的调用方复用
+    CLASS-METHODS escape_js
+      IMPORTING !iv_value         TYPE string
+      RETURNING VALUE(rv_escaped) TYPE string .
+
   PROTECTED SECTION.
   PRIVATE SECTION.
     TYPES:
@@ -208,9 +214,6 @@ CLASS zcl_ark_echarts DEFINITION
     METHODS serialize_option
       IMPORTING !ig_data       TYPE any
       RETURNING VALUE(rv_json) TYPE string .
-    CLASS-METHODS escape_js
-      IMPORTING !iv_value         TYPE string
-      RETURNING VALUE(rv_escaped) TYPE string .
     CLASS-METHODS wrap_map_js
       IMPORTING !iv_map_name     TYPE string
                 !iv_geojson      TYPE string
@@ -384,15 +387,15 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     " zcl_ark_json 序列化结构内表会得到大写键名（NAME/VALUE），地图数据
     " 必须是小写 name/value，这里手工拼 JSON（与 build_option_js 的
     " legend 系列名同一信任级别：值经 escape_js 转义）
+    " 先收集后拼接：大地图（几千区域）逐条 && 是 O(n²) 拷贝
+    DATA lt_items TYPE string_table.
     LOOP AT it_data INTO DATA(ls_data).
-      IF rv_json IS NOT INITIAL.
-        rv_json = rv_json && `,`.
-      ENDIF.
-      rv_json = rv_json &&
-        |\{ name: '{ escape_js( ls_data-name ) }', value: { ls_data-value DECIMALS = 2 } \}|.
+      APPEND
+        |\{ name: '{ escape_js( ls_data-name ) }', value: { ls_data-value DECIMALS = 2 } \}|
+        TO lt_items.
     ENDLOOP.
 
-    rv_json = `[ ` && rv_json && ` ]`.
+    rv_json = `[ ` && concat_lines_of( table = lt_items sep = `,` ) && ` ]`.
   ENDMETHOD.
 
   METHOD set_library_xdata.

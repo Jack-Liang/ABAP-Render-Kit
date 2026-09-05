@@ -75,20 +75,51 @@ CLASS zcl_ark_convert IMPLEMENTATION.
         zcx_ark_exception=>raise( |MIME object { iv_name } conversion failed| ).
       ENDIF.
     ELSE.
-      " 无 filesize 参数时回退为整行拼接（末行可能含填充字节）
-      LOOP AT lt_mime ASSIGNING <ls_mime>.
-        rv_xdata = rv_xdata && <ls_mime>-line.
-      ENDLOOP.
+      " 无 filesize 参数时回退：一次性批量转换（逐行 && 对 1MB 资产是 O(n²)）
+      DATA lv_total TYPE i.
+      lv_total = lines( lt_mime ) * 255.
+      CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
+        EXPORTING
+          input_length = lv_total
+        IMPORTING
+          buffer       = rv_xdata
+        TABLES
+          binary_tab   = lt_mime
+        EXCEPTIONS
+          failed       = 1
+          OTHERS       = 2.
+      IF sy-subrc <> 0.
+        zcx_ark_exception=>raise( |MIME object { iv_name } conversion failed| ).
+      ENDIF.
+      " 末行填充字节（NUL）截掉；本回退路径面向文本资产，二进制资产
+      " 必须带 filesize 参数才能保证精确
+      WHILE rv_xdata IS NOT INITIAL.
+        DATA lv_last TYPE i.
+        lv_last = xstrlen( rv_xdata ) - 1.
+        IF rv_xdata+lv_last(1) <> '00'.
+          EXIT.
+        ENDIF.
+        IF lv_last = 0.
+          CLEAR rv_xdata.
+        ELSE.
+          rv_xdata = rv_xdata(lv_last).
+        ENDIF.
+      ENDWHILE.
     ENDIF.
   ENDMETHOD.
   METHOD string_to_tab.
     DATA lv_char200 TYPE c LENGTH 200.
     DATA lv_offset TYPE i.
     DATA lv_len TYPE i.
-    ev_size = strlen( iv_str ).
+    " ev_size 必须是字节数（load_data 的 iv_size 语义）：中文字符 UTF-8 下
+    " 一字多字节，strlen（字符数）会导致 HTML 尾部被截断。
+    " 切分循环仍按字符偏移走（char200 片段），与字节数互不相干
+    DATA lv_strlen TYPE i.
+    ev_size = xstrlen( string_to_xstring( iv_str ) ).
+    lv_strlen = strlen( iv_str ).
     lv_offset = 0.
-    WHILE lv_offset < ev_size.
-      lv_len = ev_size - lv_offset.
+    WHILE lv_offset < lv_strlen.
+      lv_len = lv_strlen - lv_offset.
       IF lv_len > 200.
         lv_len = 200.
       ENDIF.
@@ -108,6 +139,10 @@ CLASS zcl_ark_convert IMPLEMENTATION.
     " 运行期必然抛异常走 CATCH，%XX 会被当作普通文本（中文解码出乱码）
     rv_decoded = iv_encoded.
     rv_decoded = replace( val = rv_decoded sub = `+` with = ` ` occ = 0 ).
+    " 快速路径：不含 %XX 序列时无需逐字节重组（逐字符 convert_to 开销大）
+    IF rv_decoded NA `%`.
+      RETURN.
+    ENDIF.
 
     DATA lv_x TYPE xstring.
     DATA lv_two TYPE string.

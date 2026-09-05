@@ -135,23 +135,25 @@ CLASS zcl_ark_html_toolbar IMPLEMENTATION.
     lo_toolbar->add( |<div class="{ mv_class }"{ lv_id }>| ).
 
     LOOP AT mt_items INTO DATA(ls_item).
+      " label 进元素内容、action/query 进属性值：渲染时统一转义
+      DATA(lv_label) = zcl_ark_convert=>escape_html( ls_item-label ).
       CASE ls_item-type.
         WHEN 'B'.
           IF ls_item-enabled = abap_false.
-            lo_toolbar->add( |<span class="disabled">{ ls_item-label }</span> | ).
+            lo_toolbar->add( |<span class="disabled">{ lv_label }</span> | ).
           ELSE.
             lo_toolbar->add_a(
-              iv_txt   = ls_item-label
-              iv_act   = ls_item-action
-              iv_query = ls_item-query
+              iv_txt   = lv_label
+              iv_act   = zcl_ark_convert=>escape_html( ls_item-action )
+              iv_query = zcl_ark_convert=>escape_html( ls_item-query )
               iv_class = 'toolbar-button' ).
             lo_toolbar->add( | | ).
           ENDIF.
 
         WHEN 'L'.
           lo_toolbar->add_a(
-            iv_txt   = ls_item-label
-            iv_act   = ls_item-url
+            iv_txt   = lv_label
+            iv_act   = zcl_ark_convert=>escape_html( ls_item-url )
             iv_typ   = zif_ark_html=>c_action_type-url
             iv_class = 'toolbar-link' ).
           lo_toolbar->add( | | ).
@@ -160,7 +162,7 @@ CLASS zcl_ark_html_toolbar IMPLEMENTATION.
           lo_toolbar->add( |<span class="separator"></span> | ).
 
         WHEN 'T'.
-          lo_toolbar->add( |<span class="toolbar-text">{ ls_item-label }</span> | ).
+          lo_toolbar->add( |<span class="toolbar-text">{ lv_label }</span> | ).
 
         WHEN 'H'.
           IF ls_item-html IS NOT INITIAL.

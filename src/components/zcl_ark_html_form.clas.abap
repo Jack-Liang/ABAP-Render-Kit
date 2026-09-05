@@ -55,15 +55,6 @@ CLASS zcl_ark_html_form DEFINITION
     DATA mo_html TYPE REF TO zcl_ark_html .
     DATA mv_action TYPE string .
     DATA mv_method TYPE string .
-    DATA mt_fields TYPE STANDARD TABLE OF string .
-
-    METHODS render_field
-      IMPORTING !iv_name TYPE string
-                !iv_label TYPE string
-                !iv_value TYPE string
-                !iv_type TYPE string
-                !iv_readonly TYPE abap_bool
-      RETURNING VALUE(rv_html) TYPE string .
 ENDCLASS.
 
 CLASS zcl_ark_html_form IMPLEMENTATION.
@@ -82,25 +73,28 @@ CLASS zcl_ark_html_form IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD add_button.
+    " label 为用户可见文本，action 进属性值：一律转义，值含引号/< 时不破坏 HTML
+    DATA(lv_label) = zcl_ark_convert=>escape_html( iv_label ).
     IF iv_action IS NOT INITIAL.
-      mo_html->add( |<button type="{ iv_type }" formaction="sapevent:{ iv_action }">{ iv_label }</button> | ).
+      mo_html->add( |<button type="{ zcl_ark_convert=>escape_html( iv_type ) }" formaction="sapevent:{ zcl_ark_convert=>escape_html( iv_action ) }">{ lv_label }</button> | ).
     ELSE.
-      mo_html->add( |<button type="{ iv_type }">{ iv_label }</button> | ).
+      mo_html->add( |<button type="{ zcl_ark_convert=>escape_html( iv_type ) }">{ lv_label }</button> | ).
     ENDIF.
     ri_self = me.
   ENDMETHOD.
 
   METHOD add_dropdown.
     mo_html->add( |<div class="form-row">| ).
-    mo_html->add( |<span class="form-label">{ iv_label }</span>| ).
-    mo_html->add( |<select name="{ iv_name }">| ).
+    mo_html->add( |<span class="form-label">{ zcl_ark_convert=>escape_html( iv_label ) }</span>| ).
+    mo_html->add( |<select name="{ zcl_ark_convert=>escape_html( iv_name ) }">| ).
 
     DATA lv_option TYPE string.
     LOOP AT it_options INTO lv_option.
+      DATA(lv_escaped) = zcl_ark_convert=>escape_html( lv_option ).
       IF lv_option = iv_selected.
-        mo_html->add( |<option value="{ lv_option }" selected>{ lv_option }</option>| ).
+        mo_html->add( |<option value="{ lv_escaped }" selected>{ lv_escaped }</option>| ).
       ELSE.
-        mo_html->add( |<option value="{ lv_option }">{ lv_option }</option>| ).
+        mo_html->add( |<option value="{ lv_escaped }">{ lv_escaped }</option>| ).
       ENDIF.
     ENDLOOP.
 
@@ -111,33 +105,36 @@ CLASS zcl_ark_html_form IMPLEMENTATION.
 
   METHOD add_field.
     mo_html->add( |<div class="form-row">| ).
-    mo_html->add( |<span class="form-label">{ iv_label }</span>| ).
+    mo_html->add( |<span class="form-label">{ zcl_ark_convert=>escape_html( iv_label ) }</span>| ).
 
     DATA lv_readonly TYPE string.
     IF iv_readonly = abap_true.
       lv_readonly = ' readonly'.
     ENDIF.
 
-    mo_html->add( |<input type="{ iv_type }" name="{ iv_name }" value="{ iv_value }"{ lv_readonly }>| ).
+    mo_html->add(
+      |<input type="{ zcl_ark_convert=>escape_html( iv_type ) }"| &&
+      | name="{ zcl_ark_convert=>escape_html( iv_name ) }"| &&
+      | value="{ zcl_ark_convert=>escape_html( iv_value ) }"{ lv_readonly}>| ).
     mo_html->add( |</div>| ).
     ri_self = me.
   ENDMETHOD.
 
   METHOD add_hidden.
-    mo_html->add( |<input type="hidden" name="{ iv_name }" value="{ iv_value }">| ).
+    mo_html->add(
+      |<input type="hidden" name="{ zcl_ark_convert=>escape_html( iv_name ) }"| &&
+      | value="{ zcl_ark_convert=>escape_html( iv_value ) }">| ).
     ri_self = me.
   ENDMETHOD.
 
   METHOD add_textarea.
     mo_html->add( |<div class="form-row">| ).
-    mo_html->add( |<span class="form-label">{ iv_label }</span>| ).
-    mo_html->add( |<textarea name="{ iv_name }" rows="{ iv_rows }">{ iv_value }</textarea>| ).
+    mo_html->add( |<span class="form-label">{ zcl_ark_convert=>escape_html( iv_label ) }</span>| ).
+    mo_html->add(
+      |<textarea name="{ zcl_ark_convert=>escape_html( iv_name ) }" rows="{ iv_rows }">| &&
+      |{ zcl_ark_convert=>escape_html( iv_value ) }</textarea>| ).
     mo_html->add( |</div>| ).
     ri_self = me.
-  ENDMETHOD.
-
-  METHOD render_field.
-    rv_html = |<input type="{ iv_type }" name="{ iv_name }" value="{ iv_value }">|.
   ENDMETHOD.
 
   METHOD set_form_action.
@@ -150,10 +147,10 @@ CLASS zcl_ark_html_form IMPLEMENTATION.
 
     DATA lv_action TYPE string.
     IF mv_action IS NOT INITIAL.
-      lv_action = | action="sapevent:{ mv_action }"|.
+      lv_action = | action="sapevent:{ zcl_ark_convert=>escape_html( mv_action ) }"|.
     ENDIF.
 
-    lo_form->add( |<form method="{ mv_method }"{ lv_action }>| ).
+    lo_form->add( |<form method="{ zcl_ark_convert=>escape_html( mv_method ) }"{ lv_action }>| ).
     lo_form->add( mo_html ).
     lo_form->add( |</form>| ).
 

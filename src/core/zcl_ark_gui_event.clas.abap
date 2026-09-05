@@ -22,8 +22,19 @@ CLASS zcl_ark_gui_event IMPLEMENTATION.
       SPLIT iv_getdata AT '&' INTO TABLE lt_parts.
       LOOP AT lt_parts INTO lv_part.
         DATA lv_name TYPE c LENGTH 30.
+        CLEAR lv_name.
         DATA lv_value TYPE string.
-        SPLIT lv_part AT '=' INTO lv_name lv_value.
+        CLEAR lv_value.
+        " 显式找 '=' 分隔：SPLIT 对无 '=' 的片段（如尾随 '&'）不清空目标，
+        " value 会残留上一轮的旧值
+        FIND FIRST OCCURRENCE OF '=' IN lv_part
+          MATCH OFFSET DATA(lv_off).
+        IF sy-subrc = 0.
+          lv_name = substring( val = lv_part off = 0 len = lv_off ).
+          lv_value = substring( val = lv_part off = lv_off + 1 ).
+        ELSE.
+          lv_name = lv_part.
+        ENDIF.
         " 值统一 URL 解码：query 值可能来自前端 encodeURIComponent
         " （图表点击回传的中文类目名等）；对纯 ASCII 是恒等变换。
         " 解码后超过 250 字符在写入 mt_query 时截断（value 组件为 c250）

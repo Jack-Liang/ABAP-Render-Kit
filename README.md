@@ -18,6 +18,9 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Page Navigation** — Stack-based history with back/forward support
 - **Event System** — Sapevent-based communication between frontend and ABAP backend
 - **UI Components** — Form, Table, Toolbar, and more ready-to-use components
+- **JS Library Registry** — `zcl_ark_js_library=>register( iv_name iv_mime )` plugs any uploaded JS (three.js, dayjs, ...) into every page; `include_for( lo_widget )` injects a widget's dependencies once per page
+- **JS-ABAP Event Bridge** — `zcl_ark_js_bridge` exposes `window.arkEmit(action, params)` so any component can fire sapevents without hand-rolled URL plumbing
+- **Widget Plugin Interface** — implement `zif_ark_js_widget` (`get_assets` + `render`) and your class is a first-class page capability, same as the built-in table/JSON/chart components
 - **Generic Data Rendering** — `zcl_ark_html_table=>from_any_table( )` turns any internal table into an HTML table via RTTI; `zcl_ark_json_tree` renders any JSON string as a collapsible tree — no per-cell code in either direction
 - **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content; chart click events (drill-down) and GeoJSON maps (bundled China map) included
 - **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository

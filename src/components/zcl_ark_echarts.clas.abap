@@ -4,6 +4,11 @@ CLASS zcl_ark_echarts DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
+    " 插件接口：echarts 是第一个 JS 库组件样板（库依赖声明 + 统一 render）。
+    " ALIASES 保持 lo_chart->render( ) 的调用写法不变
+    INTERFACES zif_ark_js_widget .
+    ALIASES render FOR zif_ark_gui_renderable~render .
+
     " 单条系列的数据点便捷类型（整型，支持 ( 120 ) 字面量写法）。
     " 带小数的数据（金额等）请将 add_series 的 it_data 传自定义数值内表
     " （p/f/decfloat 行类型均可）；ABAP 构造器表达式的字面量转换规则
@@ -153,8 +158,12 @@ CLASS zcl_ark_echarts DEFINITION
 
     " 渲染为 HTML 片段（div + 初始化脚本），可与其他内容混排：
     "   mo_html->add( lo_chart->render( ) ).
-    METHODS render
-      RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
+    " 经 zif_ark_gui_renderable~render 实现，ALIASES render 暴露
+
+    " 插件接口：声明的 JS 库依赖，页面经 include_for 统一注入
+    METHODS zif_ark_js_widget~get_assets
+      RETURNING
+        VALUE(rt_assets) TYPE string_table .
 
     " JS 字符串字面量转义（反斜杠/引号/换行/</script> 等）。
     " 公开给 state_page 等需要把值嵌入 <script> 的调用方复用
@@ -472,7 +481,12 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-  METHOD render.
+  METHOD zif_ark_js_widget~get_assets.
+    " 库依赖：echarts 本体（地图资产由 render 内的 include_map_script 自注）
+    APPEND c_lib_name TO rt_assets.
+  ENDMETHOD.
+
+  METHOD zif_ark_gui_renderable~render.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
     " ECharts 库。同页多个图表时，仅第一个组件需要带上（iv_include_lib）

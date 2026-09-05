@@ -55,6 +55,18 @@ CLASS zcl_ark_js_library DEFINITION
     "! 桥脚本的去重也由此一并重置）
     CLASS-METHODS reset_page_scope .
 
+    "! 一行式注入组件声明的全部依赖，返回拼接好的 <script> 标签：
+    "!   DATA(lo_chart) = build_chart( ).
+    "!   mo_html->add( zcl_ark_js_library=>include_for( lo_chart ) ).
+    "!   mo_html->add( lo_chart->render( ) ).
+    "!
+    "! 同页多次调用安全：include 内部按页面作用域去重，无依赖返回空串
+    CLASS-METHODS include_for
+      IMPORTING
+        !io_widget     TYPE REF TO zif_ark_js_widget
+      RETURNING
+        VALUE(rv_html) TYPE string .
+
   PROTECTED SECTION.
   PRIVATE SECTION.
     TYPES:
@@ -165,6 +177,18 @@ CLASS zcl_ark_js_library IMPLEMENTATION.
   METHOD reset_page_scope.
     CLEAR gt_included.
     zcl_ark_js_bridge=>reset_page_scope( ).
+  ENDMETHOD.
+
+
+  METHOD include_for.
+    DATA lt_tags TYPE string_table.
+    LOOP AT io_widget->get_assets( ) INTO DATA(lv_name).
+      DATA(lv_tag) = include( lv_name ).
+      IF lv_tag IS NOT INITIAL.
+        APPEND lv_tag TO lt_tags.
+      ENDIF.
+    ENDLOOP.
+    rv_html = concat_lines_of( table = lt_tags ).
   ENDMETHOD.
 
 

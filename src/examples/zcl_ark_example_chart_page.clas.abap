@@ -13,8 +13,8 @@ CLASS zcl_ark_example_chart_page DEFINITION
 
   PRIVATE SECTION.
     METHODS build_toolbar RETURNING VALUE(ri_toolbar) TYPE REF TO zif_ark_html .
-    METHODS build_area_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
-    METHODS build_bar_chart RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
+    METHODS build_area_chart RETURNING VALUE(ro_chart) TYPE REF TO zcl_ark_echarts .
+    METHODS build_bar_chart RETURNING VALUE(ro_chart) TYPE REF TO zcl_ark_echarts .
     METHODS build_table RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html .
     DATA mv_drill_name TYPE string .
     DATA mv_drill_value TYPE string .
@@ -49,20 +49,26 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
        )->set( iv_name = 'DESC'  iv_value = 'zcl_ark_echarts 只是页面内容流中的一段，与文字、表格等任意混排。'
        )->render( ) ).
 
-    " 图表 1：堆叠面积图（第一个组件负责加载 ECharts 库）
-    mo_html->add( build_area_chart( ) ).
+    " 图表 1：堆叠面积图。页面级依赖声明：组件经 zif_ark_js_widget~get_assets
+    " 报告所需 JS 库，include_for 统一注入（同页多组件声明同一库只注入一次）
+    DATA(lo_area_chart) = build_area_chart( ).
+    mo_html->add( zcl_ark_js_library=>include_for( lo_area_chart ) ).
+    mo_html->add( lo_area_chart->render( ) ).
 
     mo_html->add( |<h2>Data Table</h2>| ).
     mo_html->add( build_table( ) ).
 
-    " 图表 2：柱状图（iv_include_lib = abap_false，不重复加载库）
+    " 图表 2：柱状图。不再依赖第一个组件"负责加载库"的隐式约定，
+    " 依赖声明各自独立，注入由注册器去重
     mo_html->add( |<h2>Second Chart (Bar) — 点击柱子下钻</h2>| ).
 
     IF mv_drill_name IS NOT INITIAL.
       mo_html->add( |<p>已选择: <b>{ mv_drill_name }</b>（value = { mv_drill_value }）</p>| ).
     ENDIF.
 
-    mo_html->add( build_bar_chart( ) ).
+    DATA(lo_bar_chart) = build_bar_chart( ).
+    mo_html->add( zcl_ark_js_library=>include_for( lo_bar_chart ) ).
+    mo_html->add( lo_bar_chart->render( ) ).
 
     ri_html = mo_html.
   ENDMETHOD.
@@ -84,60 +90,58 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD build_area_chart.
-    DATA(lo_chart) = NEW zcl_ark_echarts(
+    ro_chart = NEW zcl_ark_echarts(
       iv_div_id = 'chart_area'
       iv_height = 420 ).
 
-    lo_chart->set_title( 'Stacked Area Chart' ).
-    lo_chart->set_toolbox( ).
-    lo_chart->set_xaxis_categories(
+    ro_chart->set_title( 'Stacked Area Chart' ).
+    ro_chart->set_toolbox( ).
+    ro_chart->set_xaxis_categories(
       VALUE string_table( ( `Mon` ) ( `Tue` ) ( `Wed` ) ( `Thu` ) ( `Fri` ) ( `Sat` ) ( `Sun` ) ) ).
 
-    lo_chart->add_series(
+    ro_chart->add_series(
       iv_name  = 'Email'
       it_data  = VALUE zcl_ark_echarts=>ty_values( ( 120 ) ( 132 ) ( 101 ) ( 134 ) ( 90 ) ( 230 ) ( 210 ) )
       iv_stack = 'Total'
       iv_area  = abap_true ).
 
-    lo_chart->add_series(
+    ro_chart->add_series(
       iv_name  = 'Union Ads'
       it_data  = VALUE zcl_ark_echarts=>ty_values( ( 220 ) ( 182 ) ( 191 ) ( 234 ) ( 290 ) ( 330 ) ( 310 ) )
       iv_stack = 'Total'
       iv_area  = abap_true ).
 
-    lo_chart->add_series(
+    ro_chart->add_series(
       iv_name  = 'Video Ads'
       it_data  = VALUE zcl_ark_echarts=>ty_values( ( 150 ) ( 232 ) ( 201 ) ( 154 ) ( 190 ) ( 330 ) ( 410 ) )
       iv_stack = 'Total'
       iv_area  = abap_true ).
 
-    lo_chart->add_series(
+    ro_chart->add_series(
       iv_name  = 'Direct'
       it_data  = VALUE zcl_ark_echarts=>ty_values( ( 320 ) ( 332 ) ( 301 ) ( 334 ) ( 390 ) ( 330 ) ( 320 ) )
       iv_stack = 'Total'
       iv_area  = abap_true ).
 
-    lo_chart->add_series(
+    ro_chart->add_series(
       iv_name  = 'Search Engine'
       it_data  = VALUE zcl_ark_echarts=>ty_values( ( 820 ) ( 932 ) ( 901 ) ( 934 ) ( 1290 ) ( 1330 ) ( 1320 ) )
       iv_stack = 'Total'
       iv_area  = abap_true
       iv_label = abap_true ).
 
-    ri_html = lo_chart->render( ).
   ENDMETHOD.
 
   METHOD build_bar_chart.
-    DATA(lo_chart) = NEW zcl_ark_echarts(
-      iv_div_id      = 'chart_bar'
-      iv_height      = 320
-      iv_include_lib = abap_false ).
+    ro_chart = NEW zcl_ark_echarts(
+      iv_div_id = 'chart_bar'
+      iv_height = 320 ).
 
-    lo_chart->set_title( 'Weekly Total' ).
-    lo_chart->set_xaxis_categories(
+    ro_chart->set_title( 'Weekly Total' ).
+    ro_chart->set_xaxis_categories(
       VALUE string_table( ( `Mon` ) ( `Tue` ) ( `Wed` ) ( `Thu` ) ( `Fri` ) ( `Sat` ) ( `Sun` ) ) ).
 
-    lo_chart->add_series(
+    ro_chart->add_series(
       iv_name            = 'Total'
       iv_type            = 'bar'
       it_data            = VALUE zcl_ark_echarts=>ty_values(
@@ -147,9 +151,7 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
       iv_label_thousands = abap_true ).
 
     " 点击柱子 -> sapevent chart_drill -> on_event 读取参数
-    lo_chart->set_on_click( 'chart_drill' ).
-
-    ri_html = lo_chart->render( ).
+    ro_chart->set_on_click( 'chart_drill' ).
   ENDMETHOD.
 
   METHOD build_table.

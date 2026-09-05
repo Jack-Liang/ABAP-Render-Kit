@@ -5,6 +5,8 @@ CLASS zcl_ark_json_tree DEFINITION
 
   PUBLIC SECTION.
     INTERFACES zif_ark_gui_renderable .
+    " 插件接口：json_tree 的 JS 内联自足，声明空依赖集以统一组件形态
+    INTERFACES zif_ark_js_widget .
 
     CLASS-METHODS create
       IMPORTING
@@ -66,6 +68,10 @@ CLASS zcl_ark_json_tree IMPLEMENTATION.
     ri_self = me.
   ENDMETHOD.
 
+
+  METHOD zif_ark_js_widget~get_assets.
+    " 折叠树脚本内联在 render 输出中，无外部 JS 库依赖
+  ENDMETHOD.
 
   METHOD zif_ark_gui_renderable~render.
     DATA lo_html TYPE REF TO zcl_ark_html.

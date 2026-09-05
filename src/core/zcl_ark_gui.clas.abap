@@ -225,11 +225,23 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   METHOD build_html_document.
     " Default styles come from the theme (Fiori Quartz Light design tokens);
     " see zcl_ark_theme. Pages can override single tokens before render( ).
+    " 全局 JS 错误捕获：任何脚本报错直接画进 DOM —— 内核差异导致的"白屏"
+    " 从此可见（JavaFX WebView 老版 WebKit 缺 ES6/API 时尤其关键）
     rv_html = |<!DOCTYPE html>\n| &&
               |<html>\n| &&
               |<head>\n| &&
               |<meta charset="utf-8">\n| &&
               |<meta http-equiv="X-UA-Compatible" content="IE=edge">\n| &&
+              |<script type="text/javascript">\n| &&
+              |window.onerror = function(msg, src, line, col) \{\n| &&
+              |  var d = document.createElement('pre');\n| &&
+              |  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;margin:0;padding:8px;' +\n| &&
+              |    'background:#fee;color:#b00020;font:12px monospace;z-index:99999;' +\n| &&
+              |    'border-top:2px solid #b00020;max-height:40%;overflow:auto;white-space:pre-wrap;';\n| &&
+              |  d.textContent = 'JS ERROR: ' + msg + ' @' + (src \|\| '?') + ':' + (line \|\| '?');\n| &&
+              |  document.body.appendChild(d);\n| &&
+              |\};\n| &&
+              |</script>\n| &&
               |<style type="text/css">\n| &&
               zcl_ark_theme=>get_instance( )->get_css( ) &&
               |\n</style>\n| &&

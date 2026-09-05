@@ -217,7 +217,19 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       | font-size: 11px; \} | &&
       |.ark-jt-raw \{ margin: 0; padding: 8px 0; white-space: pre-wrap;| &&
       | word-break: break-all; font-family: Consolas, Menlo, monospace;| &&
-      | font-size: 12px; \} |.
+      | font-size: 12px; \} | &&
+      |th.ark-sortable \{ cursor: pointer; \} | &&
+      |th.ark-sortable:hover \{ color: var(--arkBrandColor); \} | &&
+      |th.ark-sorted-asc::after \{ content: ' ▲'; \} | &&
+      |th.ark-sorted-desc::after \{ content: ' ▼'; \} | &&
+      |.ark-tbl-count \{ color: var(--arkNeutralColor); font-size: 12px; \} | &&
+      |.ark-data-wrap \{ max-width: 100%; overflow-x: auto; \} | &&
+      |table.ark-data-table \{ width: auto; max-width: 100%; \} | &&
+      |.ark-data-table th \{ white-space: nowrap; \} | &&
+      |.ark-data-table td \{ white-space: nowrap; \} | &&
+      |.ark-data-table tbody tr:nth-child(even) td \{| &&
+      | background: var(--arkPageBackground); \} | &&
+      |.ark-data-table tbody tr:hover td \{ background: var(--arkHoverBackground); \} |.
   ENDMETHOD.
 
 ENDCLASS.

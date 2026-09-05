@@ -54,7 +54,8 @@ CLASS zcl_ark_example_data_page IMPLEMENTATION.
     mo_html->add( |<h1 style="margin-bottom: 4px;">Data Viewer</h1>| ).
     mo_html->add( |<p style="margin-top: 0; color: #57606a;">| &&
                   |Typed ABAP data in, HTML out &mdash; no per-cell code.| &&
-                  |&nbsp;&nbsp;| &&
+                  |&nbsp;&nbsp;点击列头排序，输入筛选就地生效| &&
+                  |&nbsp;&middot;&nbsp;| &&
                   |{ mo_html->a( iv_txt = 'Expand all' iv_act = 'jt_expand' ) }| &&
                   |&nbsp;&middot;&nbsp;| &&
                   |{ mo_html->a( iv_txt = 'Collapse all' iv_act = 'jt_collapse' ) }</p>| ).

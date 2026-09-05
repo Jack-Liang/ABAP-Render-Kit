@@ -223,6 +223,8 @@ mo_html->add_table(
 
 Columns derive from the line type: components based on DDIC data elements contribute their medium/short/reptext label (field name as fallback), numeric columns are right-aligned, dates/times use the user format, deep table columns show their row count, `.INCLUDE` substructures are flattened. Values are HTML-escaped. The return value is the regular builder, so `add_column( )`, `set_striped( )`, ... still apply before `render( )`. Elementary line types render as a single `TABLE_LINE` column.
 
+The generated table is interactive out of the box, entirely client-side (no sapevent round-trips): click a column header to sort ascending/descending — numeric and date columns sort by value, not by display text — and type into the filter bar above the table to match rows across all columns (the counter shows `visible / total`). Tables size to their content and scroll horizontally inside `.ark-data-wrap` instead of stretching the full page width. Manually built tables (plain `add_column`/`add_cell`) keep their previous behavior.
+
 **2. JSON string → collapsible tree** — sXML-based, zero dependencies:
 
 ```abap

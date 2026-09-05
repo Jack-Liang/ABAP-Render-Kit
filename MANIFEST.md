@@ -42,27 +42,31 @@
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
 | ZIF_ARK_GUI_STATE | INTF | Declarative page state schema (draft) |
 
-### src/components/ (UI Components — 5 objects)
+### src/components/ (UI Components — 6 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCL_ARK_HTML_FORM | CLAS | Form component |
-| ZCL_ARK_HTML_TABLE | CLAS | Table component |
+| ZCL_ARK_HTML_TABLE | CLAS | Table component (+ from_any_table RTTI rendering) |
 | ZCL_ARK_HTML_TOOLBAR | CLAS | Toolbar component |
 | ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
+| ZCL_ARK_JSON_TREE | CLAS | JSON string -> collapsible tree component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 
-### src/examples/ (Examples — 10 objects)
+### src/examples/ (Examples — 13 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
 | ZARK_ECHARTS_DEMO | PROG | ECharts component capability demo |
 | ZARK_SFLIGHT_DEMO | PROG | Database-driven dashboard demo (SFLIGHT/SCARR) |
 | ZCL_ARK_EXAMPLE_APP | CLAS | Demo application |
-| ZCL_ARK_EXAMPLE_HELLO_PAGE | CLAS | Hello world page |
+| ZCL_ARK_EXAMPLE_HELLO_PAGE | CLAS | Hello world page (demo hub) |
 | ZCL_ARK_EXAMPLE_FORM_PAGE | CLAS | Form demo page |
 | ZCL_ARK_EXAMPLE_TABLE_PAGE | CLAS | Table demo page |
 | ZCL_ARK_EXAMPLE_CHART_PAGE | CLAS | Chart demo page (mixed chart + table content) |
+| ZCL_ARK_EXAMPLE_DATA_PAGE | CLAS | Data viewer demo page (RTTI table + JSON tree) |
 | ZCL_ARK_EXAMPLE_STATE_PAGE | CLAS | Declarative state page demo |
+| ZCL_ARK_EXAMPLE_UI5_PAGE | CLAS | UI5 host verification page |
+| ZCL_ARK_EXAMPLE_UI5_STATE_PAGE | CLAS | UI5 declarative state demo page |
 | ZCL_ARK_EXAMPLE_BROWSER_PAGE | CLAS | HTML viewer engine probe page (IE / Edge) |
 
-## Total: 38 ABAP objects
+## Total: 42 ABAP objects

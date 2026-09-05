@@ -9,6 +9,8 @@ CLASS zcl_ark_convert DEFINITION PUBLIC FINAL CREATE PRIVATE .
                                   RAISING zcx_ark_exception .
     CLASS-METHODS url_decode IMPORTING !iv_encoded TYPE string
                              RETURNING VALUE(rv_decoded) TYPE string .
+    CLASS-METHODS escape_html IMPORTING !iv_text TYPE string
+                             RETURNING VALUE(rv_text) TYPE string .
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
@@ -156,5 +158,14 @@ CLASS zcl_ark_convert IMPLEMENTATION.
   ENDMETHOD.
   METHOD xstring_to_string_utf8.
     rv_str = cl_abap_codepage=>convert_from( source = iv_xstr codepage = 'UTF-8' ).
+  ENDMETHOD.
+  METHOD escape_html.
+    " HTML 文本/属性值通用转义：& 必须最先替换，否则前面引入的实体会被二次转义
+    rv_text = iv_text.
+    rv_text = replace( val = rv_text sub = `&` with = `&amp;` occ = 0 ).
+    rv_text = replace( val = rv_text sub = `<` with = `&lt;` occ = 0 ).
+    rv_text = replace( val = rv_text sub = `>` with = `&gt;` occ = 0 ).
+    rv_text = replace( val = rv_text sub = `"` with = `&quot;` occ = 0 ).
+    rv_text = replace( val = rv_text sub = `'` with = `&#39;` occ = 0 ).
   ENDMETHOD.
 ENDCLASS.

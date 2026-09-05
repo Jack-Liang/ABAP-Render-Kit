@@ -18,6 +18,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Page Navigation** — Stack-based history with back/forward support
 - **Event System** — Sapevent-based communication between frontend and ABAP backend
 - **UI Components** — Form, Table, Toolbar, and more ready-to-use components
+- **Generic Data Rendering** — `zcl_ark_html_table=>from_any_table( )` turns any internal table into an HTML table via RTTI; `zcl_ark_json_tree` renders any JSON string as a collapsible tree — no per-cell code in either direction
 - **ECharts Component** — Declarative charting with `zcl_ark_echarts`, mixable with any other HTML content; chart click events (drill-down) and GeoJSON maps (bundled China map) included
 - **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository
 - **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
@@ -125,7 +126,7 @@ WHEN 'nav_detail'.
   rs_result-state = 1.
 ```
 
-**Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, chart, and browser-info examples — the last one probes which rendering engine (IE/MSHTML vs Edge/Chromium) the SAP GUI HTML viewer actually uses on your machine — and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
+**Beyond the basics** — the bundled demos are the living documentation. Run `ZARK_EXAMPLE` (SE38/SA38, or `ZCL_ARK_EXAMPLE_APP` as an ABAP application in ADT): its home page navigates to the form, table, chart, data-viewer (RTTI table + JSON tree), and browser-info examples — the last one probes which rendering engine (IE/MSHTML vs Edge/Chromium) the SAP GUI HTML viewer actually uses on your machine — and jump-runs the standalone demo reports. `ZARK_ECHARTS_DEMO` shows every charting mode (declarative API, override hatch, full option structure, themes); `ZARK_SFLIGHT_DEMO` is a database-driven dashboard on SFLIGHT/SCARR.
 
 ## Charts (ECharts)
 
@@ -209,6 +210,31 @@ Notes:
 - If the library fails to load, the chart container shows a visible error banner instead of failing silently.
 - See `ZCL_ARK_EXAMPLE_CHART_PAGE` (mixed content, click drill-down), report `ZARK_ECHARTS_DEMO` (declarative API, override hatch, full-structure pie chart, dark theme, China map choropleth with province click), and report `ZARK_SFLIGHT_DEMO` (database-driven dashboard on the classic SFLIGHT/SCARR flight model) for usage.
 
+## Data Rendering (any table / JSON)
+
+Two generic components turn typed ABAP data into HTML without per-cell code. This is the answer to "I just want to show my data":
+
+**1. Any internal table → HTML table** — RTTI-driven:
+
+```abap
+mo_html->add_table(
+  zcl_ark_html_table=>from_any_table( lt_any )->zif_ark_gui_renderable~render( ) ).
+```
+
+Columns derive from the line type: components based on DDIC data elements contribute their medium/short/reptext label (field name as fallback), numeric columns are right-aligned, dates/times use the user format, deep table columns show their row count, `.INCLUDE` substructures are flattened. Values are HTML-escaped. The return value is the regular builder, so `add_column( )`, `set_striped( )`, ... still apply before `render( )`. Elementary line types render as a single `TABLE_LINE` column.
+
+**2. JSON string → collapsible tree** — sXML-based, zero dependencies:
+
+```abap
+mo_html->add_table(
+  zcl_ark_json_tree=>create( lv_json )->set_open( abap_true
+                        )->zif_ark_gui_renderable~render( ) ).
+```
+
+Invalid JSON degrades to escaped plain text instead of a script error. `set_open( )` controls the initial expand state of all nodes — flipping it and re-rendering is the expand-all/collapse-all pattern (a sapevent that sets `rs_result-state = 1` without returning a new page re-renders in place). Styles come from `zcl_ark_theme` (`ark-jt-*` classes, token-driven); the tiny ES5 toggle script ships with the fragment and works on both MSHTML and Edge viewers.
+
+See `ZCL_ARK_EXAMPLE_DATA_PAGE` (demo hub → **Data Viewer**) for both.
+
 ## Templates
 
 `zcl_ark_template` keeps HTML/JS skeletons out of your ABAP code. Placeholders use `{{NAME}}` syntax; unfilled placeholders are kept as-is so omissions are easy to spot:
@@ -261,9 +287,10 @@ src/
 │   └── zif_ark_gui_state         # Declarative page state schema (draft)
 ├── components/        # Tier 3: UI Components
 │   ├── zcl_ark_html_form         # Form builder
-│   ├── zcl_ark_html_table        # Table builder
+│   ├── zcl_ark_html_table        # Table builder (+ from_any_table RTTI rendering)
 │   ├── zcl_ark_html_toolbar      # Toolbar builder
 │   ├── zcl_ark_echarts           # ECharts chart component
+│   ├── zcl_ark_json_tree         # JSON string -> collapsible tree
 │   └── zcl_ark_template          # Text template with placeholders
 ├── assets/            # Static assets (MIME objects)
 │   ├── zark_echarts_min_js       # Apache ECharts 6.1.0 bundle

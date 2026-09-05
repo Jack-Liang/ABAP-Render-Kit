@@ -196,7 +196,28 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.ark-sort \{ color: var(--arkTextColor); text-decoration: none; \} | &&
       |.ark-sort:hover \{ color: var(--arkBrandColor); text-decoration: none; \} | &&
       |.ark-empty \{ color: var(--arkNeutralColor); text-align: center;| &&
-      | padding: 20px; \} |.
+      | padding: 20px; \} | &&
+      |.ark-jt-tree \{ font-family: Consolas, Menlo, monospace; font-size: 12px;| &&
+      | line-height: 1.7; padding: 4px 0; overflow-x: auto; \} | &&
+      |.ark-jt-sum \{ cursor: pointer; color: var(--arkBrandColor); \} | &&
+      |.ark-jt-sum::before \{ content: '▸ '; color: var(--arkNeutralColor); \} | &&
+      |.ark-jt-node[data-open="1"] > .ark-jt-sum::before \{ content: '▾ '; \} | &&
+      |.ark-jt-node[data-open="0"] > .ark-jt-kids \{ display: none; \} | &&
+      |.ark-jt-kids \{ border-left: 1px dotted var(--arkBorderStrongColor);| &&
+      | margin-left: 8px; padding-left: 16px; \} | &&
+      |.ark-jt-leaf \{ padding-left: 16px; \} | &&
+      |.ark-jt-key \{ color: #0550ae; \} | &&
+      |.ark-jt-idx \{ color: var(--arkNeutralColor); \} | &&
+      |.ark-jt-str \{ color: #16794c; word-break: break-all; \} | &&
+      |.ark-jt-num \{ color: #a0460a; \} | &&
+      |.ark-jt-bool \{ color: #6c32a9; \} | &&
+      |.ark-jt-null \{ color: var(--arkNeutralColor); font-style: italic; \} | &&
+      |.ark-jt-badge \{ background: var(--arkHoverBackground);| &&
+      | color: var(--arkNeutralColor); border-radius: 8px; padding: 0 6px;| &&
+      | font-size: 11px; \} | &&
+      |.ark-jt-raw \{ margin: 0; padding: 8px 0; white-space: pre-wrap;| &&
+      | word-break: break-all; font-family: Consolas, Menlo, monospace;| &&
+      | font-size: 12px; \} |.
   ENDMETHOD.
 
 ENDCLASS.

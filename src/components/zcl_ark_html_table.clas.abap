@@ -10,6 +10,25 @@ CLASS zcl_ark_html_table DEFINITION
                 !iv_class TYPE string DEFAULT 'ark-table'
       RETURNING VALUE(ri_table) TYPE REF TO zcl_ark_html_table .
 
+    "! Fill the builder from any internal table via RTTI: one column per
+    "! component (DDIC medium/short/reptext as header, field name as
+    "! fallback), numeric columns right-aligned, date/time in user format,
+    "! deep table columns show their row count, values HTML-escaped.
+    "! Elementary line types render as a single TABLE_LINE column.
+    "! Returns the configured builder, so add_column/set_striped/... still
+    "! apply before render( )
+    CLASS-METHODS from_any_table
+      IMPORTING !it_table TYPE ANY TABLE
+      RETURNING VALUE(ri_table) TYPE REF TO zcl_ark_html_table .
+
+    "! Column header for a structure component: DDIC scrtext_m >
+    "! scrtext_s > reptext, field name as fallback. Shared by
+    "! from_any_table( ) and external exporters (Excel etc.)
+    CLASS-METHODS ddic_header
+      IMPORTING
+        !is_comp TYPE cl_abap_structdescr=>component
+      RETURNING VALUE(rv_text) TYPE string .
+
     METHODS constructor
       IMPORTING !iv_id TYPE string OPTIONAL
                 !iv_class TYPE string DEFAULT 'ark-table' .
@@ -44,6 +63,7 @@ CLASS zcl_ark_html_table DEFINITION
     TYPES:
       BEGIN OF ty_column, header TYPE string, width TYPE string,
       END OF ty_column .
+    TYPES tt_component TYPE cl_abap_structdescr=>component_table .
     TYPES:
       BEGIN OF ty_cell, value TYPE string, html TYPE REF TO zif_ark_html, style TYPE string,
       END OF ty_cell .
@@ -64,6 +84,21 @@ CLASS zcl_ark_html_table DEFINITION
     METHODS build_table
       RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html
       RAISING zcx_ark_exception .
+
+    "! Flatten a structure's components; .INCLUDE components contribute
+    "! their nested components instead of appearing as one deep column
+    METHODS collect_components
+      IMPORTING
+        !io_struct TYPE REF TO cl_abap_structdescr
+      CHANGING
+        !ct_comp TYPE tt_component .
+
+    "! Elementary value as display string; initial date/time -> empty
+    METHODS format_elem_value
+      IMPORTING
+        !iv_type_kind TYPE cl_abap_typedescr=>typekind
+        !ig_value TYPE any
+      RETURNING VALUE(rv_text) TYPE string .
 ENDCLASS.
 
 CLASS zcl_ark_html_table IMPLEMENTATION.
@@ -79,6 +114,182 @@ CLASS zcl_ark_html_table IMPLEMENTATION.
       EXPORTING
         iv_id    = iv_id
         iv_class = iv_class.
+  ENDMETHOD.
+
+  METHOD from_any_table.
+    DATA lo_tabledesc TYPE REF TO cl_abap_tabledescr.
+    DATA lo_struct TYPE REF TO cl_abap_structdescr.
+    DATA lt_comp TYPE tt_component.
+    DATA ls_comp TYPE cl_abap_structdescr=>component.
+    FIELD-SYMBOLS <ls_row> TYPE any.
+    FIELD-SYMBOLS <lv_field> TYPE any.
+    FIELD-SYMBOLS <lt_nest> TYPE ANY TABLE.
+
+    CREATE OBJECT ri_table.
+
+    TRY.
+        lo_tabledesc ?= cl_abap_tabledescr=>describe_by_data( it_table ).
+      CATCH cx_sy_move_cast_error.
+        RETURN.
+    ENDTRY.
+
+    DATA(lo_line) = lo_tabledesc->get_table_line_type( ).
+    CLEAR lo_struct.
+    IF lo_line->kind = cl_abap_typedescr=>kind_struct.
+      TRY.
+          lo_struct ?= lo_line.
+        CATCH cx_sy_move_cast_error.
+          CLEAR lo_struct.
+      ENDTRY.
+    ENDIF.
+
+    IF lo_struct IS NOT BOUND.
+      " 行类型非结构：单列 TABLE_LINE。仅基本类型可安全转字符串，
+      " 引用/内表等深层行类型降级为占位符
+      ri_table->add_column( iv_header = 'TABLE_LINE' ).
+      LOOP AT it_table ASSIGNING <ls_row>.
+        ri_table->add_row( ).
+        IF lo_line->kind = cl_abap_typedescr=>kind_elem.
+          ri_table->add_cell(
+            iv_value = zcl_ark_convert=>escape_html( |{ <ls_row> }| ) ).
+        ELSE.
+          ri_table->add_cell( iv_value = '…' ).
+        ENDIF.
+      ENDLOOP.
+      RETURN.
+    ENDIF.
+
+    collect_components( EXPORTING io_struct = lo_struct
+                        CHANGING  ct_comp  = lt_comp ).
+
+    LOOP AT lt_comp INTO ls_comp.
+      ri_table->add_column( iv_header = ddic_header( is_comp = ls_comp ) ).
+    ENDLOOP.
+
+    LOOP AT it_table ASSIGNING <ls_row>.
+      ri_table->add_row( ).
+      LOOP AT lt_comp INTO ls_comp.
+        ASSIGN COMPONENT ls_comp-name OF STRUCTURE <ls_row> TO <lv_field>.
+        IF sy-subrc <> 0.
+          ri_table->add_cell( iv_value = '' ).
+          CONTINUE.
+        ENDIF.
+
+        DATA lv_val TYPE string.
+        DATA lv_style TYPE string.
+        CASE ls_comp-type->kind.
+          WHEN cl_abap_datadescr=>kind_elem.
+            lv_val = format_elem_value( iv_type_kind = ls_comp-type->type_kind
+                                        ig_value     = <lv_field> ).
+            " 数值列右对齐（Fiori 列表报告惯例）
+            IF ls_comp-type->type_kind = cl_abap_typedescr=>typekind_int1      OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_int2      OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_int       OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_int8      OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_packed    OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_float     OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_decfloat16 OR
+               ls_comp-type->type_kind = cl_abap_typedescr=>typekind_decfloat34.
+              lv_style = 'text-align:right;'.
+            ENDIF.
+          WHEN cl_abap_datadescr=>kind_table.
+            " 深层内表列只显示行数
+            ASSIGN COMPONENT ls_comp-name OF STRUCTURE <ls_row> TO <lt_nest>.
+            IF sy-subrc = 0.
+              lv_val = |{ lines( <lt_nest> ) }|.
+              lv_style = 'text-align:right;'.
+            ENDIF.
+          WHEN OTHERS.
+            lv_val = '…'.
+        ENDCASE.
+
+        " td() 不转义，单元格值统一过 escape_html 防 HTML 注入/错乱
+        ri_table->add_cell( iv_value = zcl_ark_convert=>escape_html( lv_val )
+                            iv_style = lv_style ).
+      ENDLOOP.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD collect_components.
+    DATA ls_comp TYPE cl_abap_structdescr=>component.
+    DATA lo_nested TYPE REF TO cl_abap_structdescr.
+
+    LOOP AT io_struct->get_components( ) INTO ls_comp.
+      " .INCLUDE 组件无独立单元格：递归平铺其子组件（DDIC 表常见 .INCLUDE）
+      IF ls_comp-as_include = abap_true AND ls_comp-type IS BOUND
+         AND ls_comp-type->kind = cl_abap_typedescr=>kind_struct.
+        TRY.
+            lo_nested ?= ls_comp-type.
+            collect_components( EXPORTING io_struct = lo_nested
+                                CHANGING  ct_comp  = ct_comp ).
+          CATCH cx_sy_move_cast_error.
+            APPEND ls_comp TO ct_comp.
+        ENDTRY.
+      ELSE.
+        APPEND ls_comp TO ct_comp.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD ddic_header.
+    " 默认用字段名；组件基于 DDIC 数据元素时升级为中/短标签
+    DATA lo_elem TYPE REF TO cl_abap_elemdescr.
+    DATA ls_dfies TYPE dfies.
+
+    rv_text = is_comp-name.
+    IF is_comp-type IS NOT BOUND OR is_comp-type->kind <> cl_abap_datadescr=>kind_elem.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        lo_elem ?= is_comp-type.
+      CATCH cx_sy_move_cast_error.
+        RETURN.
+    ENDTRY.
+
+    CALL METHOD lo_elem->get_ddic_field
+      RECEIVING
+        p_flddescr = ls_dfies
+      EXCEPTIONS
+        not_found    = 1
+        no_ddic_type = 2
+        OTHERS       = 3.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    " 标签逐级回退：中标签 > 短标签 > 标题 > 字段名
+    DATA(lv_label) = COND string( WHEN ls_dfies-scrtext_m IS NOT INITIAL THEN ls_dfies-scrtext_m
+                                  WHEN ls_dfies-scrtext_s IS NOT INITIAL THEN ls_dfies-scrtext_s
+                                  WHEN ls_dfies-reptext    IS NOT INITIAL THEN ls_dfies-reptext
+                                  ELSE '' ).
+    IF lv_label IS NOT INITIAL.
+      rv_text = lv_label.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD format_elem_value.
+    " 格式化选项要求静态类型：先移入定长目标再套模板，泛型形参不可直接用
+    CASE iv_type_kind.
+      WHEN cl_abap_typedescr=>typekind_date.
+        DATA lv_date TYPE d.
+        lv_date = ig_value.
+        IF lv_date IS INITIAL.
+          rv_text = ''.
+        ELSE.
+          rv_text = |{ lv_date DATE = USER }|.
+        ENDIF.
+      WHEN cl_abap_typedescr=>typekind_time.
+        DATA lv_time TYPE t.
+        lv_time = ig_value.
+        IF lv_time IS INITIAL.
+          rv_text = ''.
+        ELSE.
+          rv_text = |{ lv_time TIME = USER }|.
+        ENDIF.
+      WHEN OTHERS.
+        rv_text = |{ ig_value }|.
+    ENDCASE.
   ENDMETHOD.
 
   METHOD add_column.

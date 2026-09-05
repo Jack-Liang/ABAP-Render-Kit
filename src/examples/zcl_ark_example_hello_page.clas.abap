@@ -53,6 +53,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     add_card( iv_title  = 'Charts'
               iv_desc   = 'ECharts mixed with plain HTML on one page'
               iv_action = 'nav_chart' ).
+    add_card( iv_title  = 'three.js View'
+              iv_desc   = 'WebGL 3D via uploaded JS asset: registry + widget interface (Edge only)'
+              iv_action = 'nav_three' ).
     add_card( iv_title  = 'Data Viewer'
               iv_desc   = 'Any internal table -> RTTI table; JSON string -> collapsible tree'
               iv_action = 'nav_data' ).
@@ -114,6 +117,9 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
         rs_result-state = 1.
       WHEN 'nav_chart'.
         rs_result-page = NEW zcl_ark_example_chart_page( ).
+        rs_result-state = 1.
+      WHEN 'nav_three'.
+        rs_result-page = NEW zcl_ark_example_three_page( ).
         rs_result-state = 1.
       WHEN 'nav_data'.
         rs_result-page = NEW zcl_ark_example_data_page( ).

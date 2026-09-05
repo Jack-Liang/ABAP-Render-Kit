@@ -15,7 +15,7 @@
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 
-### src/core/ (Core Engine — 19 objects)
+### src/core/ (Core Engine — 18 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
@@ -36,7 +36,6 @@
 | ZIF_ARK_GUI_EVENT_HANDLER | INTF | Event handler interface |
 | ZIF_ARK_GUI_SERVICES | INTF | GUI services interface |
 | ZIF_ARK_HTML_VIEWER | INTF | HTML viewer interface |
-| ZIF_ARK_GUI_ASSET_MANAGER | INTF | Asset manager interface |
 
 ### src/framework/ (Page Framework — 6 objects)
 | Object | Type | Description |
@@ -48,7 +47,7 @@
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
 | ZIF_ARK_GUI_STATE | INTF | Declarative page state schema (draft) |
 
-### src/components/ (UI Components — 6 objects)
+### src/components/ (UI Components — 7 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCL_ARK_HTML_FORM | CLAS | Form component |
@@ -57,8 +56,9 @@
 | ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
 | ZCL_ARK_JSON_TREE | CLAS | JSON string -> collapsible tree component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
+| ZCL_ARK_THREE_VIEW | CLAS | three.js 3D view widget (WebGL, UMD asset, zif_ark_js_widget reference impl) |
 
-### src/examples/ (Examples — 13 objects)
+### src/examples/ (Examples — 14 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
@@ -70,6 +70,7 @@
 | ZCL_ARK_EXAMPLE_TABLE_PAGE | CLAS | Table demo page |
 | ZCL_ARK_EXAMPLE_CHART_PAGE | CLAS | Chart demo page (mixed chart + table content) |
 | ZCL_ARK_EXAMPLE_DATA_PAGE | CLAS | Data viewer demo page (RTTI table + JSON tree) |
+| ZCL_ARK_EXAMPLE_THREE_PAGE | CLAS | three.js 3D view example page |
 | ZCL_ARK_EXAMPLE_STATE_PAGE | CLAS | Declarative state page demo |
 | ZCL_ARK_EXAMPLE_UI5_PAGE | CLAS | UI5 host verification page |
 | ZCL_ARK_EXAMPLE_UI5_STATE_PAGE | CLAS | UI5 declarative state demo page |

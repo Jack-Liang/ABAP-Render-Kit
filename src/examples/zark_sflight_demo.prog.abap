@@ -274,8 +274,10 @@ CLASS lcl_sflight_page IMPLEMENTATION.
       lo_table->add_cell( iv_value = |{ ls_carrier-seatsocc }| ).
       lo_table->add_cell( iv_value = |{ ls_carrier-seatsmax }| ).
       IF ls_carrier-seatsmax > 0.
-        lo_table->add_cell(
-          iv_value = |{ ls_carrier-seatsocc * 100 / ls_carrier-seatsmax }| ).
+        " 占用率保留一位小数：int8 整数除法会截断（149/300 -> 49）
+        DATA(lv_occ) = CONV decfloat16( ls_carrier-seatsocc * 100 ) /
+                       CONV decfloat16( ls_carrier-seatsmax ).
+        lo_table->add_cell( iv_value = |{ lv_occ DECIMALS = 1 }| ).
       ELSE.
         lo_table->add_cell( iv_value = '-' ).
       ENDIF.

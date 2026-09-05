@@ -158,12 +158,9 @@ CLASS zcl_ark_echarts DEFINITION
 
     " 渲染为 HTML 片段（div + 初始化脚本），可与其他内容混排：
     "   mo_html->add( lo_chart->render( ) ).
-    " 经 zif_ark_gui_renderable~render 实现，ALIASES render 暴露
-
-    " 插件接口：声明的 JS 库依赖，页面经 include_for 统一注入
-    METHODS zif_ark_js_widget~get_assets
-      RETURNING
-        VALUE(rt_assets) TYPE string_table .
+    " 经 zif_ark_gui_renderable~render 实现，ALIASES render 暴露。
+    " get_assets 由 zif_ark_js_widget 接口带入，实现区直接 METHOD 实现，
+    " 不得在类定义区用复合名声明（命名规则只允许 A-Z0-9_）
 
     " JS 字符串字面量转义（反斜杠/引号/换行/</script> 等）。
     " 公开给 state_page 等需要把值嵌入 <script> 的调用方复用

@@ -1,0 +1,102 @@
+{
+  "global": {
+    "files": "/src/**/*.*",
+    "skipGeneratedBOPFInterfaces": true,
+    "skipGeneratedFunctionGroups": true,
+    "skipGeneratedGatewayClasses": true,
+    "skipGeneratedPersistentClasses": true,
+    "skipIncludesWithoutMain": false
+  },
+  "syntax": {
+    "version": "v757",
+    "errorNamespace": "^(Z|Y)",
+    "globalConstants": [],
+    "globalMacros": []
+  },
+  "dependencies": [
+    {
+      "url": "https://github.com/open-abap/open-abap",
+      "folder": "/src",
+      "files": "/src/**/*.*"
+    }
+  ],
+  "rules": {
+    "check_syntax": true,
+    "check_ddic": true,
+    "parser_error": true,
+    "ambiguous_statement": true,
+    "obsolete_statement": false,
+    "forbidden_void_type": {
+      "exclude": []
+    },
+    "macro_dependencies": true,
+    "implement_methods": true,
+    "method_implemented_twice": true,
+    "class_attribute_names": true,
+    "begin_end_names": true,
+    "check_transformation_exists": true,
+    "check_include": true,
+    "cycles": true,
+    "definitions_top": false,
+    "exit_or_check": true,
+    "exporting": true,
+    "form_no_dash": true,
+    "form_obsolete": true,
+    "function_module_recommendations": true,
+    "identical_conditions": true,
+    "implementation_missing": true,
+    "in_statement_indentation": false,
+    "invalid_table_index": true,
+    "line_only_punc": false,
+    "local_class_naming": {
+      "pattern": "^LCL_"
+    },
+    "main_file_contents": true,
+    "message_exists": true,
+    "obsolete_line": true,
+    "prefer_inline": false,
+    "release_idoc": true,
+    "select_add_order_by": false,
+    "select_performance": true,
+    "short_case": true,
+    "sicf_consistency": true,
+    "superfluous_value": true,
+    "try_without_cx": true,
+    "unreachable_code": true,
+    "unused_methods": false,
+    "used_shadow_id": true,
+    "whitespace_end": true,
+    "empty_line_in_statement": false,
+    "line_length": {
+      "length": 200
+    },
+    "indentation": false,
+    "space_before_dot": false,
+    "7bit_ascii": false,
+    "avoid_use": false,
+    "comment_style": false,
+    "descriptions": {
+      "notes": false
+    },
+    "keyword_case": false,
+    "max_one_statement": false,
+    "naming": false,
+    "preferred_compare_operator": false,
+    "sequential_blank": {
+      "lines": 6
+    },
+    "single_id_if_length": false,
+    "empty_statement": true,
+    "cloud_types": false,
+    "contains_tab": true,
+    "downport": false,
+    "duplicate_statement": false,
+    "fully_type_constants": false,
+    "local_variable_names": false,
+    "method_length": false,
+    "method_parameter_names": false,
+    "mix_returning": false,
+    "reduce_string_templates": false,
+    "unused_variables": false
+  }
+}

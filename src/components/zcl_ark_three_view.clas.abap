@@ -161,8 +161,8 @@ CLASS zcl_ark_three_view IMPLEMENTATION.
       " 降级框/画布全部静默不渲染
       |el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">' +| &&
       |(isJavaGui ?| &&
-      |'SAP GUI for Java 的 JavaFX WebView 不支持 WebGL —— 3D 视图无法在 GUI 内渲染。' +| &&
-      |'替代路径：SE38 ZARK_EXPORT_HTML（PAGE=THREE）导出后在外部浏览器打开。' +| &&
+      |'当前 JavaFX WebView 的 WebGL 初始化失败（能力因 JavaFX 版本而异，新版可能支持）。' +| &&
+      |'备选路径：SE38 ZARK_EXPORT_HTML（PAGE=THREE）导出后在外部浏览器打开。' :| &&
       |'（Windows SAP GUI + Edge/WebView2 内核可原生支持）' :| &&
       |'WebGL 不可用（IE 内核/无 GPU/RDP 远程会话均会导致）: ' + (e && e.message ? e.message : e)) +| &&
       |'<br>kernel: ' + navigator.userAgent + '</div>';| &&

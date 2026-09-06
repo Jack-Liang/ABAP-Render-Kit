@@ -28,8 +28,9 @@
    示例页面不允许新增（发现即迭代掉）。
 
 5. **内核基线。** Windows WebView2/Edge 为全功能基线；JavaFX WebView（Java GUI，
-   无 WebGL）与 IE 只要求优雅降级并给出可读提示（参考 `zcl_ark_three_view`）。
-   任何新功能不得静默依赖 Edge 独有 API。
+   WebGL 能力因 JavaFX 版本而异——2026-09-06 用户真机实测可渲染 three.js，
+   勿再断言"无 WebGL"）与 IE 只要求优雅降级并给出可读提示（参考 `zcl_ark_three_view`，
+   先尝试创建 WebGL 上下文、失败才降级）。任何新功能不得静默依赖 Edge 独有 API。
 
 6. **质量门禁（每次推送前必做）。**
    - `npx --yes @abaplint/cli` 必须 0 issues；
@@ -45,6 +46,6 @@
 ## 其他长期约定
 
 - 用户通过 `git pull`（abapGit）安装：修复要当轮 commit+push，不留本地。
-- 用户真机环境：SAP GUI for Java（macOS，JavaFX WebView，无 WebGL）+
+- 用户真机环境：SAP GUI for Java（macOS，JavaFX WebView——WebGL 实测可用）+
   ABAP Platform 2023 (7.57)。语法保持 7.57 保守。
 - 纯前端模板迭代用 `demo/*.html`（不开 SAP 即可在浏览器验证）。

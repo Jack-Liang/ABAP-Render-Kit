@@ -88,7 +88,7 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
               desc  = 'ECharts mixed with plain HTML on one page'
               action = 'nav_chart' )
             ( title = 'three.js View'
-              desc  = 'WebGL 3D via uploaded JS asset: registry + widget interface (Edge only)'
+              desc  = 'WebGL 3D via uploaded JS asset: registry + widget interface (auto-degrades if unsupported)'
               action = 'nav_three' )
             ( title = 'Data Viewer'
               desc  = 'Any internal table -> RTTI table; JSON string -> collapsible tree'

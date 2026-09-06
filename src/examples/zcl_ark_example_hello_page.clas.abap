@@ -1,148 +1,182 @@
+"! ARK 示例中枢 —— "App 端零 HTML"的完整示范：
+"!  * 继承 zcl_ark_state_page：页面 = 一份 ty_page_state（卡片网格 + 文本节），
+"!    没有一个字符手写 HTML，样式全来自主题 .ark-nav-* 类
+"!  * 约定式路由：不再写 on_event 的 CASE —— 动作 'nav_form' 自动分发到
+"!    on_action_nav_form（zcl_ark_gui_page 基类约定）
 CLASS zcl_ark_example_hello_page DEFINITION
   PUBLIC
-  INHERITING FROM zcl_ark_gui_page
+  INHERITING FROM zcl_ark_state_page
   FINAL
   CREATE PUBLIC .
 
   PUBLIC SECTION.
     METHODS constructor .
 
-    METHODS on_event REDEFINITION .
+    " —— 约定式动作处理器（签名由基类约定，基类自动分发）——
+    METHODS on_action_nav_form
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_table
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_chart
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_three
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_data
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_state
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_ui5_state
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_browser
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_nav_ui5
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_run_echarts_demo
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+    METHODS on_action_run_sflight_demo
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
 
   PROTECTED SECTION.
-    METHODS build_html REDEFINITION .
-
   PRIVATE SECTION.
-    METHODS add_card
-      IMPORTING
-        !iv_title  TYPE string
-        !iv_desc   TYPE string
-        !iv_action TYPE string .
     METHODS run_demo_report
       IMPORTING !iv_prog TYPE sy-repid
       RAISING   zcx_ark_exception .
 ENDCLASS.
 
+
 CLASS zcl_ark_example_hello_page IMPLEMENTATION.
 
   METHOD constructor.
     super->constructor( ).
-    set_title( 'ARK Framework - Hello World' ).
+
+    " 页面 = 一份声明式 state：标题 + 副标题 + 卡片网格 + 页脚文本
+    DATA(ls_state) = VALUE zif_ark_gui_state=>ty_page_state(
+      title    = 'ARK Framework'
+      subtitle = 'Interactive HTML user interfaces inside SAP GUI — pick a demo below.'
+      sections = VALUE #(
+        ( kind  = zif_ark_gui_state=>c_section_kind-card_grid
+          cards = VALUE #(
+            ( title = 'Form Builder'
+              desc  = 'Typed form fields -> UI5 shell; bridge POST round-trip (Edge only)'
+              action = 'nav_form' )
+            ( title = 'Table Builder'
+              desc  = 'Declarative sap.m table: semantic states, row actions via bridge (Edge only)'
+              action = 'nav_table' )
+            ( title = 'Charts'
+              desc  = 'ECharts mixed with plain HTML on one page'
+              action = 'nav_chart' )
+            ( title = 'three.js View'
+              desc  = 'WebGL 3D via uploaded JS asset: registry + widget interface (Edge only)'
+              action = 'nav_three' )
+            ( title = 'Data Viewer'
+              desc  = 'Any internal table -> RTTI table; JSON string -> collapsible tree'
+              action = 'nav_data' )
+            ( title = 'State Page (Declarative)'
+              desc  = 'Typed page state -> Fiori-style UI, no HTML in your ABAP code'
+              action = 'nav_state' )
+            ( title = 'UI5 State Page (Declarative)'
+              desc  = 'Same state via UI5 shell: sap.m controls + sapevent bridge (Edge only)'
+              action = 'nav_ui5_state' )
+            ( title = 'Browser Info'
+              desc  = 'Detect the HTML viewer engine: IE (MSHTML) or Edge (Chromium)'
+              action = 'nav_browser' )
+            ( title = 'UI5 Host Verification'
+              desc  = 'Plan B probe: CDN / sap.m / sapevent bridge / caching (Edge only)'
+              action = 'nav_ui5' )
+            ( title = 'ECharts Demo (Report)'
+              desc  = 'Every charting mode: declarative API, override hatch, full option, themes'
+              action = 'run_echarts_demo' )
+            ( title = 'SFlight Demo (Report)'
+              desc  = 'Database-driven dashboard on SFLIGHT / SCARR'
+              action = 'run_sflight_demo' ) ) )
+        ( kind     = zif_ark_gui_state=>c_section_kind-text
+          text     = 'Extracted from abapGit, rendered by CL_GUI_HTML_VIEWER. Source on'
+          link_url = 'https://github.com/Jack-Liang/ABAP-Render-Kit'
+          link_text = 'GitHub' ) ) ).
+
+    set_state( ls_state ).
   ENDMETHOD.
 
-  METHOD build_html.
-    " 颜色类样式必须走 CSS 而非内联：内联样式优先级高于类规则，
-    " 悬停换色（border-color/background-color）才能覆盖静息态。
-    " 布局属性保留内联，样式块缺失时卡片退化为纯文本链接仍可用
-    mo_html->add_css(
-      `.demo-card { border: 1px solid #d0d7de; border-radius: 8px; background-color: #fff; }` &&
-      `.demo-card:hover { border-color: #0969da; background-color: #f0f6ff; text-decoration: none; }` &&
-      `.demo-card:hover .demo-card-title { text-decoration: underline; }` ).
+  " —— 约定式路由：动作名 = 方法名后缀，无 CASE ——
 
-    mo_html->add( |<h1 style="margin-bottom: 4px;">ARK Framework</h1>| ).
-    mo_html->add( |<p style="margin-top: 0; color: #57606a;">| &&
-                  |Interactive HTML user interfaces inside SAP GUI &mdash; pick a demo below.</p>| ).
-
-    mo_html->add( |<h2 style="margin-bottom: 8px;">In-App Pages</h2>| ).
-    add_card( iv_title  = 'Form Builder'
-              iv_desc   = 'Typed form fields -> UI5 shell; bridge POST round-trip (Edge only)'
-              iv_action = 'nav_form' ).
-    add_card( iv_title  = 'Table Builder'
-              iv_desc   = 'Declarative sap.m table: semantic states, row actions via bridge (Edge only)'
-              iv_action = 'nav_table' ).
-    add_card( iv_title  = 'Charts'
-              iv_desc   = 'ECharts mixed with plain HTML on one page'
-              iv_action = 'nav_chart' ).
-    add_card( iv_title  = 'three.js View'
-              iv_desc   = 'WebGL 3D via uploaded JS asset: registry + widget interface (Edge only)'
-              iv_action = 'nav_three' ).
-    add_card( iv_title  = 'Data Viewer'
-              iv_desc   = 'Any internal table -> RTTI table; JSON string -> collapsible tree'
-              iv_action = 'nav_data' ).
-    add_card( iv_title  = 'State Page (Declarative)'
-              iv_desc   = 'Typed page state -> Fiori-style UI, no HTML in your ABAP code'
-              iv_action = 'nav_state' ).
-    add_card( iv_title  = 'UI5 State Page (Declarative)'
-              iv_desc   = 'Same state via UI5 shell: sap.m controls + sapevent bridge (Edge only)'
-              iv_action = 'nav_ui5_state' ).
-    add_card( iv_title  = 'Browser Info'
-              iv_desc   = 'Detect the HTML viewer engine: IE (MSHTML) or Edge (Chromium)'
-              iv_action = 'nav_browser' ).
-    add_card( iv_title  = 'UI5 Host Verification'
-              iv_desc   = 'Plan B probe: CDN / sap.m / sapevent bridge / caching (Edge only)'
-              iv_action = 'nav_ui5' ).
-
-    mo_html->add( |<h2 style="margin-bottom: 8px;">Standalone Reports</h2>| ).
-    add_card( iv_title  = 'ECharts Demo'
-              iv_desc   = 'Every charting mode: declarative API, override hatch, full option, themes'
-              iv_action = 'run_echarts_demo' ).
-    add_card( iv_title  = 'SFlight Demo'
-              iv_desc   = 'Database-driven dashboard on SFLIGHT / SCARR'
-              iv_action = 'run_sflight_demo' ).
-
-    mo_html->add( |<hr>| ).
-
-    DATA(lv_github_link) = mo_html->a(
-      iv_txt = 'GitHub'
-      iv_act = 'https://github.com/Jack-Liang/ABAP-Render-Kit'
-      iv_typ = zif_ark_html=>c_action_type-url ).
-
-    mo_html->add(
-      |<p style="color: #57606a;">Extracted from abapGit, rendered by CL_GUI_HTML_VIEWER.| &&
-      |&nbsp;&nbsp;Source on { lv_github_link }</p>| ).
-
-    ri_html = mo_html.
+  METHOD on_action_nav_form.
+    rs_result-page  = NEW zcl_ark_example_form_page( ).
+    rs_result-state = 1.
   ENDMETHOD.
 
-  METHOD add_card.
-    " 卡片即 sapevent 链接：标题/描述双行。颜色样式在页面 CSS 类中定义
-    " （内联无法被 hover 覆盖），此处内联仅保留布局属性
-    mo_html->add(
-      mo_html->a(
-        iv_txt   = |<span class="demo-card-title" style="display: block; font-size: 15px; font-weight: bold; color: #0969da;">{ iv_title }</span>| &&
-                   |<span style="display: block; margin-top: 6px; font-size: 13px; color: #57606a;">{ iv_desc }</span>|
-        iv_act   = iv_action
-        iv_class = 'demo-card'
-        iv_style = |display: inline-block; width: 240px; margin: 0 12px 12px 0; padding: 14px 16px;| &&
-                   |vertical-align: top; text-decoration: none;| ) ).
+  METHOD on_action_nav_table.
+    rs_result-page  = NEW zcl_ark_example_table_page( ).
+    rs_result-state = 1.
   ENDMETHOD.
 
-  METHOD on_event.
-    CASE ii_event->mv_action.
-      WHEN 'nav_form'.
-        rs_result-page = NEW zcl_ark_example_form_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_table'.
-        rs_result-page = NEW zcl_ark_example_table_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_chart'.
-        rs_result-page = NEW zcl_ark_example_chart_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_three'.
-        rs_result-page = NEW zcl_ark_example_three_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_data'.
-        rs_result-page = NEW zcl_ark_example_data_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_state'.
-        rs_result-page = NEW zcl_ark_example_state_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_ui5_state'.
-        rs_result-page = NEW zcl_ark_example_ui5_state_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_browser'.
-        rs_result-page = NEW zcl_ark_example_browser_page( ).
-        rs_result-state = 1.
-      WHEN 'nav_ui5'.
-        rs_result-page = NEW zcl_ark_example_ui5_page( ).
-        rs_result-state = 1.
-      WHEN 'run_echarts_demo'.
-        run_demo_report( 'ZARK_ECHARTS_DEMO' ).
-      WHEN 'run_sflight_demo'.
-        run_demo_report( 'ZARK_SFLIGHT_DEMO' ).
-      WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
-    ENDCASE.
+  METHOD on_action_nav_chart.
+    rs_result-page  = NEW zcl_ark_example_chart_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_nav_three.
+    rs_result-page  = NEW zcl_ark_example_three_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_nav_data.
+    rs_result-page  = NEW zcl_ark_example_data_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_nav_state.
+    rs_result-page  = NEW zcl_ark_example_state_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_nav_ui5_state.
+    rs_result-page  = NEW zcl_ark_example_ui5_state_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_nav_browser.
+    rs_result-page  = NEW zcl_ark_example_browser_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_nav_ui5.
+    rs_result-page  = NEW zcl_ark_example_ui5_page( ).
+    rs_result-state = 1.
+  ENDMETHOD.
+
+  METHOD on_action_run_echarts_demo.
+    run_demo_report( 'ZARK_ECHARTS_DEMO' ).
+    " run_demo_report 内已完成重渲染：keep_view 让框架跳过第二次整页刷新
+    rs_result-state    = 1.
+    rs_result-keep_view = abap_true.
+  ENDMETHOD.
+
+  METHOD on_action_run_sflight_demo.
+    run_demo_report( 'ZARK_SFLIGHT_DEMO' ).
+    rs_result-state    = 1.
+    rs_result-keep_view = abap_true.
   ENDMETHOD.
 
   METHOD run_demo_report.

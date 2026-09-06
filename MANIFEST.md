@@ -41,8 +41,8 @@
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCL_ARK_GUI_COMPONENT | CLAS | Component base class |
-| ZCL_ARK_GUI_PAGE | CLAS | Page base class |
-| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (renders ty_page_state) |
+| ZCL_ARK_GUI_PAGE | CLAS | Page base class (+ convention routing on_action_&lt;action&gt;) |
+| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (kpi/table/form/chart/card_grid/text, form read-back + required validation) |
 | ZIF_ARK_GUI_MODAL | INTF | Modal interface |
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
 | ZIF_ARK_GUI_STATE | INTF | Declarative page state schema (draft) |
@@ -58,12 +58,13 @@
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 | ZCL_ARK_THREE_VIEW | CLAS | three.js 3D view widget (WebGL, UMD asset, zif_ark_js_widget reference impl) |
 
-### src/examples/ (Examples — 14 objects)
+### src/examples/ (Examples — 15 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZARK_EXAMPLE | PROG | Demo report launcher (host screen 1001) |
 | ZARK_ECHARTS_DEMO | PROG | ECharts component capability demo |
 | ZARK_SFLIGHT_DEMO | PROG | Database-driven dashboard demo (SFLIGHT/SCARR) |
+| ZARK_LAUNCHER | PROG | Generic app launcher: transaction-code entry for any page class, zero boilerplate |
 | ZCL_ARK_EXAMPLE_APP | CLAS | Demo application |
 | ZCL_ARK_EXAMPLE_HELLO_PAGE | CLAS | Hello world page (demo hub) |
 | ZCL_ARK_EXAMPLE_FORM_PAGE | CLAS | Form demo page |

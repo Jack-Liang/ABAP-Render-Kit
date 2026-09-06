@@ -122,6 +122,36 @@ CLASS zcl_ark_state_page DEFINITION
       CHANGING
         !co_html    TYPE REF TO zcl_ark_html .
 
+    "! 导航卡片网格（标题+描述卡片，点击触发 sapevent；约定式路由接管）
+    METHODS render_card_grid
+      IMPORTING
+        !is_section TYPE zif_ark_gui_state=>ty_section
+      CHANGING
+        !co_html    TYPE REF TO zcl_ark_html .
+
+    "! 纯文本段落（转义）+ 可选外链
+    METHODS render_text
+      IMPORTING
+        !is_section TYPE zif_ark_gui_state=>ty_section
+      CHANGING
+        !co_html    TYPE REF TO zcl_ark_html .
+
+    "! 声明式表单回读：form_action 命中时把 POST 值写回 form_fields-value，
+    "! 并执行 required 校验（失败置 error_text）。返回 false 表示校验失败
+    METHODS read_back_form
+      IMPORTING
+        !ii_event       TYPE REF TO zif_ark_gui_event
+        !iv_sec         TYPE i
+      RETURNING
+        VALUE(rv_valid) TYPE abap_bool .
+
+    "! 查找 form_action 等于动作名的表单节序号（无则 0）
+    METHODS find_form_section
+      IMPORTING
+        !iv_action     TYPE string
+      RETURNING
+        VALUE(rv_sec)  TYPE i .
+
     METHODS render_cell
       IMPORTING
         !is_cell      TYPE zif_ark_gui_state=>ty_table_cell
@@ -315,6 +345,10 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       WHEN zif_ark_gui_state=>c_section_kind-chart.
         render_chart( EXPORTING is_section = is_section iv_index = iv_index
                       CHANGING co_html = co_html ).
+      WHEN zif_ark_gui_state=>c_section_kind-card_grid.
+        render_card_grid( EXPORTING is_section = is_section CHANGING co_html = co_html ).
+      WHEN zif_ark_gui_state=>c_section_kind-text.
+        render_text( EXPORTING is_section = is_section CHANGING co_html = co_html ).
     ENDCASE.
 
     co_html->add( |</div>| ).
@@ -482,8 +516,58 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         rs_result-state = 1.
 
       WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
+        " 声明式表单：form_action 命中时先自动回读 POST 值并校验 required，
+        " 全部通过才放行业务 handler（约定式 on_action_<form_action>）；
+        " 校验失败只重渲染以显示错误提示
+        DATA(lv_form_sec) = find_form_section( ii_event->mv_action ).
+        IF lv_form_sec > 0.
+          IF read_back_form( ii_event = ii_event iv_sec = lv_form_sec ) = abap_true.
+            rs_result = super->on_event( ii_event ).
+            IF rs_result-state IS INITIAL.
+              rs_result-state = 1.
+            ENDIF.
+          ELSE.
+            rs_result-state = 1.
+          ENDIF.
+        ELSE.
+          rs_result = super->on_event( ii_event ).
+        ENDIF.
     ENDCASE.
+  ENDMETHOD.
+
+  METHOD find_form_section.
+    LOOP AT ms_state-sections TRANSPORTING NO FIELDS
+         WHERE kind = zif_ark_gui_state=>c_section_kind-form
+           AND form_action = iv_action.
+      rv_sec = sy-tabix.
+      RETURN.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD read_back_form.
+    FIELD-SYMBOLS <ls_section> LIKE LINE OF ms_state-sections.
+    READ TABLE ms_state-sections ASSIGNING <ls_section> INDEX iv_sec.
+    IF sy-subrc <> 0.
+      rv_valid = abap_false.
+      RETURN.
+    ENDIF.
+
+    rv_valid = abap_true.
+    LOOP AT <ls_section>-form_fields ASSIGNING FIELD-SYMBOL(<ls_field>).
+      " 无名字段（如纯 submit 按钮）不参与回读/校验
+      IF <ls_field>-name IS INITIAL.
+        CONTINUE.
+      ENDIF.
+      " checkbox 未勾选时浏览器不上送该字段：解析不到即视为空
+      <ls_field>-value = parse_post_value(
+        iv_name = <ls_field>-name it_postdata = ii_event->mt_postdata ).
+      IF <ls_field>-required = abap_true AND <ls_field>-value IS INITIAL.
+        <ls_field>-error_text = '此字段为必填项'.
+        rv_valid = abap_false.
+      ELSE.
+        CLEAR <ls_field>-error_text.
+      ENDIF.
+    ENDLOOP.
   ENDMETHOD.
 
   METHOD tbl_ui.
@@ -691,15 +775,23 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
     LOOP AT is_section-form_fields INTO DATA(ls_field).
       DATA(lv_label) = zcl_ark_convert=>escape_html( ls_field-label ).
+      IF ls_field-required = abap_true.
+        lv_label = |{ lv_label } <span class="ark-required">*</span>|.
+      ENDIF.
       DATA(lv_name)  = zcl_ark_convert=>escape_html( ls_field-name ).
       DATA(lv_value) = zcl_ark_convert=>escape_html( ls_field-value ).
       DATA(lv_type)  = zcl_ark_convert=>escape_html( ls_field-input_type ).
+      " 校验失败的控件标红，错误提示跟在控件后
+      DATA(lv_err_class) = COND string( WHEN ls_field-error_text IS NOT INITIAL
+                                        THEN ' class="ark-input-error"' ).
+      DATA(lv_err_text)  = COND string( WHEN ls_field-error_text IS NOT INITIAL
+                                        THEN |<span class="ark-field-error">{ zcl_ark_convert=>escape_html( ls_field-error_text ) }</span>| ).
       co_html->add( |<div class="form-row">| ).
       co_html->add( |<span class="form-label">{ lv_label }</span>| ).
 
       CASE ls_field-input_type.
         WHEN 'select'.
-          co_html->add( |<select name="{ lv_name }">| ).
+          co_html->add( |<select{ lv_err_class } name="{ lv_name }">| ).
           LOOP AT ls_field-options INTO DATA(lv_option).
             DATA(lv_opt) = zcl_ark_convert=>escape_html( lv_option ).
             IF lv_option = ls_field-value.
@@ -711,7 +803,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
           co_html->add( |</select>| ).
         WHEN 'textarea'.
           co_html->add(
-            |<textarea name="{ lv_name }" rows="4">{ lv_value }</textarea>| ).
+            |<textarea{ lv_err_class } name="{ lv_name }" rows="4">| &&
+            |{ lv_value }</textarea>| ).
         WHEN 'checkbox'.
           IF ls_field-value = 'X'.
             co_html->add( |<input type="checkbox" name="{ lv_name }" checked>| ).
@@ -721,11 +814,14 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         WHEN 'hidden'.
           co_html->add( |<input type="hidden" name="{ lv_name }" | &&
                         |value="{ lv_value }">| ).
+        WHEN 'submit'.
+          co_html->add( |<button type="submit" class="toolbar-button">{ lv_value }</button>| ).
         WHEN OTHERS.
-          co_html->add( |<input type="{ lv_type }" name="{ lv_name }" | &&
+          co_html->add( |<input type="{ lv_type }"{ lv_err_class } name="{ lv_name }" | &&
                         |value="{ lv_value }">| ).
       ENDCASE.
 
+      co_html->add( lv_err_text ).
       co_html->add( |</div>| ).
     ENDLOOP.
 
@@ -745,6 +841,31 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       WHEN OTHERS.
         rv_color = '#0070f2'.
     ENDCASE.
+  ENDMETHOD.
+
+  METHOD render_card_grid.
+    " 导航卡片网格：卡片即 sapevent 链接（约定式路由接管动作），
+    " 样式全在主题 .ark-nav-* 类，本方法不写任何内联颜色/布局尺寸
+    co_html->add( |<div class="ark-nav-grid">| ).
+    LOOP AT is_section-cards INTO DATA(ls_card).
+      co_html->add(
+        |<a class="ark-nav-card" href="sapevent:{ zcl_ark_convert=>escape_html( ls_card-action ) }">| &&
+        |<span class="ark-nav-card-title">{ zcl_ark_convert=>escape_html( ls_card-title ) }</span>| &&
+        |<span class="ark-nav-card-desc">{ zcl_ark_convert=>escape_html( ls_card-desc ) }</span>| &&
+        |</a> | ).
+    ENDLOOP.
+    co_html->add( |</div>| ).
+  ENDMETHOD.
+
+  METHOD render_text.
+    " 纯文本段落（转义）+ 可选外链（外部 URL 开新窗口）
+    DATA(lv_html) = |<p class="ark-text">{ zcl_ark_convert=>escape_html( is_section-text ) }|.
+    IF is_section-link_url IS NOT INITIAL.
+      lv_html = lv_html &&
+        | <a href="{ zcl_ark_convert=>escape_html( is_section-link_url ) }" target="_blank">| &&
+        |{ zcl_ark_convert=>escape_html( is_section-link_text ) }</a>|.
+    ENDIF.
+    co_html->add( |{ lv_html }</p>| ).
   ENDMETHOD.
 
   METHOD render_chart.

@@ -229,7 +229,26 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.ark-data-table td \{ white-space: nowrap; \} | &&
       |.ark-data-table tbody tr:nth-child(even) td \{| &&
       | background: var(--arkPageBackground); \} | &&
-      |.ark-data-table tbody tr:hover td \{ background: var(--arkHoverBackground); \} |.
+      |.ark-data-table tbody tr:hover td \{ background: var(--arkHoverBackground); \} | &&
+      |.ark-nav-grid \{ display: grid;| &&
+      | grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; \} | &&
+      |.ark-nav-card \{ display: block; padding: 14px 16px;| &&
+      | background: var(--arkBaseColor); border: 1px solid var(--arkBorderColor);| &&
+      | border-radius: var(--arkRadius); text-decoration: none; \} | &&
+      |.ark-nav-card:hover \{ border-color: var(--arkBrandColor);| &&
+      | background: var(--arkSelectionBackground); text-decoration: none; \} | &&
+      |.ark-nav-card-title \{ display: block; font-size: 15px; font-weight: bold;| &&
+      | color: var(--arkBrandColor); \} | &&
+      |.ark-nav-card:hover .ark-nav-card-title \{ text-decoration: underline; \} | &&
+      |.ark-nav-card-desc \{ display: block; margin-top: 6px; font-size: 13px;| &&
+      | color: var(--arkNeutralColor); \} | &&
+      |.ark-text \{ color: var(--arkNeutralColor); font-size: 13px;| &&
+      | margin: 8px 0 0; padding-top: 12px; border-top: 1px solid var(--arkBorderColor); \} | &&
+      |.ark-required \{ color: var(--arkNegativeColor); \} | &&
+      |.ark-input-error \{ border-color: var(--arkNegativeColor);| &&
+      | box-shadow: 0 0 0 1px var(--arkNegativeColor); \} | &&
+      |.ark-field-error \{ color: var(--arkNegativeColor); font-size: 12px;| &&
+      | margin-left: 8px; \} |.
   ENDMETHOD.
 
 ENDCLASS.

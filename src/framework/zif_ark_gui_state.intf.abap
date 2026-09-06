@@ -35,10 +35,14 @@ INTERFACE zif_ark_gui_state
   TYPES ty_section_kind TYPE string .
   CONSTANTS:
     BEGIN OF c_section_kind,
-      kpi_grid TYPE ty_section_kind VALUE 'kpi_grid',
-      table    TYPE ty_section_kind VALUE 'table',
-      form     TYPE ty_section_kind VALUE 'form',
-      chart    TYPE ty_section_kind VALUE 'chart',
+      kpi_grid  TYPE ty_section_kind VALUE 'kpi_grid',
+      table     TYPE ty_section_kind VALUE 'table',
+      form      TYPE ty_section_kind VALUE 'form',
+      chart     TYPE ty_section_kind VALUE 'chart',
+      "! Navigation card grid (title + description cards firing sapevents)
+      card_grid TYPE ty_section_kind VALUE 'card_grid',
+      "! Plain text paragraph (escaped) with optional external link
+      text      TYPE ty_section_kind VALUE 'text',
     END OF c_section_kind .
 
   TYPES:
@@ -95,6 +99,18 @@ INTERFACE zif_ark_gui_state
     tt_table_rows TYPE STANDARD TABLE OF ty_table_row WITH EMPTY KEY .
 
   TYPES:
+    BEGIN OF ty_card,
+      "! Card grid tile: rendered as a sapevent link card
+      title  TYPE string,
+      "! Optional second line
+      desc   TYPE string,
+      "! sapevent action fired on click; convention-routed to
+      "! on_action_<action> on zcl_ark_gui_page subclasses
+      action TYPE string,
+    END OF ty_card,
+    tt_card TYPE STANDARD TABLE OF ty_card WITH EMPTY KEY .
+
+  TYPES:
     BEGIN OF ty_form_field,
       "! Input type: text, number, date, checkbox, select, textarea, hidden
       input_type  TYPE string,
@@ -104,6 +120,10 @@ INTERFACE zif_ark_gui_state
       value       TYPE string,
       "! For select: dropdown option labels
       options     TYPE string_table,
+      "! Framework validation: reject empty submissions, show error_text
+      required    TYPE abap_bool,
+      "! Set by the framework after read-back when validation fails
+      error_text  TYPE string,
     END OF ty_form_field,
     tt_form_field TYPE STANDARD TABLE OF ty_form_field WITH EMPTY KEY .
 
@@ -130,6 +150,13 @@ INTERFACE zif_ark_gui_state
       "! (e.g. 'china'); the corresponding map asset script is injected
       "! automatically (see zcl_ark_echarts=>use_bundled_map / set_map)
       chart_map TYPE string,
+      "! For card_grid sections: navigation/launch cards
+      cards     TYPE tt_card,
+      "! For text sections: escaped paragraph content
+      text      TYPE string,
+      "! For text sections: optional trailing external link (e.g. GitHub)
+      link_url  TYPE string,
+      link_text TYPE string,
     END OF ty_section,
     tt_section TYPE STANDARD TABLE OF ty_section WITH EMPTY KEY .
 

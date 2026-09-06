@@ -13,6 +13,10 @@ CLASS zcl_ark_example_state_page DEFINITION
   PRIVATE SECTION.
     DATA mv_factor TYPE i VALUE 1 .
     DATA mv_message TYPE string .
+    " 表单声明式回读的落地值：框架已把 POST 值写回 ms_state，
+    " handler 取走后放这里，build_state 重建时作为字段初值复用
+    DATA mv_city TYPE string VALUE '华信科技' .
+    DATA mv_channel TYPE string VALUE '直销' .
     DATA ms_table TYPE zif_ark_gui_state=>ty_section .
 
     METHODS build_state .
@@ -152,9 +156,10 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
         title = '筛选条件'
         form_action = 'form_save'
         form_fields = VALUE #(
-          ( input_type = 'text' label = '客户名' name = 'city' value = '华信科技' )
+          ( input_type = 'text' label = '客户名' name = 'city' value = mv_city
+            required = abap_true )
           ( input_type = 'select' label = '渠道' name = 'channel'
-            value = '直销' options = VALUE #( ( `直销` ) ( `分销` ) ( `电商` ) ) )
+            value = mv_channel options = VALUE #( ( `直销` ) ( `分销` ) ( `电商` ) ) )
           ( input_type = 'submit' label = '' name = '' value = '应用筛选' ) ) ) ).
 
     IF mv_message IS NOT INITIAL.
@@ -181,13 +186,19 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
         build_state( ).
         rs_result-state = 1.
       WHEN 'form_save'.
-        " 表单 POST：postdata 为 name=value&... 形式，这里演示取回一个字段
-        LOOP AT ii_event->mt_postdata INTO DATA(lv_post).
-          IF lv_post CS 'city='.
-            DATA(lv_city) = substring_after( val = lv_post sub = 'city=' ).
-            mv_message = |筛选已应用: 客户 = { lv_city }|.
-          ENDIF.
+        " 声明式表单回读：到达这里前框架已把 POST 值写进 ms_state 并通过
+        " required 校验（失败时根本不会进本分支，页面显示红色错误提示）。
+        " 业务代码只从 ms_state 取值 —— 无需手动解析 postdata
+        LOOP AT ms_state-sections ASSIGNING FIELD-SYMBOL(<ls_sec>)
+             WHERE form_action = 'form_save'.
+          LOOP AT <ls_sec>-form_fields ASSIGNING FIELD-SYMBOL(<ls_f>).
+            CASE <ls_f>-name.
+              WHEN 'city'.    mv_city = <ls_f>-value.
+              WHEN 'channel'. mv_channel = <ls_f>-value.
+            ENDCASE.
+          ENDLOOP.
         ENDLOOP.
+        mv_message = |筛选已应用: 客户 = { mv_city }，渠道 = { mv_channel }|.
         build_state( ).
         rs_result-state = 1.
       WHEN 'state_chart_click'.

@@ -119,8 +119,6 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
     set_state( ls_state ).
   ENDMETHOD.
 
-  " —— 约定式路由：动作名 = 方法名后缀，无 CASE ——
-
   METHOD on_action_nav_form.
     rs_result-page  = NEW zcl_ark_example_form_page( ).
     rs_result-state = 1.

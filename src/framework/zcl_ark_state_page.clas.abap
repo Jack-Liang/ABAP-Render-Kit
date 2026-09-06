@@ -6,6 +6,20 @@ CLASS zcl_ark_state_page DEFINITION
   PUBLIC SECTION.
     METHODS constructor .
 
+    "! 任意内表 -> 声明式表格节（RTTI 自动出列，数值列自动右对齐）。
+    "! 北极星目标的直通车：业务侧给数据，不拼单元格。
+    "!   rs_section = zcl_ark_state_page=>table_section(
+    "!                  iv_title = '明细' it_data = lt_flight ).
+    "! 列标签优先取 DDIC 文本；行类型为基本类型时输出单列 TABLE_LINE
+    CLASS-METHODS table_section
+      IMPORTING
+        !iv_title         TYPE string OPTIONAL
+        !it_data          TYPE ANY TABLE
+      RETURNING
+        VALUE(rs_section) TYPE zif_ark_gui_state=>ty_section
+      RAISING
+        zcx_ark_exception .
+
     "! 框架内置表格交互（排序/筛选/下载）在此处理，其余动作交给子类。
     "! 保留动作名：ark_sort / ark_filter / ark_download
     METHODS on_event REDEFINITION .
@@ -178,6 +192,89 @@ CLASS zcl_ark_state_page DEFINITION
 ENDCLASS.
 
 CLASS zcl_ark_state_page IMPLEMENTATION.
+
+  METHOD table_section.
+    DATA lo_tabledesc TYPE REF TO cl_abap_tabledescr.
+    DATA lo_line TYPE REF TO cl_abap_datadescr.
+    DATA lo_struct TYPE REF TO cl_abap_structdescr.
+    DATA lo_elem TYPE REF TO cl_abap_elemdescr.
+    DATA lt_comp TYPE cl_abap_structdescr=>component_table.
+    DATA lt_rows TYPE zif_ark_gui_state=>tt_table_rows.
+    DATA lv_val TYPE string.
+    FIELD-SYMBOLS <ls_row> TYPE any.
+    FIELD-SYMBOLS <lv_field> TYPE any.
+    FIELD-SYMBOLS <ls_comp> TYPE cl_abap_structdescr=>component.
+    FIELD-SYMBOLS <ls_col> TYPE zif_ark_gui_state=>ty_table_column.
+    FIELD-SYMBOLS <ls_out_row> TYPE zif_ark_gui_state=>ty_table_row.
+
+    rs_section-kind  = zif_ark_gui_state=>c_section_kind-table.
+    rs_section-title = iv_title.
+
+    lo_tabledesc ?= cl_abap_tabledescr=>describe_by_data( it_data ).
+    lo_line = lo_tabledesc->get_table_line_type( ).
+    CLEAR lo_struct.
+    IF lo_line->kind = cl_abap_typedescr=>kind_struct.
+      lo_struct ?= lo_line.
+    ENDIF.
+
+    IF lo_struct IS NOT BOUND.
+      " 基本类型行：单列 TABLE_LINE
+      APPEND INITIAL LINE TO rs_section-columns ASSIGNING <ls_col>.
+      <ls_col>-label = 'TABLE_LINE'.
+      LOOP AT it_data ASSIGNING <ls_row>.
+        APPEND INITIAL LINE TO lt_rows ASSIGNING <ls_out_row>.
+        APPEND VALUE #( value = |{ <ls_row> }| ) TO <ls_out_row>-cells.
+      ENDLOOP.
+      rs_section-rows = lt_rows.
+      RETURN.
+    ENDIF.
+
+    lt_comp = lo_struct->get_components( ).
+    LOOP AT lt_comp ASSIGNING <ls_comp>.
+      APPEND INITIAL LINE TO rs_section-columns ASSIGNING <ls_col>.
+      <ls_col>-label = <ls_comp>-name.
+      " DDIC 元素优先取数据元素文本做列标签
+      IF <ls_comp>-type->kind = cl_abap_typedescr=>kind_elem.
+        lo_elem ?= <ls_comp>-type.
+        DATA(lv_ddic) = lo_elem->get_ddic_field( ).
+        IF sy-subrc = 0.
+          IF lv_ddic-scrtext_m IS NOT INITIAL.
+            <ls_col>-label = lv_ddic-scrtext_m.
+          ELSEIF lv_ddic-scrtext_l IS NOT INITIAL.
+            <ls_col>-label = lv_ddic-scrtext_l.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+
+    LOOP AT it_data ASSIGNING <ls_row>.
+      APPEND INITIAL LINE TO lt_rows ASSIGNING <ls_out_row>.
+      LOOP AT lt_comp ASSIGNING <ls_comp>.
+        ASSIGN COMPONENT <ls_comp>-name OF STRUCTURE <ls_row> TO <lv_field>.
+        IF sy-subrc <> 0.
+          CONTINUE.
+        ENDIF.
+        lv_val = |{ <lv_field> }|.
+        READ TABLE rs_section-columns ASSIGNING <ls_col> INDEX sy-tabix.
+        IF <ls_comp>-type->kind = cl_abap_typedescr=>kind_elem.
+          lo_elem ?= <ls_comp>-type.
+          " 数值列右对齐
+          CASE lo_elem->type_kind.
+            WHEN cl_abap_typedescr=>typekind_int
+              OR cl_abap_typedescr=>typekind_int8
+              OR cl_abap_typedescr=>typekind_packed
+              OR cl_abap_typedescr=>typekind_decfloat16
+              OR cl_abap_typedescr=>typekind_decfloat34
+              OR cl_abap_typedescr=>typekind_float.
+              <ls_col>-align_right = abap_true.
+          ENDCASE.
+        ENDIF.
+        APPEND VALUE #( value = lv_val ) TO <ls_out_row>-cells.
+      ENDLOOP.
+    ENDLOOP.
+
+    rs_section-rows = lt_rows.
+  ENDMETHOD.
 
   METHOD constructor.
     super->constructor( ).

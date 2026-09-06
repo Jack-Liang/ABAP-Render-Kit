@@ -155,6 +155,14 @@ CLASS zcl_ark_echarts DEFINITION
       IMPORTING !iv_json        TYPE string
       RETURNING VALUE(ro_self)  TYPE REF TO zcl_ark_echarts .
 
+    "! 输出本图表的 option JSON（声明式 API 构建结果 / set_option 序列化）。
+    "! 供 zif_ark_gui_state 的 chart 节直接取用：
+    "!   chart_option = lo_chart->get_option_json( ).
+    "! —— 业务侧给 ABAP 数据，框架两侧（经典/state）都不写裸 JSON
+    METHODS get_option_json
+      RETURNING
+        VALUE(rv_json) TYPE string .
+
     " 渲染为 HTML 片段（div + 初始化脚本），可与其他内容混排：
     "   mo_html->add( lo_chart->render( ) ).
     " 经 zif_ark_gui_renderable~render 实现，ALIASES render 暴露。
@@ -469,6 +477,13 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     IF rv_html IS INITIAL.
       " 注册器解析失败（如无 GUI 实例）退回 CDN 标签，行为与旧实现一致
       rv_html = |<script src="{ c_cdn_url }"></script>|.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD get_option_json.
+    rv_json = mv_option_json.
+    IF rv_json IS INITIAL.
+      rv_json = build_option_js( ).
     ENDIF.
   ENDMETHOD.
 

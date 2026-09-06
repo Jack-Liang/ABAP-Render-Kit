@@ -42,7 +42,7 @@
 |--------|------|-------------|
 | ZCL_ARK_GUI_COMPONENT | CLAS | Component base class |
 | ZCL_ARK_GUI_PAGE | CLAS | Page base class (+ convention routing on_action_&lt;action&gt;) |
-| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (kpi/table/form/chart/card_grid/text, form read-back + required validation) |
+| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (kpi/table/form/chart/card_grid/text, form read-back + required validation, table_section from any internal table) |
 | ZIF_ARK_GUI_MODAL | INTF | Modal interface |
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
 | ZIF_ARK_GUI_STATE | INTF | Declarative page state schema (draft) |
@@ -53,7 +53,7 @@
 | ZCL_ARK_HTML_FORM | CLAS | Form component |
 | ZCL_ARK_HTML_TABLE | CLAS | Table component (+ from_any_table RTTI rendering) |
 | ZCL_ARK_HTML_TOOLBAR | CLAS | Toolbar component |
-| ZCL_ARK_ECHARTS | CLAS | ECharts chart component (lib injection unified into zcl_ark_js_library) |
+| ZCL_ARK_ECHARTS | CLAS | ECharts chart component (lib injection unified into zcl_ark_js_library; get_option_json bridges to state pages) |
 | ZCL_ARK_JSON_TREE | CLAS | JSON string -> collapsible tree component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 | ZCL_ARK_THREE_VIEW | CLAS | three.js 3D view widget (WebGL, UMD asset, zif_ark_js_widget reference impl) |

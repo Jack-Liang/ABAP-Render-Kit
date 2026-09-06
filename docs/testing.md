@@ -48,6 +48,22 @@ node ark_ui_test.mjs <导出目录>
 
 **仍需手工验证的一环**：SAP GUI 真实拦截 sapevent（mock 之外的最后一公里）。跑一次 `ZARK_EXAMPLE`，用 Browser Info 页确认 Edge 内核 + 图表页点一下带回调的元素即可。
 
+## 4. 嵌入式 JS 语法门禁（tools/js_regress.mjs）
+
+背景：abaplint 查不出 ABAP 字符串里拼出的 JS 语法错（历史事故：相邻字符串字面量、
+三元双冒号，全部真机白图才发现）。本门禁对页面产出的每个内联 `<script>` 跑
+`node --check`：
+
+```bash
+node tools/js_regress.mjs --demo-only              # 只查 demo/*.html（CI 已集成）
+node tools/js_regress.mjs -s a4h                   # demo + 示例页经系统无 GUI 渲染
+VSP_BIN=/path/to/vsp node tools/js_regress.mjs -s a4h
+```
+
+系统渲染部分需要本地 SAP 系统与 vsp（`~/.vsp.json` profile），**推送前手动跑**；
+demo 部分零依赖，已在 GitHub Actions 随 abaplint 一同执行。
+新示例页加入 `tools/js_regress.mjs` 的 `PAGES` 清单。
+
 ## 已知边界
 
 - 地图 choropleth 的省份点击回调在导出页同样经 `__arkLog` 可见，可直接断言。

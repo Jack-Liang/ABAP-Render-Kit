@@ -50,13 +50,19 @@ CLASS ltcl_state_form IMPLEMENTATION.
 
     DATA(ls_state) = lo_page->get_state( ).
     DATA(lv_a) = ``.
+    DATA(lv_b) = ``.
     LOOP AT ls_state-sections ASSIGNING FIELD-SYMBOL(<ls_sec>)
          WHERE form_action = 'save_form'.
       READ TABLE <ls_sec>-form_fields WITH KEY name = 'field_a'
         INTO DATA(ls_field).
       lv_a = ls_field-value.
+      READ TABLE <ls_sec>-form_fields WITH KEY name = 'field_b'
+        INTO ls_field.
+      lv_b = ls_field-value.
     ENDLOOP.
+    " 多字段回读：第一个字段的值必须截断在 & 边界（贪婪正则回归）
     cl_abap_unit_assert=>assert_equals( exp  = `hello` act  = lv_a ).
+    cl_abap_unit_assert=>assert_equals( exp  = `world` act  = lv_b ).
   ENDMETHOD.
 
   METHOD required_rejects_empty.
@@ -94,11 +100,12 @@ CLASS ltcl_state_form IMPLEMENTATION.
             ( input_type = 'text' label = 'A' name = 'field_a'
               required = abap_true ) ) ) ) ) ).
 
-    " 校验通过：约定路由接手（测试页无 on_action_save_form → 未处理 → 0）
+    " 校验通过：约定路由接手；handler 未设 state 时框架置 1 重渲染
+    " （回显回读后的 state，如 select 保存值/成功消息）
     DATA(ls_result) = lo_page->on_event( zcl_ark_gui_event=>new(
       iv_action = 'save_form'
       it_postdata = VALUE #( ( |field_a=x| ) ) ) ).
-    cl_abap_unit_assert=>assert_equals( exp  = 0 act  = ls_result-state ).
+    cl_abap_unit_assert=>assert_equals( exp  = 1 act  = ls_result-state ).
   ENDMETHOD.
 
   METHOD table_section_from_data.

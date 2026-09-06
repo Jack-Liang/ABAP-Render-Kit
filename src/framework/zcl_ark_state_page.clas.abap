@@ -254,11 +254,13 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     LOOP AT lt_comp ASSIGNING <ls_comp>.
       APPEND INITIAL LINE TO rs_section-columns ASSIGNING <ls_col>.
       <ls_col>-label = <ls_comp>-name.
-      " DDIC 元素优先取数据元素文本做列标签
+      " DDIC 元素优先取数据元素文本做列标签；
+      " 非 DDIC 的程序本地类型没有元数据，get_ddic_field 会直接抛
+      " RAISE_EXCEPTION —— 必须 is_ddic_type 预检，否则回落组件名
       IF <ls_comp>-type->kind = cl_abap_typedescr=>kind_elem.
         lo_elem ?= <ls_comp>-type.
-        DATA(lv_ddic) = lo_elem->get_ddic_field( ).
-        IF sy-subrc = 0.
+        IF lo_elem->is_ddic_type( ) = abap_true.
+          DATA(lv_ddic) = lo_elem->get_ddic_field( ).
           IF lv_ddic-scrtext_m IS NOT INITIAL.
             <ls_col>-label = lv_ddic-scrtext_m.
           ELSEIF lv_ddic-scrtext_l IS NOT INITIAL.
@@ -873,13 +875,17 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
   METHOD parse_post_value.
     " postdata 形如 name=value&name2=value2，取指定字段并做 URL 解码。
-    " 先拼成完整 body 再匹配：postdata 按固定长度分片，名值对可能被切到两片
+    " 先拼成完整 body 再匹配：postdata 按固定长度分片，名值对可能被切到两片。
+    " 两个坑（都真实炸过）：
+    "   1) SUBMATCHES 按顺序填组——正则 3 个组必须给齐 3 个变量，
+    "      只给 1 个时接到的是第 1 组（空/分隔符），值永远为空；
+    "   2) 值用 [^&]* 截断：(.*)$ 贪婪匹配会把后续字段整个吞进当前值
     DATA(lv_body) = REDUCE #(
       INIT s TYPE string
       FOR lv_part IN it_postdata
       NEXT s = s && lv_part ).
-    FIND REGEX |(^\|&)({ iv_name })=(.*)$| IN lv_body
-      SUBMATCHES DATA(lv_val).
+    FIND REGEX |(^\|&)({ iv_name })=([^&]*)| IN lv_body
+      SUBMATCHES DATA(lv_sep) DATA(lv_fname) DATA(lv_val).
     IF sy-subrc = 0.
       rv_value = zcl_ark_convert=>url_decode( lv_val ).
     ENDIF.

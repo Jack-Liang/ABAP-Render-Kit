@@ -53,7 +53,8 @@ CLASS zcl_ark_gui_page IMPLEMENTATION.
 
   METHOD constructor.
     super->constructor( ).
-    mo_gui_services = zcl_ark_gui=>get_instance( ).
+    " GUI 服务懒创建（get_services 首次调用时拉起）：页面构造不再依赖
+    " GUI 会话，纯逻辑构造/ABAP Unit 可在无前端环境（ADT/RFC）运行
   ENDMETHOD.
 
   METHOD build_html.
@@ -131,9 +132,8 @@ CLASS zcl_ark_gui_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD raise_event.
-    IF mo_gui_services IS INITIAL.
-      RETURN.
-    ENDIF.
+    " 懒绑定：首个事件才拉起 GUI（语义与原先构造期绑定一致）
+    get_services( ).
 
     DATA(li_event) = zcl_ark_gui_event=>new(
       iv_action  = iv_action

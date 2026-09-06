@@ -510,7 +510,12 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
 
       IF mv_map_xdata IS NOT INITIAL.
         TRY.
-            DATA(lv_map_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+            " peek 不创建 GUI：无 GUI 环境走 CATCH 降级（保持会话资产/空串）
+            DATA(lo_gui) = zcl_ark_gui=>peek( ).
+            IF lo_gui IS INITIAL.
+              zcx_ark_exception=>raise( 'no GUI instance for map asset caching' ).
+            ENDIF.
+            DATA(lv_map_url) = lo_gui->zif_ark_gui_services~cache_asset(
               iv_url     = |ark_map_{ mv_map_name }.js|
               iv_xdata   = mv_map_xdata
               iv_type    = 'text'

@@ -76,12 +76,6 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
   METHOD build_toolbar.
     DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
 
-    lo_toolbar->add_button(
-      iv_label  = 'Back Home'
-      iv_action = 'nav_home' ).
-
-    lo_toolbar->add_separator( ).
-
     lo_toolbar->add_link(
       iv_label = 'ECharts Example'
       iv_url   = 'https://echarts.apache.org/examples/en/editor.html?c=area-stack' ).
@@ -193,9 +187,6 @@ CLASS zcl_ark_example_chart_page IMPLEMENTATION.
 
   METHOD on_event.
     CASE ii_event->mv_action.
-      WHEN 'nav_home'.
-        rs_result-page  = NEW zcl_ark_example_hello_page( ).
-        rs_result-state = 1.
       WHEN 'chart_drill'.
         " 图表点击回传：query 值已自动 URL 解码
         mv_drill_name  = ii_event->query( 'name' ).

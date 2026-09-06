@@ -224,8 +224,15 @@ CLASS zcl_ark_js_library IMPLEMENTATION.
     ENDIF.
 
     " 上传到 HTML 控件换本地缓存 URL；GUI 实例销毁后 URL 失效，
-    " 下次渲染 cache_asset 会重新分配
-    rv_url = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
+    " 下次渲染 cache_asset 会重新分配。
+    " 用 peek 不创建 GUI：无 GUI 的环境（headless 测试/导出）转由
+    " include 的 CATCH 降级为 CDN，而非在此强行拉起控件（CNTL_ERROR 转储）
+    DATA(lo_gui) = zcl_ark_gui=>peek( ).
+    IF lo_gui IS INITIAL.
+      zcx_ark_exception=>raise( |JS library { is_lib-name }: no GUI instance for asset caching| ).
+    ENDIF.
+
+    rv_url = lo_gui->zif_ark_gui_services~cache_asset(
       iv_url     = |ark_js_{ is_lib-name }.js|
       iv_xdata   = lv_xdata
       iv_type    = 'text'

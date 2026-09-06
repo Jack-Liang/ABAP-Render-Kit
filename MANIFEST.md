@@ -20,7 +20,7 @@
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
 | ZCL_ARK_HTML | CLAS | HTML builder engine (slimmed: raw-string escape hatch only; all declarative paths bypass it) |
-| ZCL_ARK_GUI | CLAS | GUI controller (+ event-error banner, is_at_home service) |
+| ZCL_ARK_GUI | CLAS | GUI controller (page history stack, uniform ark_back control auto-injected on non-home pages, event-error banner, is_at_home service) |
 | ZCL_ARK_GUI_EVENT | CLAS | Event object |
 | ZCL_ARK_HTML_PARTS | CLAS | HTML parts collection |
 | ZCL_ARK_HTML_VIEWER_GUI | CLAS | HTML viewer implementation |

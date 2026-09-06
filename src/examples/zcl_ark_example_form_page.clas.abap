@@ -60,9 +60,7 @@ CLASS zcl_ark_example_form_page IMPLEMENTATION.
       ( kind = zif_ark_gui_state=>c_toolbar_kind-text
         label = |国家: { mv_country }| )
       ( kind = zif_ark_gui_state=>c_toolbar_kind-link
-        label = '表格示例' action = 'nav_table' )
-      ( kind = zif_ark_gui_state=>c_toolbar_kind-link
-        label = '返回首页' action = 'nav_home' ) ).
+        label = '表格示例' action = 'nav_table' ) ).
 
     APPEND VALUE #( input_type = 'text' label = '名' name = 'firstname'
                     value = mv_firstname ) TO lt_fields.
@@ -96,9 +94,6 @@ CLASS zcl_ark_example_form_page IMPLEMENTATION.
 
   METHOD on_event.
     CASE ii_event->mv_action.
-      WHEN 'nav_home'.
-        rs_result-page = NEW zcl_ark_example_hello_page( ).
-        rs_result-state = 1.
       WHEN 'nav_table'.
         rs_result-page = NEW zcl_ark_example_table_page( ).
         rs_result-state = 1.

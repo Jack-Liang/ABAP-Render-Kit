@@ -12,7 +12,8 @@ START-OF-SELECTION.
 AT SELECTION-SCREEN OUTPUT.
   PERFORM output.
 
-* 接管 返回 / 取消 按键：子页面返回主页，主页再按则退出
+* 接管 返回 / 取消 按键：F3/Back/Escape = 沿页面栈回上一层（与页面
+* 统一返回条同语义），已在顶层则退出；F12/F15 = 退出程序
 AT SELECTION-SCREEN ON EXIT-COMMAND.
   PERFORM exit.
 
@@ -52,21 +53,24 @@ FORM exit.
     RETURN.
   ENDIF.
 
-  CASE sy-ucomm.
-    WHEN 'CBAC' OR 'CCAN'.  " Back 与 Escape
-      DATA(lo_gui) = zcl_ark_gui=>get_instance( ).
-      IF lo_gui IS INITIAL.
-        LEAVE PROGRAM.
-      ENDIF.
+  DATA(lo_gui) = zcl_ark_gui=>get_instance( ).
+  IF lo_gui IS INITIAL.
+    LEAVE PROGRAM.
+  ENDIF.
 
-      " is_at_home 按页面类名比较，不再与具体类名字符串耦合
+  CASE sy-ucomm.
+    WHEN 'F12' OR 'F15'.  " 取消 / 退出：直接结束程序
+      lo_gui->free( ).
+      LEAVE PROGRAM.
+    WHEN 'CBAC' OR 'CCAN' OR 'F03'.
+      " F3 / Back / Escape：沿页面栈回上一层（与页面统一返回条同语义），
+      " 已在顶层（主页）才退出程序
       IF lo_gui->zif_ark_gui_services~is_at_home( ).
-        " 已在主页：释放资源并退出程序
         lo_gui->free( ).
         LEAVE PROGRAM.
-      ELSE.
-        " 子页面：返回主页
-        lo_gui->go_home( ).
+      ELSEIF lo_gui->go_back( ) = abap_false.
+        " 无栈可弹（未注册主页的宿主形态）：停留当页
+        lo_gui->render( ).
       ENDIF.
   ENDCASE.
 ENDFORM.

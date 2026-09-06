@@ -49,9 +49,8 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
         label = '刷新数据' action = 'state_refresh' emphasized = abap_true )
       ( kind = zif_ark_gui_state=>c_toolbar_kind-separator )
       ( kind = zif_ark_gui_state=>c_toolbar_kind-text
-        label = |放大系数: x{ mv_factor }| )
-      ( kind = zif_ark_gui_state=>c_toolbar_kind-link
-        label = '返回' action = 'nav_home' ) ).
+        label = |放大系数: x{ mv_factor }| ) ).
+    " 返回不需要自己写：框架在非主页自动注入统一返回条（ark_back）
 
     " ---- KPI 卡片 ----
     DATA(lv_sales) = |{ 4286 * mv_factor }|.
@@ -212,9 +211,6 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
         " 图表点击回传：name=类目（月份），chart=节序号；值已自动 URL 解码
         mv_message = |图表点击: { ii_event->query( 'name' ) } = { ii_event->query( 'value' ) }|.
         build_state( ).
-        rs_result-state = 1.
-      WHEN 'nav_home'.
-        rs_result-page = NEW zcl_ark_example_hello_page( ).
         rs_result-state = 1.
       WHEN OTHERS.
         rs_result = super->on_event( ii_event ).

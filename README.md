@@ -15,7 +15,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 ## Features
 
 - **HTML Rendering Engine** — Fluent API for building HTML with automatic indentation
-- **Page Navigation** — Stack-based history with back/forward support
+- **Page Navigation** — automatic page stack: navigation pushes history, `go_back( )` pops one level (restoring the previous page instance with its state). Every non-home page gets a uniform **← 返回** control automatically; the reserved action `ark_back` is intercepted by the framework. F3/Back goes one level up and exits only at the top level — no more jumping straight to exit
 - **Event System** — Sapevent-based communication between frontend and ABAP backend
 - **UI Components** — Form, Table, Toolbar, and more ready-to-use components
 - **JS Library Registry** — `zcl_ark_js_library=>register( iv_name iv_mime )` plugs any uploaded JS (three.js, dayjs, ...) into every page; `include_for( lo_widget )` injects a widget's dependencies once per page
@@ -117,10 +117,13 @@ START-OF-SELECTION.
   ENDTRY.
 
 AT SELECTION-SCREEN ON EXIT-COMMAND.
-  " Back / Escape: release the GUI and leave the program
+  " F3 / Back / Escape: one level up the page stack (same as the on-page
+  " Back control); exit the program when already at the top level
   IF sy-dynnr = 1001.
-    zcl_ark_gui=>get_instance( )->free( ).
-    LEAVE PROGRAM.
+    IF zcl_ark_gui=>get_instance( )->go_back( ) = abap_false.
+      zcl_ark_gui=>get_instance( )->free( ).
+      LEAVE PROGRAM.
+    ENDIF.
   ENDIF.
 ```
 

@@ -8,7 +8,6 @@ CLASS zcl_ark_example_ui5_state_page DEFINITION
     METHODS constructor .
 
     "! 经典主框架事件（工具栏 link 走 ark.nav 整页导航路径）
-    METHODS on_event REDEFINITION .
 
   PROTECTED SECTION.
     "! 桥事件（工具栏按钮 / 单元格链接 / 图表点击 / 表单提交）
@@ -55,9 +54,7 @@ CLASS zcl_ark_example_ui5_state_page IMPLEMENTATION.
         label = '刷新数据' action = 'ui5s_refresh' emphasized = abap_true )
       ( kind = zif_ark_gui_state=>c_toolbar_kind-separator )
       ( kind = zif_ark_gui_state=>c_toolbar_kind-text
-        label = |放大系数: x{ mv_factor }| )
-      ( kind = zif_ark_gui_state=>c_toolbar_kind-link
-        label = '返回' action = 'nav_home' ) ).
+        label = |放大系数: x{ mv_factor }| ) ).
 
     " ---- KPI 卡片：逐卡构造后 APPEND ----
     DATA(lv_sales) = |{ 4286 * mv_factor }|.
@@ -182,17 +179,6 @@ CLASS zcl_ark_example_ui5_state_page IMPLEMENTATION.
     APPEND VALUE #( cells = cells ) TO ms_table-rows.
   ENDMETHOD.
 
-
-  METHOD on_event.
-    CASE ii_event->mv_action.
-      WHEN 'nav_home'.
-        " 工具栏 link 前端走 ark.nav（主框架导航）→ 经典整页切换路径
-        rs_result-page = NEW zcl_ark_example_hello_page( ).
-        rs_result-state = 1.
-      WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
-    ENDCASE.
-  ENDMETHOD.
 
 
   METHOD on_state_event.

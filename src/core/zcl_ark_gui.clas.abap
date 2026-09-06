@@ -6,7 +6,18 @@ CLASS zcl_ark_gui DEFINITION
   PUBLIC SECTION.
     INTERFACES zif_ark_gui_services .
 
+    "! 框架保留动作：统一返回。render_page 在所有非主页页面顶部自动注入
+    "! 返回条（sapevent:ark_back），on_event 在业务分发之前拦截并 go_back。
+    "! 业务动作不得使用该名字
+    CONSTANTS c_action_back TYPE string VALUE 'ark_back' .
+
     CLASS-METHODS get_instance
+      RETURNING VALUE(ri_gui) TYPE REF TO zcl_ark_gui .
+
+    "! 只读访问已存在的 GUI 实例（可能为空），绝不创建：
+    "! 资产缓存等"有 GUI 才有意义"的调用方用它避免在无 GUI 环境
+    "! （headless 测试/导出）强行拉起控件
+    CLASS-METHODS peek
       RETURNING VALUE(ri_gui) TYPE REF TO zcl_ark_gui .
 
     CLASS-METHODS create
@@ -19,7 +30,11 @@ CLASS zcl_ark_gui DEFINITION
       RAISING zcx_ark_exception .
 
     METHODS go_home RAISING zcx_ark_exception .
-    METHODS go_back RAISING zcx_ark_exception .
+    "! 弹回上一层页面（页面栈）。栈空时返回 abap_false 且不动作；
+    "! 弹回的是离开时的页面实例，其状态原样恢复
+    METHODS go_back
+      RETURNING
+        VALUE(rv_popped) TYPE abap_bool .
     METHODS set_page
       IMPORTING !io_page TYPE REF TO zif_ark_gui_renderable
       RAISING zcx_ark_exception .
@@ -53,6 +68,11 @@ CLASS zcl_ark_gui DEFINITION
     DATA mo_current_page TYPE REF TO zif_ark_gui_renderable .
     DATA mv_current_page_name TYPE string .
     DATA mo_home_page TYPE REF TO zif_ark_gui_renderable .
+    "! 页面导航栈（不含当前页）：set_page 压入离开的页面实例，
+    "! go_back 弹回——实例引用使子页面状态在返回后原样保留。
+    "! 深度上限防导航环累积；超出丢弃最旧条目
+    DATA mt_history TYPE STANDARD TABLE OF REF TO zif_ark_gui_renderable WITH EMPTY KEY .
+    CONSTANTS c_history_max TYPE i VALUE 50 .
     DATA mo_parts TYPE REF TO zcl_ark_html_parts .
     DATA mt_event_handlers TYPE STANDARD TABLE OF REF TO zif_ark_gui_event_handler .
     DATA mo_container TYPE REF TO cl_gui_container .
@@ -76,6 +96,10 @@ CLASS zcl_ark_gui DEFINITION
     METHODS build_html_document
       IMPORTING !iv_content TYPE string
       RETURNING VALUE(rv_html) TYPE string .
+
+    "! 仅替换当前页引用与类名缓存，不渲染不入栈（set_page/go_home/go_back 共用）
+    METHODS set_current
+      IMPORTING !io_page TYPE REF TO zif_ark_gui_renderable .
 
     METHODS call_page_render
       RETURNING VALUE(ri_html) TYPE REF TO zif_ark_html
@@ -117,26 +141,49 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     ri_gui = go_instance.
   ENDMETHOD.
 
-  METHOD go_home.
-    " 有注册主页则回到主页对象；无注册时保持旧语义（清空页面）。
-    " 旧实现无条件 CLEAR 后渲染，历史上从子页面"返回"会渲染出空骨架白屏
-    IF mo_home_page IS NOT INITIAL.
-      set_page( mo_home_page ).
-      RETURN.
-    ENDIF.
+  METHOD peek.
+    ri_gui = go_instance.
+  ENDMETHOD.
 
-    CLEAR mo_current_page.
-    CLEAR mv_current_page_name.
+  METHOD go_home.
+    " 回到注册主页：清空导航栈（主页即顶层，无"再往后"）。
+    " 无注册主页时保持旧语义（清空页面）
+    CLEAR mt_history.
+    set_current( mo_home_page ).
     render( ).
   ENDMETHOD.
 
   METHOD go_back.
-    IF mo_html_viewer IS NOT INITIAL.
-      mo_html_viewer->back( ).
+    " 弹回上一层：恢复离开时的页面实例（含其状态），当前页不入栈。
+    " 旧实现是 HTML 控件的浏览器历史回退——重放陈旧快照而非重渲染父页，
+    " 与页面对象层完全脱节。栈空（已到顶层）时返回 abap_false 不动作
+    DATA(lv_last) = lines( mt_history ).
+    IF lv_last = 0.
+      rv_popped = abap_false.
+      RETURN.
     ENDIF.
+
+    set_current( mt_history[ lv_last ] ).
+    DELETE mt_history INDEX lv_last.
+    rv_popped = abap_true.
+    render( ).
   ENDMETHOD.
 
   METHOD set_page.
+    " 导航入栈：把离开的页面实例压入历史（同实例重设不压，防双击累积）。
+    " 首次 set_page（启动）时当前页为空，不入栈
+    IF mo_current_page IS NOT INITIAL AND mo_current_page <> io_page.
+      APPEND mo_current_page TO mt_history.
+      IF lines( mt_history ) > c_history_max.
+        DELETE mt_history INDEX 1.
+      ENDIF.
+    ENDIF.
+
+    set_current( io_page ).
+    render( ).
+  ENDMETHOD.
+
+  METHOD set_current.
     mo_current_page = io_page.
 
     IF io_page IS NOT INITIAL.
@@ -146,8 +193,6 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     ELSE.
       CLEAR mv_current_page_name.
     ENDIF.
-
-    render( ).
   ENDMETHOD.
 
   METHOD set_home_page.
@@ -224,6 +269,14 @@ CLASS zcl_ark_gui IMPLEMENTATION.
       mo_current_page = mo_home_page.
     ENDIF.
 
+    " 统一返回条：所有非主页页面自动获得，位置固定（错误横幅之下、
+    " 页面内容之上）。动作 ark_back 由 on_event 拦截弹回上一层
+    IF mo_current_page IS NOT INITIAL AND is_at_home( ) = abap_false.
+      lv_content = lv_content &&
+        |<div class="ark-backbar"><a class="ark-back" | &&
+        |href="sapevent:{ c_action_back }">&#8592; 返回</a></div>|.
+    ENDIF.
+
     IF mo_current_page IS NOT INITIAL.
       DATA(li_html) = call_page_render( ).
       IF li_html IS NOT INITIAL.
@@ -277,6 +330,13 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event.
+    " 框架保留动作：统一返回。在注册 handler / 页面分发之前拦截，
+    " 业务侧不可覆盖也不必实现（c_action_back 注释见类定义）
+    IF action = c_action_back.
+      go_back( ).
+      RETURN.
+    ENDIF.
+
     DATA(li_event) = zcl_ark_gui_event=>new(
       iv_action   = action
       iv_getdata  = getdata

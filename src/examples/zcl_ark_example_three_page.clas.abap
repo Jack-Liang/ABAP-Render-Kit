@@ -6,7 +6,6 @@ CLASS zcl_ark_example_three_page DEFINITION
 
   PUBLIC SECTION.
     METHODS constructor .
-    METHODS on_event REDEFINITION .
 
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
@@ -28,12 +27,6 @@ CLASS zcl_ark_example_three_page IMPLEMENTATION.
     " 两个视图同页：库脚本经注册器页面级去重只注入一次 ——
     " 这正是 zif_ark_js_widget + zcl_ark_js_library 的接入形态
     " （接入指引见 docs/js-extensions.md）
-
-    DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
-    lo_toolbar->add_button(
-      iv_label  = 'Back Home'
-      iv_action = 'nav_home' ).
-    mo_html->add( lo_toolbar->zif_ark_gui_renderable~render( ) ).
 
     mo_html->add(
       |<p style="color: #57606a;">| &&
@@ -59,16 +52,6 @@ CLASS zcl_ark_example_three_page IMPLEMENTATION.
     mo_html->add( lo_sphere->render( ) ).
 
     ri_html = mo_html.
-  ENDMETHOD.
-
-  METHOD on_event.
-    CASE ii_event->mv_action.
-      WHEN 'nav_home'.
-        rs_result-page  = NEW zcl_ark_example_hello_page( ).
-        rs_result-state = 1.
-      WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
-    ENDCASE.
   ENDMETHOD.
 
 ENDCLASS.

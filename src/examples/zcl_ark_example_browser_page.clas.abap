@@ -7,7 +7,6 @@ CLASS zcl_ark_example_browser_page DEFINITION
   PUBLIC SECTION.
     METHODS constructor .
 
-    METHODS on_event REDEFINITION .
 
   PROTECTED SECTION.
     METHODS build_html REDEFINITION .
@@ -41,10 +40,7 @@ CLASS zcl_ark_example_browser_page IMPLEMENTATION.
   METHOD build_toolbar.
     DATA(lo_toolbar) = zcl_ark_html_toolbar=>create( ).
 
-    lo_toolbar->add_button(
-      iv_label  = 'Back to Home'
-      iv_action = 'nav_home' ).
-
+    " 统一返回由框架注入（ark_back），页面工具栏不再自建返回按钮
     ri_toolbar = lo_toolbar->zif_ark_gui_renderable~render( ).
   ENDMETHOD.
 
@@ -116,16 +112,6 @@ CLASS zcl_ark_example_browser_page IMPLEMENTATION.
       `      rows + '</table>';` && lv_nl &&
       `  }` && lv_nl &&
       `})();`.
-  ENDMETHOD.
-
-  METHOD on_event.
-    CASE ii_event->mv_action.
-      WHEN 'nav_home'.
-        rs_result-page = NEW zcl_ark_example_hello_page( ).
-        rs_result-state = 1.
-      WHEN OTHERS.
-        rs_result = super->on_event( ii_event ).
-    ENDCASE.
   ENDMETHOD.
 
 ENDCLASS.

@@ -67,12 +67,21 @@ FORM exit.
   ENDIF.
 
   CASE sy-ucomm.
-    WHEN 'CBAC' OR 'CCAN'.  " Back 与 Escape
-      " 启动器没有主页语义：直接退出程序（页面内部的 Back 由应用自管）
+    WHEN 'F12' OR 'F15'.  " 取消 / 退出：直接结束程序
       DATA(lo_gui) = zcl_ark_gui=>get_instance( ).
       IF lo_gui IS NOT INITIAL.
         lo_gui->free( ).
       ENDIF.
       LEAVE PROGRAM.
+    WHEN 'CBAC' OR 'CCAN' OR 'F03'.
+      " F3 / Back / Escape：沿页面栈回上一层（与页面统一返回条同语义）。
+      " 启动器无注册主页：栈空（已在入口页）时退出程序
+      lo_gui = zcl_ark_gui=>get_instance( ).
+      IF lo_gui IS INITIAL OR lo_gui->go_back( ) = abap_false.
+        IF lo_gui IS NOT INITIAL.
+          lo_gui->free( ).
+        ENDIF.
+        LEAVE PROGRAM.
+      ENDIF.
   ENDCASE.
 ENDFORM.

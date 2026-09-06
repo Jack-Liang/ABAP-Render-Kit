@@ -15,10 +15,11 @@
 ### src/ (Main Package)
 - `package.devc.xml` — Package definition
 
-### src/core/ (Core Engine — 18 objects)
+### src/core/ (Core Engine — 19 objects)
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
+| ZCL_ARK_NAV_STACK | CLAS | Page navigation history stack (LIFO, depth-capped; unit-tested) |
 | ZCL_ARK_HTML | CLAS | HTML builder engine (slimmed: raw-string escape hatch only; all declarative paths bypass it) |
 | ZCL_ARK_GUI | CLAS | GUI controller (page history stack, uniform ark_back control auto-injected on non-home pages, event-error banner, is_at_home service) |
 | ZCL_ARK_GUI_EVENT | CLAS | Event object |

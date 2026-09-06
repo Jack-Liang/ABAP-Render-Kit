@@ -70,9 +70,8 @@ CLASS zcl_ark_gui DEFINITION
     DATA mo_home_page TYPE REF TO zif_ark_gui_renderable .
     "! 页面导航栈（不含当前页）：set_page 压入离开的页面实例，
     "! go_back 弹回——实例引用使子页面状态在返回后原样保留。
-    "! 深度上限防导航环累积；超出丢弃最旧条目
-    DATA mt_history TYPE STANDARD TABLE OF REF TO zif_ark_gui_renderable WITH EMPTY KEY .
-    CONSTANTS c_history_max TYPE i VALUE 50 .
+    "! 逻辑独立成 zcl_ark_nav_stack 以获得单测覆盖
+    DATA mo_history TYPE REF TO zcl_ark_nav_stack .
     DATA mo_parts TYPE REF TO zcl_ark_html_parts .
     DATA mt_event_handlers TYPE STANDARD TABLE OF REF TO zif_ark_gui_event_handler .
     DATA mo_container TYPE REF TO cl_gui_container .
@@ -110,6 +109,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
 
   METHOD constructor.
     mo_parts = NEW zcl_ark_html_parts( ).
+    mo_history = NEW zcl_ark_nav_stack( ).
 
     IF io_container IS NOT INITIAL.
       mo_container = io_container.
@@ -148,7 +148,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   METHOD go_home.
     " 回到注册主页：清空导航栈（主页即顶层，无"再往后"）。
     " 无注册主页时保持旧语义（清空页面）
-    CLEAR mt_history.
+    mo_history->clear( ).
     set_current( mo_home_page ).
     render( ).
   ENDMETHOD.
@@ -157,14 +157,13 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     " 弹回上一层：恢复离开时的页面实例（含其状态），当前页不入栈。
     " 旧实现是 HTML 控件的浏览器历史回退——重放陈旧快照而非重渲染父页，
     " 与页面对象层完全脱节。栈空（已到顶层）时返回 abap_false 不动作
-    DATA(lv_last) = lines( mt_history ).
-    IF lv_last = 0.
+    DATA(lo_page) = mo_history->pop( ).
+    IF lo_page IS INITIAL.
       rv_popped = abap_false.
       RETURN.
     ENDIF.
 
-    set_current( mt_history[ lv_last ] ).
-    DELETE mt_history INDEX lv_last.
+    set_current( lo_page ).
     rv_popped = abap_true.
     render( ).
   ENDMETHOD.
@@ -173,10 +172,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     " 导航入栈：把离开的页面实例压入历史（同实例重设不压，防双击累积）。
     " 首次 set_page（启动）时当前页为空，不入栈
     IF mo_current_page IS NOT INITIAL AND mo_current_page <> io_page.
-      APPEND mo_current_page TO mt_history.
-      IF lines( mt_history ) > c_history_max.
-        DELETE mt_history INDEX 1.
-      ENDIF.
+      mo_history->push( mo_current_page ).
     ENDIF.
 
     set_current( io_page ).

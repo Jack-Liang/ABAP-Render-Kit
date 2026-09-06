@@ -51,8 +51,8 @@ CLASS zcl_ark_example_data_page IMPLEMENTATION.
 
 
   METHOD build_html.
-    mo_html->add( |<h1 style="margin-bottom: 4px;">Data Viewer</h1>| ).
-    mo_html->add( |<p style="margin-top: 0; color: #57606a;">| &&
+    mo_html->add( |<h1 class="ark-page-title">Data Viewer</h1>| ).
+    mo_html->add( |<p class="ark-page-subtitle">| &&
                   |Typed ABAP data in, HTML out &mdash; no per-cell code.| &&
                   |&nbsp;&nbsp;点击列头排序，输入筛选就地生效| &&
                   |&nbsp;&middot;&nbsp;| &&
@@ -110,7 +110,7 @@ CLASS zcl_ark_example_data_page IMPLEMENTATION.
                             price = '0' currency = 'SGD' )
            TO lt_flights.
 
-    lo_html->add( |<h2 style="margin-bottom: 8px;">Internal table &rarr; RTTI table</h2>| ).
+    lo_html->add( |<h2 class="ark-h2">Internal table &rarr; RTTI table</h2>| ).
     lo_html->add_table( zcl_ark_html_table=>from_any_table( lt_flights
                                 )->zif_ark_gui_renderable~render( ) ).
 
@@ -119,7 +119,7 @@ CLASS zcl_ark_example_data_page IMPLEMENTATION.
     APPEND `html` TO lt_tags.
     APPEND `echarts` TO lt_tags.
 
-    lo_html->add( |<h2 style="margin-bottom: 8px;">Elementary line &rarr; TABLE_LINE</h2>| ).
+    lo_html->add( |<h2 class="ark-h2">Elementary line &rarr; TABLE_LINE</h2>| ).
     lo_html->add_table( zcl_ark_html_table=>from_any_table( lt_tags
                                 )->zif_ark_gui_renderable~render( ) ).
 

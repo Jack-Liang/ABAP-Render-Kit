@@ -7,13 +7,9 @@ CLASS zcl_ark_html DEFINITION
     INTERFACES zif_ark_html .
     ALIASES add FOR zif_ark_html~add .
     ALIASES add_a FOR zif_ark_html~add_a .
-    ALIASES add_checkbox FOR zif_ark_html~add_checkbox .
-    ALIASES add_icon FOR zif_ark_html~add_icon .
     ALIASES div FOR zif_ark_html~div .
-    ALIASES icon FOR zif_ark_html~icon .
     ALIASES is_empty FOR zif_ark_html~is_empty .
     ALIASES render FOR zif_ark_html~render .
-    ALIASES set_title FOR zif_ark_html~set_title .
     ALIASES td FOR zif_ark_html~td .
     ALIASES th FOR zif_ark_html~th .
     ALIASES wrap FOR zif_ark_html~wrap .
@@ -31,15 +27,8 @@ CLASS zcl_ark_html DEFINITION
       BEGIN OF ty_chunk, is_text TYPE abap_bool, text TYPE string, html TYPE REF TO zcl_ark_html,
       END OF ty_chunk .
     DATA mt_chunks TYPE STANDARD TABLE OF ty_chunk WITH DEFAULT KEY .
-    DATA mv_indent TYPE i VALUE 0 ##NO_TEXT.
-    DATA mv_within_style TYPE abap_bool .
-    DATA mv_within_js TYPE abap_bool .
 
-    METHODS increase_indent .
-    METHODS decrease_indent .
-    METHODS indent_line CHANGING !cv_line TYPE string .
     METHODS add_chunk IMPORTING !is_chunk TYPE ty_chunk .
-    METHODS check_rerender RETURNING VALUE(rv_result) TYPE abap_bool .
 ENDCLASS.
 
 CLASS zcl_ark_html IMPLEMENTATION.
@@ -127,15 +116,6 @@ CLASS zcl_ark_html IMPLEMENTATION.
     ri_self = me.
   ENDMETHOD.
 
-  METHOD add_checkbox.
-    DATA lv_checked TYPE string.
-    IF iv_checked = abap_true.
-      lv_checked = ' checked'.
-    ENDIF.
-    add( |<input type="checkbox" id="{ iv_id }" name="{ iv_id }"{ lv_checked }>| ).
-    ri_self = me.
-  ENDMETHOD.
-
   METHOD add_chunk.
     IF is_chunk-is_text = abap_true AND is_chunk-text IS INITIAL.
       RETURN.
@@ -148,14 +128,6 @@ CLASS zcl_ark_html IMPLEMENTATION.
     ls_chunk-text = |<style type="text/css">{ iv_css }</style>|.
     ls_chunk-is_text = abap_true.
     add_chunk( ls_chunk ).
-    ri_self = me.
-  ENDMETHOD.
-
-  METHOD add_icon.
-    add( icon( iv_name    = iv_name
-               iv_hint    = iv_hint
-               iv_class   = iv_class
-               iv_onclick = iv_onclick ) ).
     ri_self = me.
   ENDMETHOD.
 
@@ -174,19 +146,8 @@ CLASS zcl_ark_html IMPLEMENTATION.
     ri_self = me.
   ENDMETHOD.
 
-  METHOD check_rerender.
-    rv_result = abap_false.
-  ENDMETHOD.
-
   METHOD create.
     CREATE OBJECT ri_html TYPE zcl_ark_html.
-  ENDMETHOD.
-
-  METHOD decrease_indent.
-    mv_indent = mv_indent - 2.
-    IF mv_indent < 0.
-      mv_indent = 0.
-    ENDIF.
   ENDMETHOD.
 
   METHOD div.
@@ -199,38 +160,6 @@ CLASS zcl_ark_html IMPLEMENTATION.
           is_data_attr = is_data_attr
           it_data_attrs = it_data_attrs ).
     ri_self = me.
-  ENDMETHOD.
-
-  METHOD icon.
-    DATA lv_class TYPE string.
-    DATA lv_onclick TYPE string.
-    DATA lv_title TYPE string.
-
-    IF iv_class IS NOT INITIAL.
-      lv_class = | class="{ iv_class }"|.
-    ENDIF.
-
-    IF iv_onclick IS NOT INITIAL.
-      lv_onclick = | onclick="{ iv_onclick }"|.
-    ENDIF.
-
-    IF iv_hint IS NOT INITIAL.
-      lv_title = | title="{ iv_hint }"|.
-    ENDIF.
-
-    rv_str = |<span{ lv_class }{ lv_title }{ lv_onclick }>{ iv_name }</span>|.
-  ENDMETHOD.
-
-  METHOD increase_indent.
-    mv_indent = mv_indent + 2.
-  ENDMETHOD.
-
-  METHOD indent_line.
-    DATA lv_spaces TYPE string.
-    DO mv_indent TIMES.
-      lv_spaces = lv_spaces && ` `.
-    ENDDO.
-    cv_line = lv_spaces && cv_line.
   ENDMETHOD.
 
   METHOD is_empty.
@@ -260,11 +189,6 @@ CLASS zcl_ark_html IMPLEMENTATION.
     ELSE.
       rv_html = concat_lines_of( table = lt_html sep = cl_abap_char_utilities=>newline ).
     ENDIF.
-  ENDMETHOD.
-
-  METHOD set_title.
-    zif_ark_html~mv_chunk_title = iv_title.
-    ri_self = me.
   ENDMETHOD.
 
   METHOD td.

@@ -194,7 +194,7 @@ CLASS zcl_ark_example_hello_page IMPLEMENTATION.
           CATCH cx_root ##NO_TEXT.
             " 已销毁的控件释放失败可容忍
         ENDTRY.
-        zcl_ark_example_app=>main( ).
+        zcl_ark_example_app=>run( ).
     ENDTRY.
   ENDMETHOD.
 

@@ -25,6 +25,11 @@ CLASS zcl_ark_gui DEFINITION
       RAISING zcx_ark_exception .
     METHODS set_home_page
       IMPORTING !io_page TYPE REF TO zif_ark_gui_renderable .
+
+    "! 当前页是否为注册的主页（按页面类的绝对类名比较，跨实例成立）。
+    "! 宿主报表的 Back/Escape 处理用它替代对具体页面类名的字符串耦合
+    METHODS is_at_home
+      RETURNING VALUE(rv_yes) TYPE abap_bool .
     METHODS render .
     METHODS set_focus RAISING zcx_ark_exception .
     METHODS free .
@@ -64,6 +69,9 @@ CLASS zcl_ark_gui DEFINITION
     DATA mt_asset_cache TYPE tt_asset_cache .
     " 匿名资产文件名序号：sy-index 在非循环上下文恒为 0，同秒多资产会重名互覆
     DATA mv_asset_seq TYPE i .
+    " 事件处理异常横幅（正式化：不再静默吞掉 handler 异常），
+    " 下一次 render_page 输出一次即清空
+    DATA mv_event_error TYPE string .
 
     METHODS build_html_document
       IMPORTING !iv_content TYPE string
@@ -148,6 +156,16 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     mo_home_page = io_page.
   ENDMETHOD.
 
+  METHOD is_at_home.
+    " 按绝对类名比较：导航常创建主页的新实例，引用比较不成立
+    IF mo_current_page IS INITIAL OR mo_home_page IS INITIAL.
+      RETURN.
+    ENDIF.
+    rv_yes = xsdbool(
+      cl_abap_classdescr=>describe_by_object_ref( mo_current_page )->absolute_name =
+      cl_abap_classdescr=>describe_by_object_ref( mo_home_page )->absolute_name ).
+  ENDMETHOD.
+
   METHOD render.
     DATA lv_html TYPE string.
 
@@ -194,6 +212,12 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   METHOD render_page.
     DATA lv_content TYPE string.
 
+    " 事件处理异常横幅：输出一次即清空（转义后插入，防二次注入）
+    IF mv_event_error IS NOT INITIAL.
+      lv_content = |<div class="ark-error-banner">{ zcl_ark_convert=>escape_html( mv_event_error ) }</div>|.
+      CLEAR mv_event_error.
+    ENDIF.
+
     " 防线：页面缺失时优先回退到注册的主页，仍无页面则渲染可见提示，
     " 避免无声的空白页（历史上 go_home 清空页面即渲染空骨架）
     IF mo_current_page IS INITIAL AND mo_home_page IS NOT INITIAL.
@@ -203,7 +227,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     IF mo_current_page IS NOT INITIAL.
       DATA(li_html) = call_page_render( ).
       IF li_html IS NOT INITIAL.
-        lv_content = li_html->render( ).
+        lv_content = lv_content && li_html->render( ).
       ENDIF.
     ELSE.
       lv_content = |<p style="color: #b91c1c;">ARK: no page set | &&
@@ -268,8 +292,9 @@ CLASS zcl_ark_gui IMPLEMENTATION.
             lv_handled = abap_true.
             EXIT.
           ENDIF.
-        CATCH zcx_ark_exception.
-          CONTINUE.
+        CATCH zcx_ark_exception INTO DATA(lx_handler).
+          " handler 异常同样转为可见横幅，不再无声跳过
+          mv_event_error = lx_handler->get_text( ).
       ENDTRY.
     ENDLOOP.
 
@@ -280,8 +305,13 @@ CLASS zcl_ark_gui IMPLEMENTATION.
           IF ls_result-state IS NOT INITIAL.
             lv_handled = abap_true.
           ENDIF.
-        CATCH cx_sy_move_cast_error zcx_ark_exception.
-          " 当前页面不是 zcl_ark_gui_page 或处理出错，按未处理对待
+        CATCH cx_sy_move_cast_error.
+          " 当前页面不是 zcl_ark_gui_page：按未处理对待
+        CATCH zcx_ark_exception INTO DATA(lx_page).
+          " 正式化：handler 异常不再静默吞掉 —— 渲染当页 + 错误横幅，
+          " 用户能看到出错了以及原因（文本已转义）
+          mv_event_error = lx_page->get_text( ).
+          lv_handled = abap_true.
       ENDTRY.
     ENDIF.
 
@@ -416,6 +446,10 @@ CLASS zcl_ark_gui IMPLEMENTATION.
       INSERT VALUE ty_asset_cache( url = lv_url assigned_url = rv_url )
         INTO TABLE mt_asset_cache.
     ENDIF.
+  ENDMETHOD.
+
+  METHOD zif_ark_gui_services~is_at_home.
+    rv_yes = is_at_home( ).
   ENDMETHOD.
 
   METHOD zif_ark_gui_services~get_current_page_name.

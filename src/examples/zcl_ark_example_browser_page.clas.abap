@@ -59,7 +59,7 @@ CLASS zcl_ark_example_browser_page IMPLEMENTATION.
       iv_style   = 'color: #666;' ).
 
     lo_content->add(
-      |<p style="margin-top:16px;color:#666;">SAP GUI for Windows embeds the | &&
+      |<p class="ark-note">SAP GUI for Windows embeds the | &&
       |IE (MSHTML) engine by default; since 7.70 an administrator can switch | &&
       |the HTML control to Edge (Chromium), see SAP Notes 2913405 / 3191784.</p>| ).
 

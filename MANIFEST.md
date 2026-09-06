@@ -19,8 +19,8 @@
 | Object | Type | Description |
 |--------|------|-------------|
 | ZCX_ARK_EXCEPTION | CLAS | Exception class |
-| ZCL_ARK_HTML | CLAS | HTML builder engine |
-| ZCL_ARK_GUI | CLAS | GUI controller |
+| ZCL_ARK_HTML | CLAS | HTML builder engine (slimmed: raw-string escape hatch only; all declarative paths bypass it) |
+| ZCL_ARK_GUI | CLAS | GUI controller (+ event-error banner, is_at_home service) |
 | ZCL_ARK_GUI_EVENT | CLAS | Event object |
 | ZCL_ARK_HTML_PARTS | CLAS | HTML parts collection |
 | ZCL_ARK_HTML_VIEWER_GUI | CLAS | HTML viewer implementation |
@@ -53,7 +53,7 @@
 | ZCL_ARK_HTML_FORM | CLAS | Form component |
 | ZCL_ARK_HTML_TABLE | CLAS | Table component (+ from_any_table RTTI rendering) |
 | ZCL_ARK_HTML_TOOLBAR | CLAS | Toolbar component |
-| ZCL_ARK_ECHARTS | CLAS | ECharts chart component |
+| ZCL_ARK_ECHARTS | CLAS | ECharts chart component (lib injection unified into zcl_ark_js_library) |
 | ZCL_ARK_JSON_TREE | CLAS | JSON string -> collapsible tree component |
 | ZCL_ARK_TEMPLATE | CLAS | String/MIME template engine ({{PLACEHOLDER}} syntax) |
 | ZCL_ARK_THREE_VIEW | CLAS | three.js 3D view widget (WebGL, UMD asset, zif_ark_js_widget reference impl) |

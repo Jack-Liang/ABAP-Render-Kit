@@ -16,7 +16,6 @@ CLASS zcl_ark_echarts DEFINITION
     TYPES ty_values TYPE STANDARD TABLE OF i WITH DEFAULT KEY .
 
     CONSTANTS c_cdn_url TYPE string VALUE 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' .
-    CONSTANTS c_lib_cache_name TYPE string VALUE 'ark_echarts_min.js' .
     CONSTANTS c_bundled_mime_name TYPE wwwdatatab-objid VALUE 'ZARK_ECHARTS_MIN_JS' .
     " zcl_ark_js_library 注册名
     CONSTANTS c_lib_name TYPE string VALUE 'echarts' .
@@ -193,8 +192,6 @@ CLASS zcl_ark_echarts DEFINITION
       tt_map_asset TYPE HASHED TABLE OF ty_map_asset WITH UNIQUE KEY map_name .
 
     CLASS-DATA gv_instance_counter TYPE i .
-    CLASS-DATA gv_default_lib_xdata TYPE xstring .              " use_bundled_library 读入，会话级
-    CLASS-DATA gv_default_lib_name TYPE wwwdatatab-objid .     " 已读入的 MIME 对象名
     CLASS-DATA gt_map_asset TYPE tt_map_asset .                " use_bundled_map 读入，会话级
 
     DATA mv_div_id TYPE string .
@@ -204,7 +201,6 @@ CLASS zcl_ark_echarts DEFINITION
     DATA mv_include_lib TYPE abap_bool .
     DATA mv_title TYPE string .
     DATA mv_save_as_image TYPE abap_bool .
-    DATA mv_library_xdata TYPE xstring .
     DATA mv_option_json TYPE string .
     DATA mv_option_override TYPE string .
     DATA mv_categories_json TYPE string .
@@ -235,12 +231,12 @@ ENDCLASS.
 CLASS zcl_ark_echarts IMPLEMENTATION.
 
   METHOD use_bundled_library.
-    " 会话级每个 MIME 对象只读一次（1MB+ 的 WWWDATA_IMPORT 很贵）；
-    " 换用不同的 iv_mime_name 时按对象名重新读取
-    IF gv_default_lib_xdata IS INITIAL OR gv_default_lib_name <> iv_mime_name.
-      gv_default_lib_xdata = zcl_ark_convert=>mime_to_xstring( iv_mime_name ).
-      gv_default_lib_name   = iv_mime_name.
-    ENDIF.
+    " 显式指定库资产的 MIME 对象（会话级一次即可）。实现收敛到注册器：
+    " MIME 只读一次/失败标记/本地 URL 均由 zcl_ark_js_library 负责。
+    " 缺省资产由 include_library_script 隐式注册，无需调用本方法
+    zcl_ark_js_library=>register(
+      iv_name = c_lib_name
+      iv_mime = iv_mime_name ).
   ENDMETHOD.
 
   METHOD constructor.
@@ -408,7 +404,11 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD set_library_xdata.
-    mv_library_xdata = iv_xdata.
+    " 实例级库内容覆盖：直接注册进 zcl_ark_js_library（同名覆盖语义）。
+    " 渲染统一走 include_library_script，不再有独立的实例级上传分支
+    zcl_ark_js_library=>register(
+      iv_name  = c_lib_name
+      iv_xdata = iv_xdata ).
     ro_self = me.
   ENDMETHOD.
 
@@ -452,13 +452,7 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
     " 宿主实证（2026-08-22）：WebView2 内 jsdelivr CDN 不可达，未启用
     " MIME 资产的页面图表静默缺席 —— 首次调用时自动尝试随仓库分发的
     " 资产 ZARK_ECHARTS_MIN_JS，缺资产/读失败回退注册 CDN 地址
-    IF gv_default_lib_xdata IS NOT INITIAL.
-      " use_bundled_library( iv_mime ) 会话级路径：每次覆盖注册，
-      " 保证中途换 MIME 资产立即生效（register 同名即覆盖）
-      zcl_ark_js_library=>register(
-        iv_name  = c_lib_name
-        iv_xdata = gv_default_lib_xdata ).
-    ELSEIF zcl_ark_js_library=>is_registered( c_lib_name ) = abap_false.
+    IF zcl_ark_js_library=>is_registered( c_lib_name ) = abap_false.
       TRY.
           zcl_ark_js_library=>register(
             iv_name = c_lib_name
@@ -486,32 +480,11 @@ CLASS zcl_ark_echarts IMPLEMENTATION.
   METHOD zif_ark_gui_renderable~render.
     DATA(lo_html) = zcl_ark_html=>create( ).
 
-    " ECharts 库。同页多个图表时，仅第一个组件需要带上（iv_include_lib）
-    " 资产优先级：实例级 set_library_xdata > 会话级 use_bundled_library > CDN
-    " 资产经 cache_asset 换成本地 URL；缓存挂在 GUI 实例上（同一 HTML 控件只上传
-    " 一次），控件销毁重建后随实例失效，不会残留失效 URL
+    " ECharts 库。同页多个图表时，仅第一个组件需要带上（iv_include_lib）。
+    " 库注入单一路径：set_library_xdata / use_bundled_library 都只是向
+    " zcl_ark_js_library 注册，解析/缓存/CDN 回退全在 include_library_script
     IF mv_include_lib = abap_true.
-      IF mv_library_xdata IS NOT INITIAL.
-        " 实例级库覆盖：仍走专属资产路径
-        TRY.
-            DATA(lv_asset_url) = zcl_ark_gui=>get_instance( )->zif_ark_gui_services~cache_asset(
-              iv_url     = c_lib_cache_name
-              iv_xdata   = mv_library_xdata
-              iv_type    = 'text'
-              iv_subtype = 'javascript' ).
-          CATCH zcx_ark_exception.
-            " 缓存失败时保持 CDN 回退
-        ENDTRY.
-
-        IF lv_asset_url IS NOT INITIAL.
-          lo_html->add( |<script src="{ lv_asset_url }"></script>| ).
-        ELSE.
-          lo_html->add( |<script src="{ c_cdn_url }"></script>| ).
-        ENDIF.
-      ELSE.
-        " 会话级资产 / CDN：与状态页等外部调用方共享同一路径
-        lo_html->add( include_library_script( ) ).
-      ENDIF.
+      lo_html->add( include_library_script( ) ).
     ENDIF.
 
     " 地图资产脚本（echarts.registerMap 的数据来源），须位于初始化脚本

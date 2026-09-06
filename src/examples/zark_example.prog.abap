@@ -20,7 +20,7 @@ FORM run.
   TRY.
       " zcl_ark_gui=>create( ) 默认挂在 cl_gui_container=>screen0 上，
       " screen0 绑定的是当前显示的屏幕，所以先建 GUI，再把宿主屏幕调出来
-      zcl_ark_example_app=>main( ).
+      zcl_ark_example_app=>run( ).
       CALL SELECTION-SCREEN 1001.
     CATCH zcx_ark_exception INTO DATA(lx_error).
       MESSAGE lx_error TYPE 'E'.
@@ -59,8 +59,8 @@ FORM exit.
         LEAVE PROGRAM.
       ENDIF.
 
-      DATA(lv_page) = lo_gui->zif_ark_gui_services~get_current_page_name( ).
-      IF lv_page IS INITIAL OR lv_page CS 'HELLO_PAGE'.
+      " is_at_home 按页面类名比较，不再与具体类名字符串耦合
+      IF lo_gui->zif_ark_gui_services~is_at_home( ).
         " 已在主页：释放资源并退出程序
         lo_gui->free( ).
         LEAVE PROGRAM.

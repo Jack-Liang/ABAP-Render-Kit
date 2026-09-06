@@ -44,6 +44,7 @@ FORM do_export.
     WHEN 'DATA'.    lv_cls = 'ZCL_ARK_EXAMPLE_DATA_PAGE'.
     WHEN 'BROWSER'. lv_cls = 'ZCL_ARK_EXAMPLE_BROWSER_PAGE'.
     WHEN 'THREE'.   lv_cls = 'ZCL_ARK_EXAMPLE_THREE_PAGE'.
+    WHEN 'STATE'.   lv_cls = 'ZCL_ARK_EXAMPLE_STATE_PAGE'.
     WHEN OTHERS.
       zcx_ark_exception=>raise( |unknown page: { p_page }| ).
   ENDCASE.

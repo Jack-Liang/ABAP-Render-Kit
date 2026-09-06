@@ -5,6 +5,7 @@ INTERFACE zif_ark_gui_services PUBLIC .
                                 !iv_subtype TYPE c DEFAULT 'html'
                       RETURNING VALUE(rv_url) TYPE ty_web_asset_url RAISING zcx_ark_exception .
   METHODS get_current_page_name RETURNING VALUE(rv_page_name) TYPE string .
+  METHODS is_at_home RETURNING VALUE(rv_yes) TYPE abap_bool .
   METHODS register_event_handler IMPORTING !ii_event_handler TYPE REF TO zif_ark_gui_event_handler
                                  RAISING zcx_ark_exception .
   "! Load iv_text as a fresh text/html document and navigate the named frame

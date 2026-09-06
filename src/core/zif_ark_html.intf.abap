@@ -12,8 +12,6 @@ INTERFACE zif_ark_html PUBLIC.
       crossout TYPE c VALUE 'X',
     END OF c_html_opt .
   TYPES: ty_table_of TYPE STANDARD TABLE OF REF TO zif_ark_html WITH DEFAULT KEY.
-  DATA mv_chunk_title TYPE string READ-ONLY.
-  METHODS set_title IMPORTING !iv_title TYPE string RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html.
   METHODS add IMPORTING !ig_chunk TYPE any RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html.
   METHODS render IMPORTING !iv_no_indent_jscss TYPE abap_bool DEFAULT abap_false
                            !iv_no_line_breaks TYPE abap_bool DEFAULT abap_false
@@ -24,19 +22,11 @@ INTERFACE zif_ark_html PUBLIC.
                           !iv_class TYPE string OPTIONAL !iv_id TYPE string OPTIONAL
                           !iv_style TYPE string OPTIONAL !iv_title TYPE string OPTIONAL
                 RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html.
-  METHODS add_checkbox IMPORTING iv_id TYPE string iv_checked TYPE abap_bool OPTIONAL
-                       RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html.
   METHODS a IMPORTING !iv_txt TYPE string !iv_act TYPE string !iv_query TYPE string OPTIONAL
                       !iv_typ TYPE c DEFAULT zif_ark_html=>c_action_type-sapevent
                       !iv_opt TYPE clike OPTIONAL !iv_class TYPE string OPTIONAL
                       !iv_id TYPE string OPTIONAL !iv_style TYPE string OPTIONAL
                       !iv_title TYPE string OPTIONAL RETURNING VALUE(rv_str) TYPE string .
-  METHODS icon IMPORTING !iv_name TYPE string !iv_hint TYPE string OPTIONAL
-                       !iv_class TYPE string OPTIONAL !iv_onclick TYPE string OPTIONAL
-               RETURNING VALUE(rv_str) TYPE string .
-  METHODS add_icon IMPORTING !iv_name TYPE string !iv_hint TYPE string OPTIONAL
-                           !iv_class TYPE string OPTIONAL !iv_onclick TYPE string OPTIONAL
-                   RETURNING VALUE(ri_self) TYPE REF TO zif_ark_html.
   METHODS wrap IMPORTING !iv_tag TYPE string !iv_content TYPE string OPTIONAL
                        !ii_content TYPE REF TO zif_ark_html OPTIONAL !iv_id TYPE string OPTIONAL
                        !iv_class TYPE string OPTIONAL !iv_hint TYPE string OPTIONAL

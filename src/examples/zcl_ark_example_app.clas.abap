@@ -5,17 +5,12 @@ CLASS zcl_ark_example_app DEFINITION
 
   PUBLIC SECTION.
     CLASS-METHODS run RAISING zcx_ark_exception .
-    CLASS-METHODS main RAISING zcx_ark_exception .
 
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
 
 CLASS zcl_ark_example_app IMPLEMENTATION.
-
-  METHOD main.
-    run( ).
-  ENDMETHOD.
 
   METHOD run.
     DATA(lo_gui) = zcl_ark_gui=>create( ).

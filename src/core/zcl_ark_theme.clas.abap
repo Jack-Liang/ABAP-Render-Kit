@@ -170,6 +170,10 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       | border-radius: var(--arkRadiusCard); padding: 16px 20px;| &&
       | margin-bottom: 16px; \} | &&
       |.ark-card-title \{ font-size: 16px; font-weight: 500; margin: 0 0 12px; \} | &&
+      |.ark-h2 \{ font-size: 16px; font-weight: 500; margin: 20px 0 8px; \} | &&
+      |.ark-note \{ color: var(--arkNeutralColor); font-size: 13px;| &&
+      | margin: 0 0 16px; \} | &&
+      |.ark-text-error \{ color: var(--arkNegativeColor); font-size: 13px; \} | &&
       |.ark-kpi-grid \{ display: grid;| &&
       | grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));| &&
       | gap: 16px; \} | &&
@@ -248,7 +252,10 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.ark-input-error \{ border-color: var(--arkNegativeColor);| &&
       | box-shadow: 0 0 0 1px var(--arkNegativeColor); \} | &&
       |.ark-field-error \{ color: var(--arkNegativeColor); font-size: 12px;| &&
-      | margin-left: 8px; \} |.
+      | margin-left: 8px; \} | &&
+      |.ark-error-banner \{ background: #fde8e8; color: #b00020;| &&
+      | border: 1px solid var(--arkNegativeColor); border-radius: var(--arkRadius);| &&
+      | padding: 10px 14px; margin-bottom: 16px; font-size: 13px; \} |.
   ENDMETHOD.
 
 ENDCLASS.

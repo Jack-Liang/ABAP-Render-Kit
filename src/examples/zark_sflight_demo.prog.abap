@@ -114,7 +114,7 @@ CLASS lcl_sflight_page IMPLEMENTATION.
        )->render( ) ).
 
     IF mt_carrier IS INITIAL.
-      mo_html->add( |<p style="color:#b91c1c;">未找到 SFLIGHT 数据。请先运行报表 SAPBC_DATA_GENERATOR 生成航班演示数据。</p>| ).
+      mo_html->add( |<p class="ark-text-error">未找到 SFLIGHT 数据。请先运行报表 SAPBC_DATA_GENERATOR 生成航班演示数据。</p>| ).
       ri_html = mo_html.
       RETURN.
     ENDIF.

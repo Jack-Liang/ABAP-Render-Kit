@@ -29,6 +29,7 @@ CLASS ltcl_state_form DEFINITION FINAL FOR TESTING
     METHODS required_rejects_empty FOR TESTING.
     METHODS required_pass_allows_handler FOR TESTING.
     METHODS table_section_from_data FOR TESTING.
+    METHODS chart_section_builds_option FOR TESTING.
 ENDCLASS.
 
 CLASS ltcl_state_form IMPLEMENTATION.
@@ -116,6 +117,26 @@ CLASS ltcl_state_form IMPLEMENTATION.
     " 数值列自动右对齐
     READ TABLE ls_section-columns INDEX 2 INTO DATA(ls_col).
     cl_abap_unit_assert=>assert_true( ls_col-align_right ).
+  ENDMETHOD.
+
+  METHOD chart_section_builds_option.
+    DATA(ls_section) = zcl_ark_state_page=>chart_section(
+      iv_title        = '月度销售额'
+      iv_series_name  = '销售额'
+      it_categories   = VALUE string_table( ( `1月` ) ( `2月` ) )
+      it_data         = VALUE zcl_ark_echarts=>ty_values( ( 420 ) ( 455 ) )
+      iv_click_action = 'chart_click' ).
+
+    cl_abap_unit_assert=>assert_equals(
+      exp  = zif_ark_gui_state=>c_section_kind-chart
+      act  = ls_section-kind ).
+    cl_abap_unit_assert=>assert_equals( exp  = '月度销售额' act  = ls_section-title ).
+    cl_abap_unit_assert=>assert_equals( exp  = 'chart_click' act  = ls_section-chart_click_action ).
+    " option JSON 含系列名/类型/类目，且不含卡片标题（避免画布内双标题）
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `销售额` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `'bar'` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `1月` ) ).
+    cl_abap_unit_assert=>assert_false( boolc( ls_section-chart_option CS `月度销售额` ) ).
   ENDMETHOD.
 
 ENDCLASS.

@@ -20,6 +20,27 @@ CLASS zcl_ark_state_page DEFINITION
       RAISING
         zcx_ark_exception .
 
+    "! 单系列图表节：一个调用直出 chart 节，数据经 zcl_ark_echarts 声明式
+    "! API 构建 option，业务侧零 JSON。
+    "!   rs_section = zcl_ark_state_page=>chart_section(
+    "!                  iv_title       = '月度销售额'
+    "!                  iv_series_name = '销售额'
+    "!                  it_categories  = lt_months
+    "!                  it_data        = lt_values ).
+    "! iv_title 渲染为卡片标题（不写入 option，避免画布内双标题）；
+    "! 多系列/堆叠/地图/饼图等高级形态仍走 lo_chart 声明式 API +
+    "! get_option_json( ) 供 chart 节
+    CLASS-METHODS chart_section
+      IMPORTING
+        !iv_title         TYPE string OPTIONAL
+        !iv_series_name   TYPE string OPTIONAL
+        !it_categories    TYPE string_table OPTIONAL
+        !it_data          TYPE ANY TABLE
+        !iv_chart_type    TYPE string DEFAULT 'bar'
+        !iv_click_action  TYPE string OPTIONAL
+      RETURNING
+        VALUE(rs_section) TYPE zif_ark_gui_state=>ty_section .
+
     "! 框架内置表格交互（排序/筛选/下载）在此处理，其余动作交给子类。
     "! 保留动作名：ark_sort / ark_filter / ark_download
     METHODS on_event REDEFINITION .
@@ -274,6 +295,23 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     ENDLOOP.
 
     rs_section-rows = lt_rows.
+  ENDMETHOD.
+
+  METHOD chart_section.
+    rs_section-kind  = zif_ark_gui_state=>c_section_kind-chart.
+    rs_section-title = iv_title.
+    rs_section-chart_click_action = iv_click_action.
+
+    DATA(lo_chart) = NEW zcl_ark_echarts( ).
+    IF it_categories IS NOT INITIAL.
+      lo_chart->set_xaxis_categories( it_categories ).
+    ENDIF.
+    lo_chart->add_series(
+      iv_name = COND string( WHEN iv_series_name IS NOT INITIAL
+                             THEN iv_series_name ELSE 'series1' )
+      iv_type = iv_chart_type
+      it_data = it_data ).
+    rs_section-chart_option = lo_chart->get_option_json( ).
   ENDMETHOD.
 
   METHOD constructor.

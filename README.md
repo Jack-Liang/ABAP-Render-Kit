@@ -26,7 +26,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository
 - **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
 - **Theme Support** — Fiori Quartz design tokens via `zcl_ark_theme`; override any token with `set_token( )`
-- **Declarative State Pages** — fill a typed `ty_page_state` (`zif_ark_gui_state`) and let `zcl_ark_state_page` render a Fiori-style page; no HTML in your ABAP code. Section kinds: KPI grid, table, form (framework read-back + required validation), chart, card grid, text
+- **Declarative State Pages** — fill a typed `ty_page_state` (`zif_ark_gui_state`) and let `zcl_ark_state_page` render a Fiori-style page; no HTML in your ABAP code. Section kinds: KPI grid, table, form (framework read-back + required validation), chart, card grid, text — plus one-call builders: `table_section( )` (any internal table, RTTI-derived columns) and `chart_section( )` (single bar/line series from ABAP data)
 - **Convention Routing** — no `CASE` in `on_event`: an action `save_order` is auto-dispatched to method `on_action_save_order` on your page class
 - **Zero-Boilerplate Launcher** — `ZARK_LAUNCHER` (transaction-code entry for any page class) removes the host-screen boilerplate from every app report
 - **Extensible JS Pipeline** — see [docs/js-extensions.md](docs/js-extensions.md): upload any JS (three.js, ...) as a W3MI asset, register it, and ship your own widget components
@@ -242,6 +242,78 @@ mo_html->add_table(
 Invalid JSON degrades to escaped plain text instead of a script error. `set_open( )` controls the initial expand state of all nodes — flipping it and re-rendering is the expand-all/collapse-all pattern (a sapevent that sets `rs_result-state = 1` without returning a new page re-renders in place). Styles come from `zcl_ark_theme` (`ark-jt-*` classes, token-driven); the tiny ES5 toggle script ships with the fragment and works on both MSHTML and Edge viewers.
 
 See `ZCL_ARK_EXAMPLE_DATA_PAGE` (demo hub → **Data Viewer**) for both.
+
+## Declarative Pages (state)
+
+The shortest path from ABAP data to a working app page: inherit from `zcl_ark_state_page`, fill a typed state in `build_state( )`, and the framework renders the whole Fiori-style page — no HTML, no JSON, no `CASE` dispatcher in your code. Tables get sorting/filtering/CSV download and forms get POST read-back + required validation built in.
+
+```abap
+CLASS zcl_sales_page DEFINITION INHERITING FROM zcl_ark_state_page FINAL.
+  PUBLIC SECTION.
+    " Convention routing: action 'pick_month' -> method below (≤20 chars)
+    METHODS on_action_pick_month
+      IMPORTING ii_event TYPE REF TO zif_ark_gui_event
+      RETURNING VALUE(rs_result) TYPE zif_ark_gui_event_handler=>ty_handling_result
+      RAISING   zcx_ark_exception .
+  PROTECTED SECTION.
+    METHODS build_state .
+ENDCLASS.
+
+CLASS zcl_sales_page IMPLEMENTATION.
+  METHOD constructor.
+    super->constructor( ).
+    build_state( ).
+  ENDMETHOD.
+
+  METHOD build_state.
+    DATA(ls_state) = VALUE zif_ark_gui_state=>ty_page_state(
+      title = 'Sales Overview' subtitle = 'Typed state in, rendered page out' ).
+
+    " KPI cards — semantic colors drive the delta styling
+    ls_state-sections = VALUE #(
+      ( kind = zif_ark_gui_state=>c_section_kind-kpi_grid
+        kpi_cards = VALUE #(
+          ( title = 'Revenue' value = '4,286,000'
+            delta_text = '▲ 12.4% MoM'
+            delta_semantic = zif_ark_gui_state=>c_semantic-positive ) ) ) ).
+
+    " Chart — one call, single bar/line series from ABAP data
+    APPEND zcl_ark_state_page=>chart_section(
+             iv_title        = 'Monthly Revenue'
+             iv_series_name  = 'Revenue'
+             it_categories   = VALUE string_table( ( `Jan` ) ( `Feb` ) ( `Mar` ) )
+             it_data         = VALUE zcl_ark_echarts=>ty_values( ( 420 ) ( 455 ) ( 490 ) )
+             iv_click_action = 'pick_month' )
+           TO ls_state-sections.
+
+    " Table — any internal table; RTTI derives columns, DDIC labels, alignment
+    SELECT carrid, connid, price FROM sflight INTO TABLE @DATA(lt_flights) UP TO 20 ROWS.
+    APPEND zcl_ark_state_page=>table_section(
+             iv_title = 'Flight Details' it_data = lt_flights )
+           TO ls_state-sections.
+
+    " Form — POST values are read back into the state before the handler runs
+    ls_state-sections = VALUE #( BASE ls_state-sections
+      ( kind = zif_ark_gui_state=>c_section_kind-form
+        form_action = 'apply_filter'
+        form_fields = VALUE #(
+          ( input_type = 'text' label = 'Customer' name = 'customer' required = abap_true )
+          ( input_type = 'submit' value = 'Apply' ) ) ) ).
+
+    set_state( ls_state ).
+  ENDMETHOD.
+
+  METHOD on_action_pick_month.
+    " ii_event->query( 'name' / 'value' / 'idx' ) — already URL-decoded
+    build_state( ).            " rebuild state, e.g. with a filter applied
+    rs_result-state = 1.       " re-render in place
+  ENDMETHOD.
+ENDCLASS.
+```
+
+Advanced charts (multi-series, stacked, maps, pies) build their option with the `zcl_ark_echarts` declarative API and pass `lo_chart->get_option_json( )` into the section's `chart_option` — see `ZCL_ARK_EXAMPLE_STATE_PAGE` (demo hub → **State Page**) for every section kind in one page.
+
+Launch the page with zero boilerplate: create a transaction code pointing at report `ZARK_LAUNCHER`, set the start parameter `P_PAGE = ZCL_SALES_PAGE` ("skip initial screen"), and run it — no host-screen SELECTION-SCREEN copy-paste needed.
 
 ## Templates
 

@@ -146,24 +146,16 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
           iv_title = '月度数据（任意内表直出）'
           it_data  = lt_months ) ) ).
 
-    " ---- 图表（声明式 API 构建 option，经 get_option_json 供 state 使用；
-    "      chart_click_action 点击柱子回传）—— 业务侧只给 ABAP 数据 ----
-    DATA(lo_chart) = NEW zcl_ark_echarts( ).
-    lo_chart->set_title( '月度销售额' ).
-    lo_chart->set_xaxis_categories(
-      VALUE string_table( ( `1月` ) ( `2月` ) ( `3月` )
-                          ( `4月` ) ( `5月` ) ( `6月` ) ) ).
-    lo_chart->add_series(
-      iv_name  = '销售额'
-      iv_type  = 'bar'
-      it_data  = VALUE zcl_ark_echarts=>ty_values(
-                   ( 420 ) ( 455 ) ( 490 ) ( 530 ) ( 580 ) ( 620 ) ) ).
-
+    " ---- 图表（chart_section：单系列一调用直出，点击柱子回传）----
     ls_state-sections = VALUE #( BASE ls_state-sections
-      ( kind = zif_ark_gui_state=>c_section_kind-chart
-        title = '月度销售额'
-        chart_click_action = 'state_chart_click'
-        chart_option = lo_chart->get_option_json( ) ) ).
+      ( zcl_ark_state_page=>chart_section(
+          iv_title        = '月度销售额'
+          iv_series_name  = '销售额'
+          it_categories   = VALUE string_table( ( `1月` ) ( `2月` ) ( `3月` )
+                                                 ( `4月` ) ( `5月` ) ( `6月` ) )
+          it_data         = VALUE zcl_ark_echarts=>ty_values(
+                              ( 420 ) ( 455 ) ( 490 ) ( 530 ) ( 580 ) ( 620 ) )
+          iv_click_action = 'state_chart_click' ) ) ).
 
     " ---- 表单（sapevent POST 回传）----
     ls_state-sections = VALUE #( BASE ls_state-sections

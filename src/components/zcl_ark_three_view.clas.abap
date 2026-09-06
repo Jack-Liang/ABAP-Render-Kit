@@ -156,12 +156,15 @@ CLASS zcl_ark_three_view IMPLEMENTATION.
       |try \{| &&
       |renderer = new THREE.WebGLRenderer(\{ antialias: true, alpha: true \});| &&
       |\} catch (e) \{| &&
+      " 注意：JS 里相邻字符串字面量不拼接（C/Python 习惯是错的），
+      " 多段必须用 + 连接——82b8a87 曾因缺 + 使整个脚本解析失败，
+      " 降级框/画布全部静默不渲染
       |el.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:sans-serif;">' +| &&
       |(isJavaGui ?| &&
-      |'SAP GUI for Java 的 JavaFX WebView 不支持 WebGL —— 3D 视图无法在 GUI 内渲染。'| &&
-      |'替代路径：SE38 ZARK_EXPORT_HTML（PAGE=THREE）导出后在外部浏览器打开。'| &&
-      |'（Windows SAP GUI + Edge/WebView2 内核可原生支持）'| &&
-      |': WebGL 不可用（IE 内核/无 GPU/RDP 远程会话均会导致）: ' + (e && e.message ? e.message : e)) +| &&
+      |'SAP GUI for Java 的 JavaFX WebView 不支持 WebGL —— 3D 视图无法在 GUI 内渲染。' +| &&
+      |'替代路径：SE38 ZARK_EXPORT_HTML（PAGE=THREE）导出后在外部浏览器打开。' +| &&
+      |'（Windows SAP GUI + Edge/WebView2 内核可原生支持）' :| &&
+      |'WebGL 不可用（IE 内核/无 GPU/RDP 远程会话均会导致）: ' + (e && e.message ? e.message : e)) +| &&
       |'<br>kernel: ' + navigator.userAgent + '</div>';| &&
       |return;| &&
       |\}| &&
@@ -192,6 +195,10 @@ CLASS zcl_ark_three_view IMPLEMENTATION.
       |\});| &&
       lv_click_js &&
       |\})();| ).
+
+    " 返回构建器：不赋值 render 即返回空引用，页面拿到的视图内容为空
+    " （本类不继承 zcl_ark_gui_component，没有那里的忘赋值安全网）
+    ri_html = lo_html.
   ENDMETHOD.
 
 

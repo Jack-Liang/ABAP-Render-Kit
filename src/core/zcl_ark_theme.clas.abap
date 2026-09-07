@@ -32,6 +32,15 @@ CLASS zcl_ark_theme DEFINITION
     "! Drop all overrides and return to the default Fiori Quartz Light tokens
     METHODS reset .
 
+    "! Read a token's effective value (override wins, else theme default).
+    "! Public so script generators (e.g. sparkline colors) stay on the same
+    "! palette as the CSS when set_token( ) shifts the theme.
+    METHODS token
+      IMPORTING
+        !iv_name         TYPE string
+        !iv_default      TYPE string
+      RETURNING VALUE(rv_value) TYPE string .
+
   PROTECTED SECTION.
   PRIVATE SECTION.
     CLASS-DATA go_instance TYPE REF TO zcl_ark_theme .
@@ -39,12 +48,6 @@ CLASS zcl_ark_theme DEFINITION
     DATA mt_override TYPE tt_token .
 
     METHODS constructor .
-
-    METHODS token
-      IMPORTING
-        !iv_name         TYPE string
-        !iv_default      TYPE string
-      RETURNING VALUE(rv_value) TYPE string .
 
     METHODS token_block
       RETURNING VALUE(rv_css) TYPE string .

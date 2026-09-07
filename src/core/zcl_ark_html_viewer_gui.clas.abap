@@ -96,12 +96,6 @@ CLASS zcl_ark_html_viewer_gui IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD zif_ark_html_viewer~back.
-    IF mo_html_viewer IS NOT INITIAL.
-      mo_html_viewer->go_back( ).
-    ENDIF.
-  ENDMETHOD.
-
   METHOD zif_ark_html_viewer~close_document.
     IF mo_html_viewer IS NOT INITIAL.
       mo_html_viewer->close_document( ).

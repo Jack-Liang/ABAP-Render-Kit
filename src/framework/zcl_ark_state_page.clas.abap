@@ -647,7 +647,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
 
   METHOD on_event.
     CASE ii_event->mv_action.
-      WHEN 'ark_sort'.
+      WHEN zcl_ark_actions=>c_sort.
         DATA(lv_sec) = to_int( ii_event->query( 'sec' ) ).
         DATA(lv_col) = to_int( ii_event->query( 'col' ) ).
         READ TABLE mt_tbl_ui ASSIGNING FIELD-SYMBOL(<ls_ui>) WITH KEY sec = lv_sec.
@@ -665,7 +665,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         ENDIF.
         rs_result-state = 1.
 
-      WHEN 'ark_filter'.
+      WHEN zcl_ark_actions=>c_filter.
         lv_sec = to_int( parse_post_value( iv_name = 'sec' it_postdata = ii_event->mt_postdata ) ).
         DATA(lv_flt) = parse_post_value( iv_name = 'flt' it_postdata = ii_event->mt_postdata ).
         READ TABLE mt_tbl_ui ASSIGNING <ls_ui> WITH KEY sec = lv_sec.
@@ -675,7 +675,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         <ls_ui>-filter = lv_flt.
         rs_result-state = 1.
 
-      WHEN 'ark_download'.
+      WHEN zcl_ark_actions=>c_download.
         TRY.
             download_csv(
               is_section = ms_state-sections[ to_int( ii_event->query( 'sec' ) ) ]
@@ -1003,17 +1003,20 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD sparkline_color.
+    " 色值取主题令牌（与 CSS 同源）：set_token 改色即全局生效，无需双处同步
+    " （canvas 取不到 CSS 变量，故在 ABAP 侧取令牌值注入脚本）
+    DATA(lo_theme) = zcl_ark_theme=>get_instance( ).
     CASE iv_semantic.
       WHEN zif_ark_gui_state=>c_semantic-positive.
-        rv_color = '#107e3e'.
+        rv_color = lo_theme->token( iv_name = 'positiveColor' iv_default = '#107e3e' ).
       WHEN zif_ark_gui_state=>c_semantic-negative.
-        rv_color = '#bb0000'.
+        rv_color = lo_theme->token( iv_name = 'negativeColor' iv_default = '#bb0000' ).
       WHEN zif_ark_gui_state=>c_semantic-critical.
-        rv_color = '#e9730c'.
+        rv_color = lo_theme->token( iv_name = 'criticalColor' iv_default = '#e9730c' ).
       WHEN zif_ark_gui_state=>c_semantic-informative.
-        rv_color = '#0a6ed1'.
+        rv_color = lo_theme->token( iv_name = 'informativeColor' iv_default = '#0a6ed1' ).
       WHEN OTHERS.
-        rv_color = '#0070f2'.
+        rv_color = lo_theme->token( iv_name = 'brandColor' iv_default = '#0070f2' ).
     ENDCASE.
   ENDMETHOD.
 

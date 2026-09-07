@@ -22,7 +22,6 @@ INTERFACE zif_ark_html_viewer PUBLIC .
   METHODS free .
   METHODS close_document .
   METHODS get_url RETURNING VALUE(rv_url) TYPE string .
-  METHODS back .
   METHODS set_visiblity IMPORTING !iv_visible TYPE abap_bool .
   METHODS set_focus RAISING zcx_ark_exception.
 ENDINTERFACE.

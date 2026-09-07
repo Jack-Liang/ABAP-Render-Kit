@@ -6,10 +6,10 @@ CLASS zcl_ark_gui DEFINITION
   PUBLIC SECTION.
     INTERFACES zif_ark_gui_services .
 
-    "! 框架保留动作：统一返回。render_page 在所有非主页页面顶部自动注入
-    "! 返回条（sapevent:ark_back），on_event 在业务分发之前拦截并 go_back。
-    "! 业务动作不得使用该名字
-    CONSTANTS c_action_back TYPE string VALUE 'ark_back' .
+    "! 框架保留动作：统一返回（兼容别名；唯一登记处在 zcl_ark_actions）。
+    "! render_page 在所有非主页页面顶部自动注入返回条，on_event 在业务
+    "! 分发之前拦截并 go_back。业务动作不得使用 ark_ 前缀名字
+    CONSTANTS c_action_back TYPE string VALUE zcl_ark_actions=>c_back .
 
     CLASS-METHODS get_instance
       RETURNING VALUE(ri_gui) TYPE REF TO zcl_ark_gui .
@@ -345,7 +345,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   METHOD on_event.
     " 框架保留动作：统一返回。在注册 handler / 页面分发之前拦截，
     " 业务侧不可覆盖也不必实现（c_action_back 注释见类定义）
-    IF action = c_action_back.
+    IF action = zcl_ark_actions=>c_back.
       go_back( ).
       RETURN.
     ENDIF.

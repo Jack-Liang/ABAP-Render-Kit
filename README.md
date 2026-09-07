@@ -314,7 +314,19 @@ CLASS zcl_sales_page IMPLEMENTATION.
 ENDCLASS.
 ```
 
-Advanced charts (multi-series, stacked, maps, pies) build their option with the `zcl_ark_echarts` declarative API and pass `lo_chart->get_option_json( )` into the section's `chart_option` — see `ZCL_ARK_EXAMPLE_STATE_PAGE` (demo hub → **State Page**) for every section kind in one page.
+Multi-series charts stay one call — pass a series table (per-series name/type/values; series without a type inherit `iv_chart_type`):
+
+```abap
+APPEND zcl_ark_state_page=>chart_section(
+         iv_title      = 'Revenue vs Cost'
+         it_categories = VALUE string_table( ( `Jan` ) ( `Feb` ) )
+         it_series     = VALUE zcl_ark_state_page=>tt_chart_series(
+                           ( name = 'Revenue' type = 'bar'  values = VALUE #( ( `420` ) ( `455` ) ) )
+                           ( name = 'Cost'    type = 'line' values = VALUE #( ( `300` ) ( `280.5` ) ) ) ) )
+       TO ls_state-sections.
+```
+
+Advanced charts (stacked options, maps, pies) build their option with the `zcl_ark_echarts` declarative API and pass `lo_chart->get_option_json( )` into the section's `chart_option` — see `ZCL_ARK_EXAMPLE_STATE_PAGE` (demo hub → **State Page**) for every section kind in one page.
 
 Launch the page with zero boilerplate: create a transaction code pointing at report `ZARK_LAUNCHER`, set the start parameter `P_PAGE = ZCL_SALES_PAGE` ("skip initial screen"), and run it — no host-screen SELECTION-SCREEN copy-paste needed.
 

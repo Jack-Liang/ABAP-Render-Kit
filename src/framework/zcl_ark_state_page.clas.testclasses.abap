@@ -30,6 +30,7 @@ CLASS ltcl_state_form DEFINITION FINAL FOR TESTING
     METHODS required_pass_allows_handler FOR TESTING.
     METHODS table_section_from_data FOR TESTING.
     METHODS chart_section_builds_option FOR TESTING.
+    METHODS chart_section_multi_series FOR TESTING.
 ENDCLASS.
 
 CLASS ltcl_state_form IMPLEMENTATION.
@@ -144,6 +145,32 @@ CLASS ltcl_state_form IMPLEMENTATION.
     cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `'bar'` ) ).
     cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `1月` ) ).
     cl_abap_unit_assert=>assert_false( boolc( ls_section-chart_option CS `月度销售额` ) ).
+  ENDMETHOD.
+
+  METHOD chart_section_multi_series.
+    " 多系列形态：it_series 提供时忽略单系列便捷参数
+    DATA lt_series TYPE zcl_ark_state_page=>tt_chart_series.
+    APPEND VALUE #( name = '营收' type = 'bar'
+                    values = VALUE #( ( `420` ) ( `455` ) ) ) TO lt_series.
+    APPEND VALUE #( name = '成本'
+                    type = 'line'
+                    values = VALUE #( ( `300` ) ( `280.5` ) ) ) TO lt_series.
+
+    DATA(ls_section) = zcl_ark_state_page=>chart_section(
+      iv_title      = '营收 vs 成本'
+      it_categories = VALUE string_table( ( `1月` ) ( `2月` ) )
+      it_series     = lt_series ).
+
+    cl_abap_unit_assert=>assert_equals(
+      exp  = zif_ark_gui_state=>c_section_kind-chart
+      act  = ls_section-kind ).
+    " 两个系列名与各自类型都在 option JSON 中
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `营收` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `成本` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `'bar'` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `'line'` ) ).
+    " 小数系列值保留（zcl_ark_json 序列化为带引号数字字符串）
+    cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `"280.5"` ) ).
   ENDMETHOD.
 
 ENDCLASS.

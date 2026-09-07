@@ -319,6 +319,24 @@ CLASS zcl_ark_gui IMPLEMENTATION.
               |\n</style>\n| &&
               |</head>\n| &&
               |<body>\n| &&
+              |<div id="ark_busy" class="ark-busy">{ zcl_ark_convert=>escape_html( zcl_ark_texts=>text( zcl_ark_texts=>c_key-busy ) ) }</div>\n| &&
+              |<script type="text/javascript">\n| &&
+              |document.addEventListener('click', function(ev) \{\n| &&
+              |  var t = ev.target;\n| &&
+              |  var a = (t && t.closest) ? t.closest('a[href*="sapevent:"]') : null;\n| &&
+              |  if (!a) return;\n| &&
+              |  var b = document.getElementById('ark_busy');\n| &&
+              |  if (b) b.style.display = 'flex';\n| &&
+              |\}, true);\n| &&
+              |document.addEventListener('submit', function() \{\n| &&
+              |  var b = document.getElementById('ark_busy');\n| &&
+              |  if (b) b.style.display = 'flex';\n| &&
+              |  setTimeout(function() \{\n| &&
+              |    var x = document.getElementById('ark_busy');\n| &&
+              |    if (x) x.style.display = 'none';\n| &&
+              |  \}, 30000);\n| &&
+              |\}, true);\n| &&
+              |</script>\n| &&
               |{ iv_content }\n| &&
               |</body>\n| &&
               |</html>|.

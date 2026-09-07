@@ -137,6 +137,10 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.toolbar \{ display: flex; align-items: center; gap: 8px;| &&
       | margin-bottom: 16px; padding: 8px; background: var(--arkBaseColor);| &&
       | border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); \} | &&
+      |.ark-busy \{ position: fixed; top: 0; left: 0; right: 0; bottom: 0;| &&
+      | display: none; align-items: center; justify-content: center;| &&
+      | background: rgba(255,255,255,0.6); z-index: 99998;| &&
+      | font-size: 14px; color: var(--arkNeutralColor); \} | &&
       |.ark-backbar \{ margin: 0 0 10px; \} | &&
       |.ark-back \{ display: inline-block; padding: 3px 10px;| &&
       | border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadius);| &&

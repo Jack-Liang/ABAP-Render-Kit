@@ -20,6 +20,20 @@ CLASS zcl_ark_state_page DEFINITION
       RAISING
         zcx_ark_exception .
 
+    " 多系列图表的系列描述（chart_section 的 it_series 参数类型）
+    TYPES:
+      BEGIN OF ty_chart_series,
+        " 系列名（图例显示；缺省 series1..N）
+        name TYPE string,
+        " bar/line 等；缺省沿用 iv_chart_type
+        type TYPE string,
+        " 数值序列（字符串承载：VALUE #( ( `420` ) ( `280.5` ) )——构造器
+        " 字面量规则进不了 decfloat16 行；与 KPI sparkline 的 string_table
+        " 约定一致，ECharts/JSON 端数字字符串照常解析
+        values TYPE string_table,
+      END OF ty_chart_series,
+      tt_chart_series TYPE STANDARD TABLE OF ty_chart_series WITH EMPTY KEY .
+
     "! 单系列图表节：一个调用直出 chart 节，数据经 zcl_ark_echarts 声明式
     "! API 构建 option，业务侧零 JSON。
     "!   rs_section = zcl_ark_state_page=>chart_section(
@@ -35,9 +49,11 @@ CLASS zcl_ark_state_page DEFINITION
         !iv_title         TYPE string OPTIONAL
         !iv_series_name   TYPE string OPTIONAL
         !it_categories    TYPE string_table OPTIONAL
-        !it_data          TYPE ANY TABLE
+        !it_data          TYPE ANY TABLE OPTIONAL
         !iv_chart_type    TYPE string DEFAULT 'bar'
         !iv_click_action  TYPE string OPTIONAL
+        " 多系列形态：提供时忽略 iv_series_name/it_data（单系列便捷参数）
+        !it_series        TYPE tt_chart_series OPTIONAL
       RETURNING
         VALUE(rs_section) TYPE zif_ark_gui_state=>ty_section .
 
@@ -308,11 +324,28 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     IF it_categories IS NOT INITIAL.
       lo_chart->set_xaxis_categories( it_categories ).
     ENDIF.
-    lo_chart->add_series(
-      iv_name = COND string( WHEN iv_series_name IS NOT INITIAL
-                             THEN iv_series_name ELSE 'series1' )
-      iv_type = iv_chart_type
-      it_data = it_data ).
+
+    " 多系列形态：逐系列 add_series（未命名的按序补 series1..N）
+    IF it_series IS NOT INITIAL.
+      LOOP AT it_series INTO DATA(ls_series).
+        lo_chart->add_series(
+          iv_name = COND string( WHEN ls_series-name IS NOT INITIAL
+                                 THEN ls_series-name
+                                 ELSE |series{ sy-tabix }| )
+          iv_type = COND string( WHEN ls_series-type IS NOT INITIAL
+                                 THEN ls_series-type
+                                 ELSE iv_chart_type )
+          it_data = ls_series-values ).
+      ENDLOOP.
+    ELSEIF it_data IS NOT INITIAL.
+      " 单系列便捷形态
+      lo_chart->add_series(
+        iv_name = COND string( WHEN iv_series_name IS NOT INITIAL
+                               THEN iv_series_name ELSE 'series1' )
+        iv_type = iv_chart_type
+        it_data = it_data ).
+    ENDIF.
+
     rs_section-chart_option = lo_chart->get_option_json( ).
   ENDMETHOD.
 

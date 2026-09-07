@@ -43,6 +43,22 @@
 7. **破坏性变更允许**（项目处于 alpha），但必须：同步更新 MANIFEST.md、
    README、`docs/`，并在提交信息里写明破坏点与迁移方式。
 
+## 技术债与降期决策（2026-09-07 框架盘点）
+
+以下事项已评估、明确降期，做与不做以本节为准：
+
+- **UI5 路线深化**（`zcl_ark_ui5_shell`/`ui5_page` 的表格排序/筛选/CSV 映射、
+  真机验证）：面积为剩余最大，但使用面窄（仅 Edge 内核 + 需要 UI5 运行时的
+  场景）。降期为**实验特性**：不再投入常规迭代，仅在破坏性变更时保持可激活；
+  真机验证并入用户 Windows 环境可用时统一做。
+- **framework→components 依赖倒置**（`zcl_ark_state_page`/`ui5_shell` 直接引用
+  `zcl_ark_echarts`）：monorepo 阶段无害，是**未来拆仓库的前置条件**而非当前
+  缺陷。触发条件：拆分 examples/assets 出库时一并处理（接口注入或事件回调）。
+- 已完成项（2026-09-07）：导航栈独立类+单测、嵌入式 JS 语法门禁
+  （tools/js_regress.mjs）、框架文本 i18n（zcl_ark_texts）、忙指示遮罩、
+  chart_section 多系列、保留动作常量类（zcl_ark_actions）、sparkline 色值
+  令牌化、viewer~back 死代码清理。
+
 ## 其他长期约定
 
 - 用户通过 `git pull`（abapGit）安装：修复要当轮 commit+push，不留本地。

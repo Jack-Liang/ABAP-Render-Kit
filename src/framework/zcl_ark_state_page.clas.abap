@@ -552,10 +552,10 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
                   |action="sapevent:ark_filter">| ).
     co_html->add( |<input type="hidden" name="sec" value="{ iv_index }">| ).
     co_html->add( |<input type="text" name="flt" value="{ zcl_ark_convert=>escape_html( ls_ui-filter ) }" | &&
-                  |placeholder="任意列包含…">| ).
-    co_html->add( |<button type="submit" class="toolbar-button">筛选</button>| ).
+                  |placeholder="{ zcl_ark_convert=>escape_html( zcl_ark_texts=>text( zcl_ark_texts=>c_key-filter_placeholder ) ) }">| ).
+    co_html->add( |<button type="submit" class="toolbar-button">{ zcl_ark_texts=>text( zcl_ark_texts=>c_key-filter ) }</button>| ).
     co_html->add( |<a class="toolbar-link" | &&
-                  |href="sapevent:ark_download?sec={ iv_index }">下载 CSV</a>| ).
+                  |href="sapevent:ark_download?sec={ iv_index }">{ zcl_ark_texts=>text( zcl_ark_texts=>c_key-download_csv ) }</a>| ).
     co_html->add( |</form>| ).
 
     DATA(lt_rows) = transform_rows( is_section = is_section iv_sec = iv_index ).
@@ -606,7 +606,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
     ENDLOOP.
 
     IF lt_rows IS INITIAL.
-      co_html->add( |<tr><td class="ark-empty">无匹配数据</td></tr>| ).
+      co_html->add( |<tr><td class="ark-empty">{ zcl_ark_texts=>text( zcl_ark_texts=>c_key-no_match ) }</td></tr>| ).
     ENDIF.
 
     co_html->add( |</tbody></table>| ).
@@ -699,7 +699,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       <ls_field>-value = parse_post_value(
         iv_name = <ls_field>-name it_postdata = ii_event->mt_postdata ).
       IF <ls_field>-required = abap_true AND <ls_field>-value IS INITIAL.
-        <ls_field>-error_text = '此字段为必填项'.
+        <ls_field>-error_text = zcl_ark_texts=>text( zcl_ark_texts=>c_key-required_error ).
         rv_valid = abap_false.
       ELSE.
         CLEAR <ls_field>-error_text.
@@ -851,7 +851,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
           EXPORTING
             default_extension   = 'csv'
             default_file_name   = 'ark_export'
-            file_filter         = 'CSV 文件 (*.csv)|*.csv|所有文件|*.*'
+            file_filter         = zcl_ark_texts=>text( zcl_ark_texts=>c_key-file_filter_csv )
           CHANGING
             filename            = lv_filename
             path                = lv_path
@@ -869,7 +869,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
           CHANGING
             data_tab                = lt_csv ).
       CATCH cx_root INTO DATA(lx_fs).
-        zcx_ark_exception=>raise( |CSV 下载失败: { lx_fs->get_text( ) }| ).
+        zcx_ark_exception=>raise( |{ zcl_ark_texts=>text( zcl_ark_texts=>c_key-csv_download_failed ) }: { lx_fs->get_text( ) }| ).
     ENDTRY.
   ENDMETHOD.
 
@@ -1063,7 +1063,7 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
       lv_click_js &&
       |\} else if (el) \{| &&
       |  el.innerHTML = '<span style="color:#b00;font-size:13px">| &&
-      |ECharts 库未加载（CDN/MIME 均不可达）— 图表缺席</span>';| &&
+      |{ zcl_ark_convert=>escape_js( zcl_ark_texts=>text( zcl_ark_texts=>c_key-echarts_missing ) ) }</span>';| &&
       |\}| &&
       |\})();| ).
   ENDMETHOD.

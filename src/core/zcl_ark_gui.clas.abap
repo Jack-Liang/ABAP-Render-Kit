@@ -270,7 +270,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
     IF mo_current_page IS NOT INITIAL AND is_at_home( ) = abap_false.
       lv_content = lv_content &&
         |<div class="ark-backbar"><a class="ark-back" | &&
-        |href="sapevent:{ c_action_back }">&#8592; 返回</a></div>|.
+        |href="sapevent:{ c_action_back }">&#8592; { zcl_ark_texts=>text( zcl_ark_texts=>c_key-back ) }</a></div>|.
     ENDIF.
 
     IF mo_current_page IS NOT INITIAL.
@@ -279,8 +279,7 @@ CLASS zcl_ark_gui IMPLEMENTATION.
         lv_content = lv_content && li_html->render( ).
       ENDIF.
     ELSE.
-      lv_content = |<p style="color: #b91c1c;">ARK: no page set | &&
-                   |(render before set_page / page was cleared)</p>|.
+      lv_content = |<p style="color: #b91c1c;">{ zcl_ark_convert=>escape_html( zcl_ark_texts=>text( zcl_ark_texts=>c_key-no_page ) ) }</p>|.
     ENDIF.
 
     rv_html = build_html_document( lv_content ).

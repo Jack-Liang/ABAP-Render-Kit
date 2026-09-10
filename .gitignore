@@ -6,3 +6,6 @@ atc.txt
 atcres.txt
 dest.txt
 tools.json
+
+# 本地业务代码（个人 app/report），不进仓库
+local/

@@ -45,7 +45,7 @@
 |--------|------|-------------|
 | ZCL_ARK_GUI_COMPONENT | CLAS | Component base class |
 | ZCL_ARK_GUI_PAGE | CLAS | Page base class (+ convention routing on_action_&lt;action&gt;) |
-| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (kpi/table/form/chart/card_grid/text, form read-back + required validation, section builders: table_section from any internal table, chart_section single-series bar/line) |
+| ZCL_ARK_STATE_PAGE | CLAS | Declarative state page (kpi/table/form/chart/card_grid/text/progress, form read-back + required validation, section builders: table_section from any internal table, chart_section single-series bar/line) |
 | ZIF_ARK_GUI_MODAL | INTF | Modal interface |
 | ZIF_ARK_GUI_ERROR_HANDLER | INTF | Error handler interface |
 | ZIF_ARK_GUI_STATE | INTF | Declarative page state schema (draft) |

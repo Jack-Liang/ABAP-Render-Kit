@@ -4,11 +4,16 @@ CLASS lcl_test_state_page DEFINITION FINAL CREATE PUBLIC
   PUBLIC SECTION.
     METHODS get_state
       RETURNING VALUE(rs_state) TYPE zif_ark_gui_state=>ty_page_state .
+    METHODS render_html
+      RETURNING VALUE(rv_html) TYPE string .
 ENDCLASS.
 
 CLASS lcl_test_state_page IMPLEMENTATION.
   METHOD get_state.
     rs_state = ms_state.
+  ENDMETHOD.
+  METHOD render_html.
+    rv_html = build_html( )->render( ).
   ENDMETHOD.
 ENDCLASS.
 
@@ -31,6 +36,7 @@ CLASS ltcl_state_form DEFINITION FINAL FOR TESTING
     METHODS table_section_from_data FOR TESTING.
     METHODS chart_section_builds_option FOR TESTING.
     METHODS chart_section_multi_series FOR TESTING.
+    METHODS progress_clamps_and_escapes FOR TESTING.
 ENDCLASS.
 
 CLASS ltcl_state_form IMPLEMENTATION.
@@ -171,6 +177,29 @@ CLASS ltcl_state_form IMPLEMENTATION.
     cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `'line'` ) ).
     " 小数系列值保留（zcl_ark_json 序列化为带引号数字字符串）
     cl_abap_unit_assert=>assert_true( boolc( ls_section-chart_option CS `"280.5"` ) ).
+  ENDMETHOD.
+
+  METHOD progress_clamps_and_escapes.
+    " 进度条渲染：百分比截断 [0,100]、语义色修饰类、动态值转义
+    DATA(lo_page) = NEW lcl_test_state_page( ).
+    lo_page->set_state( VALUE zif_ark_gui_state=>ty_page_state(
+      sections = VALUE #(
+        ( kind = zif_ark_gui_state=>c_section_kind-progress
+          title = '账号有效期'
+          progress_items = VALUE #(
+            ( label = `<b>_start_</b>`
+              value_text = `已使用 620 / 730 天`
+              percent = 150
+              semantic = zif_ark_gui_state=>c_semantic-negative ) ) ) ) ) ).
+
+    DATA(lv_html) = lo_page->render_html( ).
+    " 150 截断为 100
+    cl_abap_unit_assert=>assert_true( boolc( lv_html CS `width: 100%;` ) ).
+    cl_abap_unit_assert=>assert_true(
+      boolc( lv_html CS `ark-progress-fill--negative` ) ).
+    " 标签是动态值：HTML 不落原样（escape_html 纪律）
+    cl_abap_unit_assert=>assert_false( boolc( lv_html CS `<b>_start_</b>` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( lv_html CS `已使用 620 / 730 天` ) ).
   ENDMETHOD.
 
 ENDCLASS.

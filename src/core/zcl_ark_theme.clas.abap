@@ -260,6 +260,26 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |.ark-nav-card:hover .ark-nav-card-title \{ text-decoration: underline; \} | &&
       |.ark-nav-card-desc \{ display: block; margin-top: 6px; font-size: 13px;| &&
       | color: var(--arkNeutralColor); \} | &&
+      |.ark-progress-list \{ padding-top: 4px; \} | &&
+      |.ark-progress-row \{ margin-bottom: 14px; \} | &&
+      |.ark-progress-row:last-child \{ margin-bottom: 0; \} | &&
+      |.ark-progress-head \{ display: flex; align-items: baseline;| &&
+      | justify-content: space-between; gap: 12px;| &&
+      | font-size: 13px; margin-bottom: 6px; \} | &&
+      |.ark-progress-label \{ font-weight: 500; \} | &&
+      |.ark-progress-value \{ color: var(--arkNeutralColor);| &&
+      | font-variant-numeric: tabular-nums; white-space: nowrap; \} | &&
+      |.ark-progress-track \{ height: 8px;| &&
+      | background: var(--arkHoverBackground);| &&
+      | border: 1px solid var(--arkBorderColor); border-radius: 4px;| &&
+      | overflow: hidden; \} | &&
+      |.ark-progress-fill \{ height: 100%;| &&
+      | background: var(--arkBrandColor); \} | &&
+      |.ark-progress-fill--positive \{ background: var(--arkPositiveColor); \} | &&
+      |.ark-progress-fill--negative \{ background: var(--arkNegativeColor); \} | &&
+      |.ark-progress-fill--critical \{ background: var(--arkCriticalColor); \} | &&
+      |.ark-progress-fill--informative \{ background: var(--arkInformativeColor); \} | &&
+      |.ark-progress-fill--neutral \{ background: var(--arkNeutralColor); \} | &&
       |.ark-text \{ color: var(--arkNeutralColor); font-size: 13px;| &&
       | margin: 8px 0 0; padding-top: 12px; border-top: 1px solid var(--arkBorderColor); \} | &&
       |.ark-required \{ color: var(--arkNegativeColor); \} | &&

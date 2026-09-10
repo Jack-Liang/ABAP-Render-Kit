@@ -26,7 +26,7 @@ ARK is a modern UI framework for ABAP, extracted and refined from the battle-tes
 - **Text Templates** — `zcl_ark_template` with `{{PLACEHOLDER}}` syntax, loadable from the MIME repository
 - **JSON Serialization** — `zcl_ark_json=>to_json( )` for any ABAP data object (sXML-based, zero dependencies)
 - **Theme Support** — Fiori Quartz design tokens via `zcl_ark_theme`; override any token with `set_token( )`
-- **Declarative State Pages** — fill a typed `ty_page_state` (`zif_ark_gui_state`) and let `zcl_ark_state_page` render a Fiori-style page; no HTML in your ABAP code. Section kinds: KPI grid, table, form (framework read-back + required validation), chart, card grid, text — plus one-call builders: `table_section( )` (any internal table, RTTI-derived columns) and `chart_section( )` (single bar/line series from ABAP data)
+- **Declarative State Pages** — fill a typed `ty_page_state` (`zif_ark_gui_state`) and let `zcl_ark_state_page` render a Fiori-style page; no HTML in your ABAP code. Section kinds: KPI grid, table, form (framework read-back + required validation), chart, card grid, text, progress bars — plus one-call builders: `table_section( )` (any internal table, RTTI-derived columns) and `chart_section( )` (single bar/line series from ABAP data)
 - **Convention Routing** — no `CASE` in `on_event`: an action `save_order` is auto-dispatched to method `on_action_save_order` on your page class
 - **Zero-Boilerplate Launcher** — `ZARK_LAUNCHER` (transaction-code entry for any page class) removes the host-screen boilerplate from every app report
 - **Extensible JS Pipeline** — see [docs/js-extensions.md](docs/js-extensions.md): upload any JS (three.js, ...) as a W3MI asset, register it, and ship your own widget components
@@ -324,6 +324,21 @@ APPEND zcl_ark_state_page=>chart_section(
                            ( name = 'Revenue' type = 'bar'  values = VALUE #( ( `420` ) ( `455` ) ) )
                            ( name = 'Cost'    type = 'line' values = VALUE #( ( `300` ) ( `280.5` ) ) ) ) )
        TO ls_state-sections.
+```
+
+Progress bars are a section kind too — label + right-aligned value text + semantic fill color (`percent` is clamped to 0-100 by the renderer):
+
+```abap
+" Progress — account validity with used/total days
+APPEND VALUE zif_ark_gui_state=>ty_section(
+  kind  = zif_ark_gui_state=>c_section_kind-progress
+  title = 'Account Validity'
+  progress_items = VALUE #(
+    ( label      = '2025-01-01 ~ 2026-12-31'
+      value_text = 'Used 620 / 730 days'
+      percent    = 85
+      semantic   = zif_ark_gui_state=>c_semantic-positive ) )
+) TO ls_state-sections.
 ```
 
 Advanced charts (stacked options, maps, pies) build their option with the `zcl_ark_echarts` declarative API and pass `lo_chart->get_option_json( )` into the section's `chart_option` — see `ZCL_ARK_EXAMPLE_STATE_PAGE` (demo hub → **State Page**) for every section kind in one page.

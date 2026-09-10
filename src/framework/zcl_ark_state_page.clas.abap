@@ -187,6 +187,13 @@ CLASS zcl_ark_state_page DEFINITION
       CHANGING
         !co_html    TYPE REF TO zcl_ark_html .
 
+    "! 进度条列表（有效期/配额/完成度），填充色走语义修饰类
+    METHODS render_progress
+      IMPORTING
+        !is_section TYPE zif_ark_gui_state=>ty_section
+      CHANGING
+        !co_html    TYPE REF TO zcl_ark_html .
+
     "! 声明式表单回读：form_action 命中时把 POST 值写回 form_fields-value，
     "! 并执行 required 校验（失败置 error_text）。返回 false 表示校验失败
     METHODS read_back_form
@@ -519,6 +526,8 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         render_card_grid( EXPORTING is_section = is_section CHANGING co_html = co_html ).
       WHEN zif_ark_gui_state=>c_section_kind-text.
         render_text( EXPORTING is_section = is_section CHANGING co_html = co_html ).
+      WHEN zif_ark_gui_state=>c_section_kind-progress.
+        render_progress( EXPORTING is_section = is_section CHANGING co_html = co_html ).
     ENDCASE.
 
     co_html->add( |</div>| ).
@@ -1043,6 +1052,37 @@ CLASS zcl_ark_state_page IMPLEMENTATION.
         |{ zcl_ark_convert=>escape_html( is_section-link_text ) }</a>|.
     ENDIF.
     co_html->add( |{ lv_html }</p>| ).
+  ENDMETHOD.
+
+  METHOD render_progress.
+    " 进度条列表：每行 = 标签 + 数值文本 + 轨道。填充色走语义修饰类
+    " （同 ark-delta 约定），百分比只写 width 内联样式（无内联颜色），
+    " 渲染端截断到 [0,100]，业务侧传任意整数都安全
+    co_html->add( |<div class="ark-progress-list">| ).
+
+    LOOP AT is_section-progress_items INTO DATA(ls_item).
+      DATA(lv_pct) = ls_item-percent.
+      IF lv_pct < 0.
+        lv_pct = 0.
+      ELSEIF lv_pct > 100.
+        lv_pct = 100.
+      ENDIF.
+      DATA(lv_fill_class) = 'ark-progress-fill'.
+      IF ls_item-semantic IS NOT INITIAL.
+        lv_fill_class = |{ lv_fill_class } ark-progress-fill--{ zcl_ark_convert=>escape_html( ls_item-semantic ) }|.
+      ENDIF.
+      co_html->add( |<div class="ark-progress-row">| ).
+      co_html->add( |<div class="ark-progress-head">| &&
+        |<span class="ark-progress-label">{ zcl_ark_convert=>escape_html( ls_item-label ) }</span>| &&
+        |<span class="ark-progress-value">{ zcl_ark_convert=>escape_html( ls_item-value_text ) }</span>| &&
+        |</div>| ).
+      co_html->add( |<div class="ark-progress-track">| &&
+        |<div class="{ lv_fill_class }" style="width: { lv_pct }%;"></div>| &&
+        |</div>| ).
+      co_html->add( |</div>| ).
+    ENDLOOP.
+
+    co_html->add( |</div>| ).
   ENDMETHOD.
 
   METHOD render_chart.

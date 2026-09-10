@@ -43,6 +43,8 @@ INTERFACE zif_ark_gui_state
       card_grid TYPE ty_section_kind VALUE 'card_grid',
       "! Plain text paragraph (escaped) with optional external link
       text      TYPE ty_section_kind VALUE 'text',
+      "! Horizontal progress bars (validity, quota, completion, ...)
+      progress  TYPE ty_section_kind VALUE 'progress',
     END OF c_section_kind .
 
   TYPES:
@@ -127,6 +129,20 @@ INTERFACE zif_ark_gui_state
     END OF ty_form_field,
     tt_form_field TYPE STANDARD TABLE OF ty_form_field WITH EMPTY KEY .
 
+  "! 进度条行：标签 + 右侧数值文本 + 0-100 百分比 + 语义填充色
+  TYPES:
+    BEGIN OF ty_progress_item,
+      "! 左侧标签（如 '2025-01-01 ~ 2026-12-31'）
+      label      TYPE string,
+      "! 右侧数值文本（如 '已使用 215 / 730 天'）
+      value_text TYPE string,
+      "! 填充百分比，渲染时截断到 [0,100]
+      percent    TYPE i,
+      "! 填充条语义色（c_semantic）；空 = 主题色
+      semantic   TYPE ty_semantic,
+    END OF ty_progress_item,
+    tt_progress_item TYPE STANDARD TABLE OF ty_progress_item WITH EMPTY KEY .
+
   TYPES:
     BEGIN OF ty_section,
       kind     TYPE ty_section_kind,
@@ -157,6 +173,8 @@ INTERFACE zif_ark_gui_state
       "! For text sections: optional trailing external link (e.g. GitHub)
       link_url  TYPE string,
       link_text TYPE string,
+      "! For progress sections: progress bar rows
+      progress_items TYPE tt_progress_item,
     END OF ty_section,
     tt_section TYPE STANDARD TABLE OF ty_section WITH EMPTY KEY .
 

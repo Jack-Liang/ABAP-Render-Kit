@@ -198,8 +198,15 @@ CLASS zcl_ark_gui IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD is_at_home.
-    " 按绝对类名比较：导航常创建主页的新实例，引用比较不成立
-    IF mo_current_page IS INITIAL OR mo_home_page IS INITIAL.
+    " 按绝对类名比较：导航常创建主页的新实例，引用比较不成立。
+    " 未注册主页的宿主（单页 report / launcher 直启）没有"主页"可比：
+    " 导航栈空 = 无处可返回 = 视同在顶层（返回条不注入、F3 即退出）；
+    " 栈非空说明发生过页面导航，仍按"不在主页"处理
+    IF mo_home_page IS INITIAL.
+      rv_yes = xsdbool( mo_current_page IS INITIAL OR mo_history->count( ) = 0 ).
+      RETURN.
+    ENDIF.
+    IF mo_current_page IS INITIAL.
       RETURN.
     ENDIF.
     rv_yes = xsdbool(

@@ -64,13 +64,14 @@ FORM exit.
       LEAVE PROGRAM.
     WHEN 'CBAC' OR 'CCAN' OR 'F03'.
       " F3 / Back / Escape：沿页面栈回上一层（与页面统一返回条同语义），
-      " 已在顶层（主页）才退出程序
+      " 已在顶层才退出程序。未注册主页的单页宿主（栈空）也视同顶层，
+      " 见 zcl_ark_gui=>is_at_home
       IF lo_gui->zif_ark_gui_services~is_at_home( ).
         lo_gui->free( ).
         LEAVE PROGRAM.
-      ELSEIF lo_gui->go_back( ) = abap_false.
-        " 无栈可弹（未注册主页的宿主形态）：停留当页
-        lo_gui->render( ).
+      ELSE.
+        " 不在顶层必有栈可弹
+        lo_gui->go_back( ).
       ENDIF.
   ENDCASE.
 ENDFORM.

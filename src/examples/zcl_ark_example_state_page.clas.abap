@@ -75,6 +75,18 @@ CLASS ZCL_ARK_EXAMPLE_STATE_PAGE IMPLEMENTATION.
             delta_semantic = zif_ark_gui_state=>c_semantic-positive
             sparkline = VALUE #( ( `90` ) ( `91` ) ( `92` ) ( `92.8` ) ( `93.5` ) ( `94` ) ( `94.6` ) ) ) ) ) ).
 
+    " ---- 进度条（progress 节：目标/配额/有效期，语义色填充条）----
+    ls_state-sections = VALUE #( BASE ls_state-sections
+      ( kind = zif_ark_gui_state=>c_section_kind-progress
+        title = '季度经营进度'
+        progress_items = VALUE #(
+          ( label = '销售额目标' value_text = '已达成 1,286 / 2,000 万'
+            percent = 64 semantic = zif_ark_gui_state=>c_semantic-positive )
+          ( label = '回款计划' value_text = '已回款 918 / 1,020 万'
+            percent = 90 semantic = zif_ark_gui_state=>c_semantic-critical )
+          ( label = '新客户开发' value_text = '已完成 38 / 200 家'
+            percent = 19 semantic = zif_ark_gui_state=>c_semantic-informative ) ) ) ).
+
     " ---- 表格（语义色状态 + 行内链接动作；表头点击排序/过滤栏/CSV 下载为内置能力）----
     " 嵌套内表（表行的行类型本身是内表）在 7.57 上无法内联构造，
     " 用 ADD_ROW 逐行追加（见私有方法），兼容且可读

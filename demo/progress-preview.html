@@ -19,6 +19,7 @@
   --arkBorderColor: #e5e5e5;
   --arkBorderStrongColor: #c9c9c9;
   --arkRadius: 8px;
+  --arkTableMaxWidth: none;
   --arkRadiusCard: 12px;
   --arkFontFamily: "72", "72full", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   --arkFontSize: 14px;
@@ -28,7 +29,7 @@ body { font-family: var(--arkFontFamily); font-size: var(--arkFontSize); color: 
 .ark-page-subtitle { color: var(--arkNeutralColor); font-size: 13px; margin: 0 0 20px; }
 .ark-card { background: var(--arkBaseColor); border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); padding: 16px 20px; margin-bottom: 16px; max-width: 860px; }
 .ark-card-title { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
-table { border-collapse: collapse; width: 100%; background: var(--arkBaseColor); border-radius: var(--arkRadiusCard); }
+table { border-collapse: collapse; width: 100%; max-width: var(--arkTableMaxWidth); background: var(--arkBaseColor); border-radius: var(--arkRadiusCard); }
 th { text-align: left; font-size: 12px; font-weight: 500; color: var(--arkNeutralColor); padding: 10px 16px; border-bottom: 1px solid var(--arkBorderStrongColor); }
 td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid var(--arkBorderColor); }
 tr:last-child td { border-bottom: none; }

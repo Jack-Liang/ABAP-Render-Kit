@@ -185,10 +185,10 @@ CLASS ltcl_state_form IMPLEMENTATION.
     lo_page->set_state( VALUE zif_ark_gui_state=>ty_page_state(
       sections = VALUE #(
         ( kind = zif_ark_gui_state=>c_section_kind-progress
-          title = '账号有效期'
+          title = 'Progress'
           progress_items = VALUE #(
-            ( label = `<b>_start_</b>`
-              value_text = `已使用 620 / 730 天`
+            ( label = `<b>bad</b>`
+              value_text = `620 / 730`
               percent = 150
               semantic = zif_ark_gui_state=>c_semantic-negative ) ) ) ) ) ).
 
@@ -198,8 +198,8 @@ CLASS ltcl_state_form IMPLEMENTATION.
     cl_abap_unit_assert=>assert_true(
       boolc( lv_html CS `ark-progress-fill--negative` ) ).
     " 标签是动态值：HTML 不落原样（escape_html 纪律）
-    cl_abap_unit_assert=>assert_false( boolc( lv_html CS `<b>_start_</b>` ) ).
-    cl_abap_unit_assert=>assert_true( boolc( lv_html CS `已使用 620 / 730 天` ) ).
+    cl_abap_unit_assert=>assert_false( boolc( lv_html CS `<b>bad</b>` ) ).
+    cl_abap_unit_assert=>assert_true( boolc( lv_html CS `620 / 730` ) ).
   ENDMETHOD.
 
 ENDCLASS.

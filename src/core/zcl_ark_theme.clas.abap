@@ -129,6 +129,7 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       | color: var(--arkTextColor); background: var(--arkPageBackground);| &&
       | max-width: var(--arkPageMaxWidth); margin: 0 auto;| &&
       | padding: 24px 32px; \} | &&
+      |.ark-page \{ max-width: var(--arkPageMaxWidth); margin: 0 auto; \} | &&
       |a \{ color: var(--arkBrandColor); text-decoration: none; \} | &&
       |a:hover \{ text-decoration: underline; \} | &&
       |table \{ border-collapse: collapse; width: 100%;| &&

@@ -26,6 +26,7 @@
   --arkFontSize: 14px;
 }
 body { font-family: var(--arkFontFamily); font-size: var(--arkFontSize); color: var(--arkTextColor); background: var(--arkPageBackground); max-width: var(--arkPageMaxWidth); margin: 0 auto; padding: 24px 32px; }
+.ark-page { max-width: var(--arkPageMaxWidth); margin: 0 auto; }
 .ark-page-title { font-size: 22px; font-weight: 400; margin: 0 0 4px; }
 .ark-page-subtitle { color: var(--arkNeutralColor); font-size: 13px; margin: 0 0 20px; }
 .ark-card { background: var(--arkBaseColor); border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); padding: 16px 20px; margin-bottom: 16px; }
@@ -56,6 +57,7 @@ tr:last-child td { border-bottom: none; }
 </style>
 </head>
 <body>
+<div class="ark-page">
 
 <h1 class="ark-page-title">用户账号信息</h1>
 <p class="ark-page-subtitle">progress 节可视化预览 — 正常 / 预警 / 已过期 / 永久有效 / 未生效 五种形态</p>
@@ -116,5 +118,6 @@ tr:last-child td { border-bottom: none; }
   </table>
 </div>
 
+</div>
 </body>
 </html>

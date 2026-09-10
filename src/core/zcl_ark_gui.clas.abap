@@ -344,7 +344,9 @@ CLASS zcl_ark_gui IMPLEMENTATION.
               |  \}, 30000);\n| &&
               |\}, true);\n| &&
               |</script>\n| &&
+              |<div class="ark-page">\n| &&
               |{ iv_content }\n| &&
+              |</div>\n| &&
               |</body>\n| &&
               |</html>|.
   ENDMETHOD.

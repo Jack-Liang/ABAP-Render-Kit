@@ -344,7 +344,12 @@ CLASS zcl_ark_gui IMPLEMENTATION.
               |  \}, 30000);\n| &&
               |\}, true);\n| &&
               |</script>\n| &&
-              |<div class="ark-page">\n| &&
+              " 页宽令牌直出内联 style：部分 WebView 内核对 CSS var()/
+              " body 级 max-width 支持不可靠，字面量 + .ark-page 类双保险
+              |<div class="ark-page" style="max-width: | &&
+              zcl_ark_theme=>get_instance( )->token(
+                iv_name = 'pageMaxWidth' iv_default = 'none' ) &&
+              |;">\n| &&
               |{ iv_content }\n| &&
               |</div>\n| &&
               |</body>\n| &&

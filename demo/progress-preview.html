@@ -20,14 +20,15 @@
   --arkBorderStrongColor: #c9c9c9;
   --arkRadius: 8px;
   --arkTableMaxWidth: none;
+  --arkPageMaxWidth: 720px;
   --arkRadiusCard: 12px;
   --arkFontFamily: "72", "72full", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   --arkFontSize: 14px;
 }
-body { font-family: var(--arkFontFamily); font-size: var(--arkFontSize); color: var(--arkTextColor); background: var(--arkPageBackground); margin: 0; padding: 24px 32px; }
+body { font-family: var(--arkFontFamily); font-size: var(--arkFontSize); color: var(--arkTextColor); background: var(--arkPageBackground); max-width: var(--arkPageMaxWidth); margin: 0 auto; padding: 24px 32px; }
 .ark-page-title { font-size: 22px; font-weight: 400; margin: 0 0 4px; }
 .ark-page-subtitle { color: var(--arkNeutralColor); font-size: 13px; margin: 0 0 20px; }
-.ark-card { background: var(--arkBaseColor); border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); padding: 16px 20px; margin-bottom: 16px; max-width: 860px; }
+.ark-card { background: var(--arkBaseColor); border: 1px solid var(--arkBorderColor); border-radius: var(--arkRadiusCard); padding: 16px 20px; margin-bottom: 16px; }
 .ark-card-title { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
 table { border-collapse: collapse; width: 100%; max-width: var(--arkTableMaxWidth); background: var(--arkBaseColor); border-radius: var(--arkRadiusCard); }
 th { text-align: left; font-size: 12px; font-weight: 500; color: var(--arkNeutralColor); padding: 10px 16px; border-bottom: 1px solid var(--arkBorderStrongColor); }

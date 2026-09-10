@@ -113,6 +113,7 @@ CLASS zcl_ark_theme IMPLEMENTATION.
       |  --arkRadius: { token( iv_name = 'radius' iv_default = '8px' ) }; | &&
       |  --arkRadiusCard: { token( iv_name = 'radiusCard' iv_default = '12px' ) }; | &&
       |  --arkTableMaxWidth: { token( iv_name = 'tableMaxWidth' iv_default = 'none' ) }; | &&
+      |  --arkPageMaxWidth: { token( iv_name = 'pageMaxWidth' iv_default = 'none' ) }; | &&
       |  --arkFontFamily: { token( iv_name = 'fontFamily' iv_default = '"72", "72full", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif' ) }; | &&
       |  --arkFontSize: { token( iv_name = 'fontSize' iv_default = '14px' ) }; | &&
       |\} |.
@@ -126,7 +127,8 @@ CLASS zcl_ark_theme IMPLEMENTATION.
     rv_css =
       |body \{ font-family: var(--arkFontFamily); font-size: var(--arkFontSize);| &&
       | color: var(--arkTextColor); background: var(--arkPageBackground);| &&
-      | margin: 0; padding: 24px 32px; \} | &&
+      | max-width: var(--arkPageMaxWidth); margin: 0 auto;| &&
+      | padding: 24px 32px; \} | &&
       |a \{ color: var(--arkBrandColor); text-decoration: none; \} | &&
       |a:hover \{ text-decoration: underline; \} | &&
       |table \{ border-collapse: collapse; width: 100%;| &&
